@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>warp · shader playground</title>
+<style>
+    :root {
+        --bg: #05060a;
+        --panel: rgba(14, 18, 30, 0.82);
+        --border: rgba(120, 160, 220, 0.18);
+        --text: #cfe0ff;
+        --muted: #7488ab;
+        --accent: #4aa3ff;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+        margin: 0; height: 100%;
+        background: var(--bg); color: var(--text);
+        font: 13px/1.5 ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+        overflow: hidden;
+    }
+    #gl { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; cursor: crosshair; }
+
+    .panel {
+        position: fixed; z-index: 10;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    }
+    #controls {
+        top: 16px; left: 16px;
+        padding: 12px 14px;
+        display: flex; flex-direction: column; gap: 10px;
+        max-width: min(360px, calc(100vw - 32px));
+    }
+    .title { display: flex; align-items: baseline; gap: 8px; }
+    .title strong { color: #fff; font-size: 14px; letter-spacing: 0.5px; }
+    .title span { color: var(--muted); font-size: 11px; }
+
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    select, button {
+        font: inherit; color: var(--text);
+        background: rgba(30, 38, 58, 0.9);
+        border: 1px solid var(--border);
+        border-radius: 6px; padding: 6px 10px; cursor: pointer;
+    }
+    select { flex: 1; min-width: 140px; }
+    button:hover { border-color: var(--accent); color: #fff; }
+    button:active { transform: translateY(1px); }
+
+    #shader-desc { color: var(--muted); font-size: 12px; }
+
+    #hud {
+        bottom: 16px; left: 16px;
+        padding: 8px 12px;
+        display: flex; gap: 16px; color: var(--muted);
+    }
+    #hud b { color: var(--text); font-weight: 500; }
+
+    #hint {
+        bottom: 16px; right: 16px;
+        padding: 8px 12px; color: var(--muted); font-size: 11px;
+    }
+    #hint kbd {
+        background: rgba(60, 80, 120, 0.4); border: 1px solid var(--border);
+        border-radius: 4px; padding: 1px 5px; color: var(--text);
+    }
+
+    #errors {
+        position: fixed; z-index: 20;
+        top: 16px; right: 16px;
+        max-width: min(560px, calc(100vw - 32px));
+        max-height: calc(100vh - 32px); overflow: auto;
+        padding: 14px 16px;
+        background: rgba(40, 12, 16, 0.92);
+        border: 1px solid rgba(255, 120, 120, 0.4);
+        border-radius: 10px;
+        color: #ffd9d9;
+        white-space: pre-wrap; font-size: 12px;
+        display: none;
+    }
+    #errors.visible { display: block; }
+</style>
+</head>
+<body>
+    <canvas id="gl"></canvas>
+
+    <div id="controls" class="panel">
+        <div class="title"><strong>warp</strong><span>shader playground</span></div>
+        <div class="row">
+            <select id="shader-picker" title="Choose a shader"></select>
+            <button id="reload" title="Recompile the current file">↻</button>
+        </div>
+        <div class="row">
+            <button id="play-pause">⏸ Pause</button>
+            <button id="reset" title="Reset iTime to 0">⏮ Reset</button>
+        </div>
+        <div id="shader-desc"></div>
+    </div>
+
+    <div id="hud" class="panel">
+        <span>t <b id="hud-time">0.00s</b></span>
+        <span>frame <b id="hud-frame">0</b></span>
+        <span>fps <b id="hud-fps">0</b></span>
+        <span>res <b id="hud-res">0×0</b></span>
+    </div>
+
+    <div id="hint" class="panel">
+        <kbd>drag</kbd> orbit · <kbd>space</kbd> pause · <kbd>r</kbd> reset
+    </div>
+
+    <pre id="errors"></pre>
+
+    <script type="module" src="js/app.js"></script>
+</body>
+</html>

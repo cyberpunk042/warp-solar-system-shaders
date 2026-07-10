@@ -1,0 +1,14 @@
+{
+  "shaders": [
+    {
+      "file": "solar-system.frag",
+      "name": "Solar System",
+      "description": "Raymarched planet with plasma jet, magnetic field rings, orbiting probes, and a procedural cube-mapped starfield."
+    },
+    {
+      "file": "template.frag",
+      "name": "Template",
+      "description": "Minimal starter — copy this to begin a new shader."
+    }
+  ]
+}
