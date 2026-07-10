@@ -11,27 +11,37 @@ import math
 import warp as wp
 
 from ..engine import post
-from ..engine.atmosphere import sample_counts, sky_radiance
+from ..engine.atmosphere import build_transmittance_lut, sample_counts, sky_radiance_lut
 from ..engine.uniforms import Camera, camera_ray_dir, make_camera
 from ..lod import active_tier
 from ..scene import Scene
 
 _GROUND_EYE_Y = 6360002.0  # planet radius + 2 m
+_lut_cache = {}
 
 
 @wp.kernel
 def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
-                  view_samples: int, light_samples: int, width: int, height: int):
+                  view_samples: int, lut: wp.array2d(dtype=wp.vec3),
+                  width: int, height: int):
     i, j = wp.tid()
     u = (2.0 * (float(j) + 0.5) / float(width)) - 1.0
     v = (2.0 * (float(height - 1 - i) + 0.5) / float(height)) - 1.0
     rd = camera_ray_dir(cam, u, v)
-    img[i, j] = sky_radiance(cam.eye, rd, sun, view_samples, light_samples)
+    img[i, j] = sky_radiance_lut(cam.eye, rd, sun, view_samples, lut)
+
+
+def _lut(device, size):
+    key = (device, size)
+    if key not in _lut_cache:
+        _lut_cache[key] = build_transmittance_lut(size=size, device=device)
+    return _lut_cache[key]
 
 
 def _render(width, height, time, mouse, device):
     tier = active_tier()
     vs, ls = sample_counts(tier.name)
+    lut = _lut(device, tier.lut_size)
 
     az = 0.3 + float(mouse[0]) * 0.01 + time * 0.03
     pitch = 0.22
@@ -46,7 +56,7 @@ def _render(width, height, time, mouse, device):
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(render_kernel, dim=(height, width),
-              inputs=[img, cam, sun, int(vs), int(ls), int(width), int(height)],
+              inputs=[img, cam, sun, int(vs), lut, int(width), int(height)],
               device=device)
     wp.synchronize_device(device)
     hdr = img.numpy()
