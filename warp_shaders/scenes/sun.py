@@ -7,11 +7,11 @@ The original is channel-driven:
 
 Neither exists in an offline renderer, so this port follows the gallery
 convention for channel-driven Shadertoy scenes:
-  - audio  -> a synthetic animated spectrum derived from ``time`` (the sun pulses),
+  - audio  -> dropped; ``brightness`` is a fixed constant (no sound),
   - texture -> procedural fBm noise (``sun_tex``), so no image assets are needed.
 
-Original ``reference/neutron-star.frag`` sibling for this one is the inline
-Shadertoy source in the commit that added it.
+The surface still animates over time through the noise term. Original GLSL is
+kept at ``reference/sun.frag``.
 """
 
 import warp as wp
@@ -94,10 +94,9 @@ def render_kernel(
 ):
     i, j = wp.tid()
 
-    # Synthetic audio spectrum (stands in for iChannel1 FFT) — makes the sun pulse.
-    f1 = 0.6 + 0.4 * wp.sin(time * 2.3 + 1.0)
-    f2 = 0.6 + 0.4 * wp.sin(time * 1.1 + 2.0)
-    brightness = f1 * 0.25 + f2 * 0.25
+    # Original was audio-reactive (iChannel1 FFT -> brightness). No sound here:
+    # a fixed brightness. The surface still churns via `time` in the noise below.
+    brightness = float(0.3)
 
     radius = 0.24 + brightness * 0.2
     inv_radius = 1.0 / radius
@@ -163,5 +162,5 @@ def render_kernel(
 SCENE = Scene(
     name="sun",
     kernel=render_kernel,
-    description="Turbulent star with a flaring corona (trisomie21). Audio->synthetic, texture->procedural.",
+    description="Turbulent star with a flaring corona (trisomie21). Texture->procedural; no audio.",
 )
