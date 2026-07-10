@@ -1,16 +1,15 @@
-"""Raymarched solar system — an NVIDIA Warp port of the GLSL Shadertoy scene.
+"""Neutron star — an NVIDIA Warp port of the GLSL Shadertoy scene.
 
-A procedurally-textured planet with a plasma jet, magnetic field rings, orbiting
-probes, and a cube-mapped starfield. The original shader lives at
-``reference/solar-system.frag``; this is a faithful ``@wp.kernel`` translation.
-
-Public entry point: :func:`render`, which returns an ``(H, W, 3)`` float image.
+A dense pulsar core with relativistic jets along the magnetic axis, magnetic
+field rings, orbiting matter, and a cube-mapped starfield. The original shader
+lives at ``reference/neutron-star.frag``; this is a faithful ``@wp.kernel``
+translation, exposed through the scene registry as ``SCENE``.
 """
 
-import numpy as np
 import warp as wp
 
-from .sdf import fbm2d, hash2d, noise2d, rot2, sd_torus
+from ..scene import Scene
+from ..sdf import fbm2d, hash2d, noise2d, rot2, sd_torus
 
 # Raymarch tuning (mirrors the GLSL #defines).
 STEPS = 100
@@ -223,15 +222,8 @@ def render_kernel(
     img[i, j] = col
 
 
-def render(width: int = 960, height: int = 540, time: float = 0.0,
-           mouse=(0.0, 0.0), device: str = "cpu") -> np.ndarray:
-    """Render one frame. Returns an ``(H, W, 3)`` float32 array (unclamped)."""
-    img = wp.zeros((height, width), dtype=wp.vec3, device=device)
-    wp.launch(
-        render_kernel,
-        dim=(height, width),
-        inputs=[img, width, height, float(time), wp.vec2(float(mouse[0]), float(mouse[1]))],
-        device=device,
-    )
-    wp.synchronize_device(device)
-    return img.numpy()
+SCENE = Scene(
+    name="neutron_star",
+    kernel=render_kernel,
+    description="Pulsar core with relativistic jets, magnetic field rings, orbiting matter, and a starfield.",
+)

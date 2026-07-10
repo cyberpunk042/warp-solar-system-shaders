@@ -1,19 +1,23 @@
 #!/usr/bin/env python3
-"""Render the solar-system Warp scene to an image or an animated sequence.
+"""Render a Warp scene to an image or an animated sequence.
 
 Examples
 --------
+List available scenes::
+
+    python render.py --list
+
 Single frame (auto device — CUDA if present, else CPU)::
 
-    python render.py --time 3.0 --width 1280 --height 720 -o frame.png
+    python render.py --scene neutron_star --time 3.0 --width 1280 --height 720 -o frame.png
 
 A short animation as a GIF::
 
-    python render.py --frames 60 --fps 30 --gif out/spin.gif
+    python render.py --scene neutron_star --frames 60 --fps 30 --gif out/spin.gif
 
 Individual PNG frames into a directory::
 
-    python render.py --frames 120 --out-dir out/frames
+    python render.py --scene neutron_star --frames 120 --out-dir out/frames
 """
 
 import argparse
@@ -22,7 +26,7 @@ import os
 import numpy as np
 import warp as wp
 
-from warp_shaders.solar_system import render
+from warp_shaders.scene import get_scene, list_scenes
 
 
 def to_uint8(frame: np.ndarray) -> np.ndarray:
@@ -42,12 +46,14 @@ def save_png(path: str, frame: np.ndarray) -> None:
 
 
 def main() -> None:
-    ap = argparse.ArgumentParser(description="Render the Warp solar-system scene.")
+    ap = argparse.ArgumentParser(description="Render a Warp scene.")
+    ap.add_argument("--scene", default="neutron_star", help="scene name (see --list)")
+    ap.add_argument("--list", action="store_true", help="list available scenes and exit")
     ap.add_argument("--width", type=int, default=960)
     ap.add_argument("--height", type=int, default=540)
     ap.add_argument("--time", type=float, default=0.0, help="scene time (seconds) for a single frame")
     ap.add_argument("--mouse", type=float, nargs=2, default=(0.0, 0.0),
-                    metavar=("MX", "MY"), help="camera orbit, in pixel coords like iMouse")
+                    metavar=("MX", "MY"), help="camera/pan control, in pixel coords like iMouse")
     ap.add_argument("--frames", type=int, default=1, help="number of frames to render")
     ap.add_argument("--fps", type=float, default=30.0, help="frames per second (sets time step + GIF timing)")
     ap.add_argument("-o", "--out", default="frame.png", help="output path for a single frame")
@@ -57,11 +63,19 @@ def main() -> None:
     args = ap.parse_args()
 
     wp.init()
+
+    if args.list:
+        print("Available scenes:")
+        for s in list_scenes():
+            print(f"  {s.name:<16} {s.description}")
+        return
+
+    scene = get_scene(args.scene)
     device = pick_device(args.device)
-    print(f"rendering on device: {device}")
+    print(f"scene: {scene.name}  |  device: {device}")
 
     if args.frames <= 1:
-        frame = render(args.width, args.height, args.time, tuple(args.mouse), device)
+        frame = scene.render(args.width, args.height, args.time, tuple(args.mouse), device)
         save_png(args.out, frame)
         print(f"wrote {args.out}  ({args.width}x{args.height}, t={args.time})")
         return
@@ -73,7 +87,7 @@ def main() -> None:
     gif_frames = []
     for k in range(args.frames):
         t = k * dt
-        frame = render(args.width, args.height, t, tuple(args.mouse), device)
+        frame = scene.render(args.width, args.height, t, tuple(args.mouse), device)
         u8 = to_uint8(frame)
         if args.out_dir:
             save_png(os.path.join(args.out_dir, f"frame_{k:04d}.png"), frame)
