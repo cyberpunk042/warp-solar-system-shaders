@@ -5,12 +5,16 @@ Raymarched GPU scenes written with [**NVIDIA Warp**](https://github.com/NVIDIA/w
 fBm — written in Python `@wp.kernel` / `@wp.func` form, running on CUDA when a
 GPU is present and transparently falling back to CPU otherwise.
 
-The flagship scene is a solar system: a procedurally-textured planet with a
-plasma jet, magnetic field rings, orbiting probes, and a cube-mapped starfield —
-a Warp port of the GLSL Shadertoy original kept at
-[`reference/solar-system.frag`](reference/solar-system.frag).
+It's a **multi-scene gallery**: each shader is one self-contained module in
+`warp_shaders/scenes/`, auto-discovered by a registry. Adding a scene is adding
+a file — no central list to edit.
 
-![preview](docs/preview.png)
+The flagship scene is a **neutron star**: a dense pulsar core with relativistic
+jets along the magnetic axis, magnetic field rings, orbiting matter, and a
+cube-mapped starfield — a Warp port of the GLSL Shadertoy original kept at
+[`reference/neutron-star.frag`](reference/neutron-star.frag).
+
+![neutron star](docs/preview.png)
 
 ## Install
 
@@ -26,43 +30,54 @@ automatically.
 ## Render
 
 ```bash
+python render.py --list                         # show available scenes
+
 # single frame (auto device: CUDA if available, else CPU)
-python render.py --time 2.0 --width 1280 --height 720 -o frame.png
+python render.py --scene neutron_star --time 2.0 --width 1280 --height 720 -o frame.png
 
 # a spinning GIF
-python render.py --frames 60 --fps 30 --gif out/spin.gif
+python render.py --scene neutron_star --frames 60 --fps 30 --gif out/spin.gif
 
 # PNG frame sequence
-python render.py --frames 120 --out-dir out/frames
+python render.py --scene neutron_star --frames 120 --out-dir out/frames
 
 # force CPU (works anywhere; slower)
-python render.py --device cpu --width 640 --height 360 -o frame.png
+python render.py --scene neutron_star --device cpu --width 640 --height 360 -o frame.png
 ```
 
-`--mouse MX MY` orbits the camera, matching the shader's `iMouse` convention
+`--mouse MX MY` drives the camera/pan, matching the shader's `iMouse` convention
 (pixel coordinates).
 
-## Write your own scene
+## Add a scene (the workflow for every new shader)
 
-`warp_shaders/sdf.py` is a reusable toolkit of `@wp.func` building blocks —
-`hash2d`, `noise2d`, `fbm2d`, `rot2`, `sd_torus`, `fract`. Compose them inside a
-`@wp.kernel` that writes a `wp.vec3` per pixel:
+1. Copy the template:
 
-```python
-import warp as wp
-from warp_shaders.sdf import fbm2d, rot2
+   ```bash
+   cp warp_shaders/scenes/_template.py warp_shaders/scenes/my_scene.py
+   ```
 
-@wp.kernel
-def my_scene(img: wp.array2d(dtype=wp.vec3), width: int, height: int, time: float):
-    i, j = wp.tid()                        # i = row, j = column
-    uv = wp.vec2((float(j) + 0.5) / float(width),
-                 (float(i) + 0.5) / float(height))
-    img[i, j] = wp.vec3(uv[0], uv[1], 0.5 + 0.5 * wp.sin(time))
+2. Write the kernel and set the `SCENE` name. Every scene implements the **same
+   kernel contract**, which is what keeps the launcher uniform:
 
-img = wp.zeros((h, w), dtype=wp.vec3, device="cpu")
-wp.launch(my_scene, dim=(h, w), inputs=[img, w, h, t], device="cpu")
-frame = img.numpy()                        # (H, W, 3) float array
-```
+   ```python
+   @wp.kernel
+   def render_kernel(img: wp.array2d(dtype=wp.vec3),
+                     width: int, height: int, time: float, mouse: wp.vec2):
+       i, j = wp.tid()          # i = row, j = column
+       ...
+       img[i, j] = wp.vec3(r, g, b)
+
+   SCENE = Scene(name="my_scene", kernel=render_kernel, description="...")
+   ```
+
+3. It's live immediately:
+
+   ```bash
+   python render.py --list
+   python render.py --scene my_scene -o my_scene.png
+   ```
+
+Underscore-prefixed modules (like `_template.py`) are skipped by discovery.
 
 ### GLSL → Warp cheatsheet
 
@@ -71,27 +86,34 @@ has no swizzles and distinguishes scalars from vectors:
 
 | GLSL | Warp |
 |---|---|
+| `mainImage(out vec4 c, in vec2 fragCoord)` | the `render_kernel` body |
+| `iResolution` / `iTime` / `iMouse` | `width, height` / `time` / `mouse` kernel args |
 | `mix(a, b, t)` | `wp.lerp(a, b, t)` |
 | `fract(x)` | `x - wp.floor(x)` (or `sdf.fract`) |
 | `atan(y, x)` | `wp.atan2(y, x)` |
 | `p.xz = rotate(p.xz, a)` | rebuild: `r = rot2(wp.vec2(p[0], p[2]), a); p = wp.vec3(r[0], p[1], r[1])` |
 | `v.x` / `v.y` / `v.z` | `v[0]` / `v[1]` / `v[2]` |
 | `void f(out float m)` | return a tuple: `return dist, m` |
-| `iResolution`, `iTime`, `iMouse` | kernel arguments you pass at launch |
 
-See `warp_shaders/solar_system.py` next to `reference/solar-system.frag` for a
-full worked example.
+Reusable building blocks live in `warp_shaders/sdf.py` (`hash2d`, `noise2d`,
+`fbm2d`, `rot2`, `sd_torus`, `fract`). Grow that toolkit as scenes share more
+primitives. See `warp_shaders/scenes/neutron_star.py` next to
+`reference/neutron-star.frag` for a full worked port.
 
 ## Layout
 
 ```
-render.py                     CLI: single frame, PNG sequence, or GIF
+render.py                        CLI: --list, --scene, single frame / sequence / GIF
 warp_shaders/
-  sdf.py                      reusable @wp.func toolkit (hash/noise/fbm/rot/SDF)
-  solar_system.py             the scene kernel + render() helper
+  scene.py                       Scene contract + auto-discovery registry
+  sdf.py                         reusable @wp.func toolkit (hash/noise/fbm/rot/SDF)
+  scenes/
+    neutron_star.py              flagship pulsar scene
+    starfield.py                 minimal second scene (registry demo)
+    _template.py                 copy-me starter (skipped by discovery)
 reference/
-  solar-system.frag           original GLSL shader (provenance / cross-check)
-docs/preview.png              rendered still
+  neutron-star.frag              original GLSL shader (provenance / cross-check)
+docs/preview.png                 rendered still
 requirements.txt
 ```
 

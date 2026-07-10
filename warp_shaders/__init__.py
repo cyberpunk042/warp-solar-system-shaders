@@ -1,5 +1,9 @@
-"""warp_shaders — raymarched GPU scenes written with NVIDIA Warp."""
+"""warp_shaders — raymarched GPU scenes written with NVIDIA Warp.
 
-from .solar_system import render, render_kernel
+Scenes live in :mod:`warp_shaders.scenes` (one module each) and are discovered
+through the registry in :mod:`warp_shaders.scene`.
+"""
 
-__all__ = ["render", "render_kernel"]
+from .scene import Scene, get_scene, list_scenes, render
+
+__all__ = ["Scene", "get_scene", "list_scenes", "render"]
