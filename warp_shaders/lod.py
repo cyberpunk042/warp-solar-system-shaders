@@ -59,3 +59,17 @@ def auto_tier(device: str = "cpu") -> str:
         except Exception:
             return "high"
     return "low"
+
+
+# Process-wide active tier, set by the CLI (--quality) and read by LOD-aware scenes.
+_ACTIVE = TIERS["high"]
+
+
+def set_active(name: str, device: str = "cpu") -> QualityTier:
+    global _ACTIVE
+    _ACTIVE = get_tier(auto_tier(device) if name == "auto" else name)
+    return _ACTIVE
+
+
+def active_tier() -> QualityTier:
+    return _ACTIVE
