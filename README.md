@@ -80,6 +80,44 @@ Adding more elements is one row in the data table in
 [`warp_shaders/scenes/elements.py`](warp_shaders/scenes/elements.py) — the
 kernel already handles any Z / N / shell configuration.
 
+## Simulations — gravity, chain reactions, blasts
+
+Everything above is a *per-pixel shader*. This part uses Warp for what it's
+actually built for: **GPU particle simulation**. A stateful particle system
+evolves over time under real forces (a Warp kernel integrates gravity, thermal
+buoyancy, drag, and cooling each step), driving nuclear and thermonuclear blasts
+— **with the full chain reaction**, and an optional **gravity drop** beforehand.
+
+| nuclear (fission) | thermonuclear (fission → fusion) |
+|---|---|
+| ![nuclear](docs/sim/nuclear.gif) | ![thermonuclear](docs/sim/thermonuclear.gif) |
+
+```bash
+python simulate.py --scenario nuclear       --drop --gif out/nuke.gif
+python simulate.py --scenario thermonuclear --drop --gif out/thermo.gif
+python simulate.py --scenario thermonuclear --no-images   # just the chain-reaction report
+```
+
+Each run has three phases:
+
+1. **Drop** — the device falls under gravity (real ballistic motion) to the burst altitude.
+2. **Chain reaction** — a fission cascade modelled with self-limiting **point kinetics**: one seed neutron multiplies (`k_eff > 1`) until the fuel burns up and reactivity drops below critical — the characteristic neutron-population *pulse*. `simulate.py` prints the generation-by-generation table:
+
+   ```
+   frame |  fission n |  fis.E | fusion n |  fus.E
+      29 |      67.49 |  0.000 |     0.00 |  0.000
+      39 |   68326.77 |  0.076 |     0.00 |  0.000
+      44 |  327225.23 |  0.791 |     0.00 |  0.000   <- fission peaks, fuel burning out
+   ```
+
+3. **Fireball** — the released energy spawns a hot particle fireball that expands, then rises by buoyancy against gravity + drag → mushroom cloud (the camera tracks it up).
+
+**Thermonuclear** adds a second stage: once the fission *primary* releases enough energy it **ignites** a fusion *secondary* (the Teller–Ulam idea) — a second, much larger pulse and fireball (~25× the yield here). Physics timescale is dramatised onto frames; energies are arbitrary units for comparison, not megatons.
+
+Runs on CPU here (Warp's CPU codegen); identical on CUDA, in real time. See
+[`warp_shaders/sim/`](warp_shaders/sim/) — `engine.py` (particles + integrate
+kernel + splat renderer) and `blast.py` (drop + kinetics + fireball).
+
 ## Install
 
 ```bash
@@ -177,11 +215,15 @@ primitives. See `warp_shaders/scenes/neutron_star.py` next to
 ## Layout
 
 ```
-render.py                        CLI: --list, --scene, single frame / sequence / GIF
+render.py                        CLI: per-pixel scenes (--list, --scene, frame / GIF)
+simulate.py                      CLI: particle-sim blasts (nuclear / thermonuclear, --drop)
 warp_shaders/
   scene.py                       Scene contract + auto-discovery registry
   sdf.py                         reusable @wp.func toolkit (hash/noise/fbm/rot/SDF)
   particles.py                   particle primitives (quark/gluon/nucleon + camera + volumetrics)
+  sim/                           stateful particle simulation (Warp physics)
+    engine.py                    ParticleSystem: integrate kernel + splat renderer
+    blast.py                     gravity drop + chain-reaction kinetics + fireball
   scenes/
     neutron_star.py              flagship pulsar scene
     black_hole.py                gravitationally-lensed BH + accretion disk
