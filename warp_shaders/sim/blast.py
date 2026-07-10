@@ -93,14 +93,28 @@ def _spawn_neutrons(ps, center, count, rng):
              np.ones(count, np.int32))
 
 
-def _spawn_stem(ps, center, count, rng, temp=0.7):
-    j = rng.normal(size=(count, 3)) * np.array([0.35, 0.1, 0.35])
-    pos = center + j
+def _spawn_column(ps, top_y, count, rng, temp=0.7):
+    """A rising stem filling ground -> cap along the axis."""
+    y = rng.random(count) * top_y
+    j = rng.normal(size=(count, 3)) * np.array([0.28, 0.0, 0.28])
+    pos = j.astype(np.float32)
+    pos[:, 1] = y
     vel = np.zeros((count, 3), np.float32)
-    vel[:, 1] = 3.5 + 3.0 * rng.random(count)
-    ps.spawn(pos.astype(np.float32), vel.astype(np.float32),
-             np.full(count, temp, np.float32), np.full(count, 6.0, np.float32),
-             np.full(count, 2, np.int32))
+    vel[:, 1] = 3.0 + 3.0 * rng.random(count)
+    ps.spawn(pos, vel, np.full(count, temp, np.float32),
+             np.full(count, 6.0, np.float32), np.full(count, 2, np.int32))
+
+
+def _spawn_base_surge(ps, count, speed, rng):
+    """A dust skirt spreading radially outward along the ground."""
+    ang = rng.random(count) * 6.2831
+    d = np.stack([np.cos(ang), np.zeros(count), np.sin(ang)], 1)
+    pos = (d * (0.2 + rng.random((count, 1)) * 0.3)).astype(np.float32)
+    pos[:, 1] = 0.12
+    vel = (d * speed * (0.5 + 0.5 * rng.random((count, 1)))).astype(np.float32)
+    vel[:, 1] += 0.6
+    ps.spawn(pos, vel, np.full(count, 0.32, np.float32),
+             np.full(count, 6.0, np.float32), np.full(count, 2, np.int32))
 
 
 def simulate(scenario="nuclear", drop=True, frames=100, dt=0.045,
@@ -128,6 +142,7 @@ def simulate(scenario="nuclear", drop=True, frames=100, dt=0.045,
     detonated = False
     ignited = False
     fireball_started = False
+    det_f = 0
     det_center = np.array([0.0, burst_alt, 0.0], np.float32)
     flash = 0.0
     report = {"scenario": scenario, "dropped": bool(drop), "generations": [],
@@ -141,12 +156,14 @@ def simulate(scenario="nuclear", drop=True, frames=100, dt=0.045,
             y = ps.pos[device_slot, 1]
             if y <= burst_alt:
                 detonated = True
+                det_f = f
                 det_center = ps.pos[device_slot].copy()
                 ps.life[device_slot] = 0.0        # remove the casing
                 primary.ignite(1.0)
                 flash = 1.6
         elif not drop and not detonated:
             detonated = True
+            det_f = f
             primary.ignite(1.0)
             flash = 1.6
 
@@ -160,10 +177,11 @@ def simulate(scenario="nuclear", drop=True, frames=100, dt=0.045,
             # fireball grows with released energy
             if de > 0.0:
                 if not fireball_started and primary.energy > 0.12:
-                    _spawn_fireball(ps, det_center, 1400 if thermo else 2400,
-                                    6.0 if thermo else 7.0, 1.0, 6.0, rng)
+                    _spawn_fireball(ps, det_center, 2000 if thermo else 3400,
+                                    6.0 if thermo else 7.0, 1.0, 6.5, rng)
+                    _spawn_base_surge(ps, 900, 5.0, rng)
                     fireball_started = True
-                _spawn_stem(ps, det_center + np.array([0, 0.3, 0], np.float32), 22, rng)
+                _spawn_column(ps, float(det_center[1]), 26, rng)
 
             # thermonuclear: fission primary ignites the fusion secondary
             if thermo and not ignited and primary.energy > 0.6:
@@ -175,15 +193,24 @@ def simulate(scenario="nuclear", drop=True, frames=100, dt=0.045,
                 de2 = secondary.step(dt)
                 nspark2 = int(np.clip(np.log10(secondary.n + 1.0) * 14.0, 0, 90))
                 _spawn_neutrons(ps, det_center, nspark2, rng)
-                if de2 > 0.0 and secondary.energy > 0.5 and ps.kind.tolist().count(2) < 6500:
-                    _spawn_fireball(ps, det_center, 90, 13.0, 1.15, 7.0, rng)
-                    _spawn_stem(ps, det_center + np.array([0, 0.3, 0], np.float32), 30, rng, temp=0.85)
+                if de2 > 0.0 and secondary.energy > 0.5 and ps.kind.tolist().count(2) < 7000:
+                    _spawn_fireball(ps, det_center, 110, 13.0, 1.15, 7.0, rng)
+                    _spawn_column(ps, float(det_center[1]), 32, rng, temp=0.85)
 
-        # --- physics step + record generation ---
-        # Buoyancy > gravity for hot particles (they rise); as they cool it drops
-        # below gravity so the edges fall back — that differential is the roll
-        # that makes the mushroom cap.
-        ps.step(dt, G, buoy=13.0, drag=1.0, cool=0.32)
+        # --- physics step (with the mushroom-cap vortex) ---
+        # Buoyancy > gravity for hot particles (they rise); a poloidal vortex ring
+        # centered on the rising cap rolls the edges outward into the cap.
+        vortex = 0.0
+        cap_y = 0.0
+        ring_a = 1.0
+        if fireball_started:
+            fbm = ps.alive_mask() & (ps.kind == 2)
+            if fbm.any():
+                cap_y = float(np.mean(ps.pos[fbm, 1]))
+                ring_a = 0.5 + 0.045 * float(f - det_f)
+                vortex = 10.0
+        ps.step(dt, G, buoy=13.0, drag=1.0, cool=0.32,
+                vortex=vortex, cap_y=cap_y, ring_a=ring_a)
         if detonated:
             report["generations"].append(
                 (f, round(primary.n, 2), round(primary.energy, 3),
@@ -195,7 +222,7 @@ def simulate(scenario="nuclear", drop=True, frames=100, dt=0.045,
         cam_y = float(np.clip(np.mean(ps.pos[fb, 1]), 4.0, 40.0)) if fb.any() else 5.0
         eye = np.array([7.0, cam_y, 24.0], np.float32)
         frame = ps.render(width, height, eye, np.array([0.0, cam_y, 0.0], np.float32),
-                          fov_deg=48.0, exposure=0.6)
+                          fov_deg=48.0, exposure=0.6, stamp_radius=3)
         if flash > 0.02:
             frame = frame + np.array([1.0, 0.97, 0.9], np.float32) * flash
             flash *= 0.6
