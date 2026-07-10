@@ -20,6 +20,146 @@ cube-mapped starfield — a Warp port of the GLSL Shadertoy original kept at
 | **black hole** | **planet** |
 | ![black hole](docs/black-hole.png) | ![planet](docs/planet.png) |
 
+## The atom, from the bottom up
+
+A second, composable strand: build an atom out of its constituents. These scenes
+are **physics-informed but stylized**, and each higher level reuses the lower
+primitives from [`warp_shaders/particles.py`](warp_shaders/particles.py).
+
+| quark | proton | neutron |
+|---|---|---|
+| ![quark](docs/quark.png) | ![proton](docs/proton.png) | ![neutron](docs/neutron.png) |
+| color charge r→g→b, gluon wisps | up+up+down, color-neutral | up+down+down, color-neutral |
+
+| electron | atom (hydrogen) |
+|---|---|
+| ![electron](docs/electron.png) | ![atom](docs/atom.png) |
+| 1s probability cloud | proton nucleus inside the 1s cloud |
+
+What's modeled (stylized, not to scale):
+
+- **Quark** — a lone quark can't be isolated (confinement), so it's shown as one
+  orb whose QCD **color charge** cycles red→green→blue, with gluon wisps.
+- **Proton / neutron** — three quarks (`uud` / `udd`) whose red/green/blue color
+  charges sum to **color-neutral**, bound by **gluon flux tubes**. Same shared
+  `nucleon` primitive; down quarks render dimmer, and the confinement "bag" is
+  warm for the proton (+1) vs cool for the neutron (0).
+- **Electron** — a point lepton rendered as the hydrogen **1s orbital**
+  probability cloud (`exp(-r/a)`), volumetrically integrated with quantum sparkle.
+- **Atom** — a proton nucleus wrapped by the electron's 1s cloud. The nucleus is
+  exaggerated (a real one is ~1e-5 of the atom) so its structure stays visible.
+
+The build is genuinely bottom-up: `atom` composes the same `nucleon` used by
+`proton`, and the same cloud integrator used by `electron`. Heavier atoms (more
+nucleons, more electron shells) extend the same primitives.
+
+## Elements — the stylized (non-realistic) aesthetic
+
+A deliberately artistic take on the atom: the iconic neon **Bohr-model** look —
+a glowing packed nucleus (warm protons + cool neutrons) wrapped by tilted
+electron shells with orbiting electrons. One generic Warp kernel renders **any**
+element from runtime parameters (Z protons, N neutrons, electrons-per-shell), so
+all elements share one code path.
+
+| H | He | C | O |
+|---|---|---|---|
+| ![H](docs/elements/hydrogen.png) | ![He](docs/elements/helium.png) | ![C](docs/elements/carbon.png) | ![O](docs/elements/oxygen.png) |
+| **Ne** | **Na** | **Cl** | **Ar** |
+| ![Ne](docs/elements/neon.png) | ![Na](docs/elements/sodium.png) | ![Cl](docs/elements/chlorine.png) | ![Ar](docs/elements/argon.png) |
+
+**18 elements** (periods 1–3, H → Ar) are registered as scenes, each with the
+correct proton/neutron count and shell occupancy (e.g. Ar = 2-8-8):
+
+```bash
+python render.py --scene carbon -o carbon.png
+python render.py --scene argon  --frames 120 --fps 30 --gif out/argon.gif
+python render.py --list          # every element shows up
+```
+
+Adding more elements is one row in the data table in
+[`warp_shaders/scenes/elements.py`](warp_shaders/scenes/elements.py) — the
+kernel already handles any Z / N / shell configuration.
+
+## Simulations — gravity, chain reactions, blasts
+
+Everything above is a *per-pixel shader*. This part uses Warp for what it's
+actually built for: **GPU particle simulation**. A stateful particle system
+evolves over time under real forces (a Warp kernel integrates gravity, thermal
+buoyancy, drag, and cooling each step), driving nuclear and thermonuclear blasts
+— **with the full chain reaction**, and an optional **gravity drop** beforehand.
+
+| nuclear (fission) | thermonuclear (fission → fusion) |
+|---|---|
+| ![nuclear](docs/sim/nuclear.gif) | ![thermonuclear](docs/sim/thermonuclear.gif) |
+
+```bash
+python simulate.py --scenario nuclear       --drop --gif out/nuke.gif
+python simulate.py --scenario thermonuclear --drop --gif out/thermo.gif
+python simulate.py --scenario thermonuclear --no-images   # just the chain-reaction report
+```
+
+Each run has three phases:
+
+1. **Drop** — the device falls under gravity (real ballistic motion) to the burst altitude.
+2. **Chain reaction** — a fission cascade modelled with self-limiting **point kinetics**: one seed neutron multiplies (`k_eff > 1`) until the fuel burns up and reactivity drops below critical — the characteristic neutron-population *pulse*. `simulate.py` prints the generation-by-generation table:
+
+   ```
+   frame |  fission n |  fis.E | fusion n |  fus.E
+      29 |      67.49 |  0.000 |     0.00 |  0.000
+      39 |   68326.77 |  0.076 |     0.00 |  0.000
+      44 |  327225.23 |  0.791 |     0.00 |  0.000   <- fission peaks, fuel burning out
+   ```
+
+3. **Fireball** — the released energy spawns a hot particle fireball that expands, then rises by buoyancy against gravity + drag → mushroom cloud (the camera tracks it up).
+
+**Thermonuclear** adds a second stage: once the fission *primary* releases enough energy it **ignites** a fusion *secondary* (the Teller–Ulam idea) — a second, much larger pulse and fireball (~25× the yield here). Physics timescale is dramatised onto frames; energies are arbitrary units for comparison, not megatons.
+
+Runs on CPU here (Warp's CPU codegen); identical on CUDA, in real time. See
+[`warp_shaders/sim/`](warp_shaders/sim/) — `engine.py` (particles + integrate
+kernel + splat renderer) and `blast.py` (drop + kinetics + fireball).
+
+## Earth — every warhead at once (a sensitization piece)
+
+A gravitationally-bound **particle Earth** under simultaneous global detonation.
+Grounded in real numbers, because the truth is sharper than the sci-fi: the
+entire arsenal is **~10⁻¹³ of Earth's gravitational binding energy** — the
+dinosaur-killer impact was **~26,000× larger** and Earth survived geologically.
+So the planet does **not** shatter. What dies is everything living on it.
+
+Three outcomes, chosen one at a time; three arsenals (`current` ~9,500 · `total`
+~12,500 re-armed · `peak` ~60,000):
+
+| grounded (real) | toxic (real) | shatter (hypothetical) |
+|---|---|---|
+| ![grounded](docs/sim/earth_grounded.png) | ![toxic](docs/sim/earth_toxic.png) | ![shatter](docs/sim/earth_shatter.png) |
+| planet intact, global flashes | nuclear-winter soot shroud, dead world | alien "softron" energy → rock + ice cloud |
+
+```bash
+python simulate_earth.py --arsenal total --outcome grounded  --gif out/earth.gif
+python simulate_earth.py --arsenal total --outcome toxic     --gif out/toxic.gif
+python simulate_earth.py --arsenal peak  --outcome shatter    --gif out/shatter.gif
+python simulate_earth.py --arsenal total --no-images          # the honest report:
+```
+
+```
+warheads               : 12,500
+total yield            : 3,800 Mt  =  1.590e+19 J
+arsenal / binding      : 7.09e-14   (need >= 1 to disperse the planet)
+blast dv / escape vel  : 2.66e-07   (escape = 11,186 m/s)
+dino-killer / arsenal  : 26,416x  (and Earth survived that)
+VERDICT: PLANET INTACT. ...
+```
+
+- **grounded / toxic** are real physics: the planet is in equilibrium and stays
+  put; the arsenal only scorches the surface. `toxic` layers on the firestorm
+  soot shroud (nuclear winter) — the honest catastrophe.
+- **shatter** is explicitly labeled non-physical: energy scaled to Earth's
+  binding energy (~10¹³× the real arsenal) so the planet disperses; inner debris
+  falls back into clumps under self-gravity (`_grav` kernel) — a shambling rock +
+  ice cloud. This is the alien-weapon *hypothetical*, not what nukes do.
+
+The point: you never needed to break the planet to end the world on it.
+
 ## Install
 
 ```bash
@@ -117,26 +257,33 @@ primitives. See `warp_shaders/scenes/neutron_star.py` next to
 ## Layout
 
 ```
-render.py                        CLI: --list, --scene, single frame / sequence / GIF
+render.py                        CLI: per-pixel scenes (--list, --scene, frame / GIF)
+simulate.py                      CLI: particle-sim blasts (nuclear / thermonuclear, --drop)
+simulate_earth.py                CLI: Earth under global detonation (grounded/toxic/shatter)
 warp_shaders/
   scene.py                       Scene contract + auto-discovery registry
   sdf.py                         reusable @wp.func toolkit (hash/noise/fbm/rot/SDF)
+  particles.py                   particle primitives (quark/gluon/nucleon + camera + volumetrics)
+  sim/                           stateful particle simulation (Warp physics)
+    engine.py                    ParticleSystem: integrate kernel + splat renderer
+    blast.py                     gravity drop + chain-reaction kinetics + fireball
+    earth.py                     gravitationally-bound Earth + arsenals + outcomes + report
   scenes/
     neutron_star.py              flagship pulsar scene
     black_hole.py                gravitationally-lensed BH + accretion disk
     planet.py                    lit planet + distant star + lens flare (iq/mu6k)
     sun.py                       trisomie21 star corona (texture -> procedural)
     starfield.py                 minimal scene (registry demo)
+    quark.py  proton.py          the atom, bottom-up: quark -> nucleons ...
+    neutron.py electron.py atom.py   ... -> electron -> hydrogen atom
+    elements.py                  18 stylized Bohr-model elements (one generic kernel)
     _template.py                 copy-me starter (skipped by discovery)
 reference/
   neutron-star.frag              original GLSL shaders (provenance / cross-check)
   black-hole.frag
   planet.frag
   sun.frag
-docs/preview.png                 rendered stills
-docs/black-hole.png
-docs/planet.png
-docs/sun.png
+docs/*.png                       rendered stills (one per scene)
 requirements.txt
 ```
 
