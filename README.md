@@ -53,6 +53,33 @@ The build is genuinely bottom-up: `atom` composes the same `nucleon` used by
 `proton`, and the same cloud integrator used by `electron`. Heavier atoms (more
 nucleons, more electron shells) extend the same primitives.
 
+## Elements — the stylized (non-realistic) aesthetic
+
+A deliberately artistic take on the atom: the iconic neon **Bohr-model** look —
+a glowing packed nucleus (warm protons + cool neutrons) wrapped by tilted
+electron shells with orbiting electrons. One generic Warp kernel renders **any**
+element from runtime parameters (Z protons, N neutrons, electrons-per-shell), so
+all elements share one code path.
+
+| H | He | C | O |
+|---|---|---|---|
+| ![H](docs/elements/hydrogen.png) | ![He](docs/elements/helium.png) | ![C](docs/elements/carbon.png) | ![O](docs/elements/oxygen.png) |
+| **Ne** | **Na** | **Cl** | **Ar** |
+| ![Ne](docs/elements/neon.png) | ![Na](docs/elements/sodium.png) | ![Cl](docs/elements/chlorine.png) | ![Ar](docs/elements/argon.png) |
+
+**18 elements** (periods 1–3, H → Ar) are registered as scenes, each with the
+correct proton/neutron count and shell occupancy (e.g. Ar = 2-8-8):
+
+```bash
+python render.py --scene carbon -o carbon.png
+python render.py --scene argon  --frames 120 --fps 30 --gif out/argon.gif
+python render.py --list          # every element shows up
+```
+
+Adding more elements is one row in the data table in
+[`warp_shaders/scenes/elements.py`](warp_shaders/scenes/elements.py) — the
+kernel already handles any Z / N / shell configuration.
+
 ## Install
 
 ```bash
@@ -163,6 +190,7 @@ warp_shaders/
     starfield.py                 minimal scene (registry demo)
     quark.py  proton.py          the atom, bottom-up: quark -> nucleons ...
     neutron.py electron.py atom.py   ... -> electron -> hydrogen atom
+    elements.py                  18 stylized Bohr-model elements (one generic kernel)
     _template.py                 copy-me starter (skipped by discovery)
 reference/
   neutron-star.frag              original GLSL shaders (provenance / cross-check)
