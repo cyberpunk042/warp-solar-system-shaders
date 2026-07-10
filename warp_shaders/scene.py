@@ -38,16 +38,22 @@ class Scene:
     """A renderable Warp scene."""
 
     name: str
-    kernel: object  # a wp.Kernel (the @wp.kernel-decorated function)
+    kernel: object = None  # a wp.Kernel (the @wp.kernel-decorated function)
     description: str = ""
     width: int = 960
     height: int = 540
+    # Optional custom renderer(width, height, time, mouse, device) -> (H,W,3) array.
+    # Scenes that need extra per-scene inputs (arrays, parameters) set this instead
+    # of relying on the fixed 5-argument kernel contract.
+    renderer: object = None
 
     def render(self, width: int | None = None, height: int | None = None,
                time: float = 0.0, mouse=(0.0, 0.0), device: str = "cpu") -> np.ndarray:
         """Render one frame. Returns an ``(H, W, 3)`` float32 array (unclamped)."""
         w = width or self.width
         h = height or self.height
+        if self.renderer is not None:
+            return self.renderer(w, h, float(time), mouse, device)
         img = wp.zeros((h, w), dtype=wp.vec3, device=device)
         wp.launch(
             self.kernel,
@@ -77,6 +83,10 @@ def _discover() -> dict[str, Scene]:
         scene = getattr(module, "SCENE", None)
         if isinstance(scene, Scene):
             registry[scene.name] = scene
+        # A module may also expose SCENES (a list) — e.g. one per chemical element.
+        for s in getattr(module, "SCENES", []) or []:
+            if isinstance(s, Scene):
+                registry[s.name] = s
     _REGISTRY = registry
     return registry
 

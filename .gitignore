@@ -7,10 +7,11 @@ venv/
 # Warp kernel cache
 .warp/
 
-# Rendered output (keep docs/preview.png tracked)
+# Rendered output (keep docs/ previews + GIFs tracked)
 /out/
 frame.png
 *.gif
+!docs/**/*.gif
 
 # Editor / OS
 .DS_Store
