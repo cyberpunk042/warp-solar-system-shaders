@@ -1,0 +1,8 @@
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Python http.server / tooling caches
+__pycache__/
