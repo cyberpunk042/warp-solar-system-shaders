@@ -30,6 +30,9 @@ def _integrate(
     buoy: float,
     drag: float,
     cool: float,
+    vortex: float,
+    cap_y: float,
+    ring_a: float,
 ):
     i = wp.tid()
     if life[i] <= 0.0 or age[i] >= life[i]:
@@ -49,6 +52,18 @@ def _integrate(
         v = v * (1.0 - drag * dt)
         t = wp.max(t - cool * dt, 0.0)
 
+        # Poloidal vortex ring -> rolls the fireball into a mushroom cap.
+        if k == 2 and vortex > 0.0:
+            s = wp.sqrt(p[0] * p[0] + p[2] * p[2]) + 1.0e-4
+            rad = wp.vec3(p[0] / s, 0.0, p[2] / s)
+            ringpt = rad * ring_a + wp.vec3(0.0, cap_y, 0.0)
+            dd = p - ringpt
+            ds = wp.dot(dd, rad)
+            dy = dd[1]
+            dl = wp.sqrt(ds * ds + dy * dy) + 1.0e-4
+            vpol = (rad * dy - wp.vec3(0.0, 1.0, 0.0) * ds) / dl  # roll out at top
+            v = v + vpol * (vortex * wp.exp(-dl * 1.4) * dt)
+
     p = p + v * dt
 
     vel[i] = v
@@ -57,11 +72,12 @@ def _integrate(
     age[i] = age[i] + dt
 
 
-# Fireball color ramp: smoke -> red -> orange -> yellow -> white-blue (hottest).
-_STOPS = np.array([0.0, 0.15, 0.35, 0.55, 0.80, 1.0])
-_RAMP_R = np.array([0.10, 0.45, 0.95, 1.00, 1.00, 0.85])
-_RAMP_G = np.array([0.10, 0.10, 0.25, 0.55, 0.95, 0.95])
-_RAMP_B = np.array([0.12, 0.10, 0.05, 0.10, 0.55, 1.00])
+# Blackbody-ish fireball ramp: dark soot -> dull red -> orange -> yellow ->
+# white -> blue-white (hottest).
+_STOPS = np.array([0.0, 0.12, 0.30, 0.50, 0.72, 1.0])
+_RAMP_R = np.array([0.11, 0.32, 0.85, 1.00, 1.00, 0.80])
+_RAMP_G = np.array([0.10, 0.11, 0.22, 0.55, 0.92, 0.90])
+_RAMP_B = np.array([0.09, 0.08, 0.05, 0.12, 0.55, 1.00])
 
 
 def splat_points(width, height, pos, col, bright, eye, target,
@@ -143,7 +159,8 @@ class ParticleSystem:
         self.kind[idx] = kind
         self.cursor = int((self.cursor + n) % self.max_n)
 
-    def step(self, dt, g, buoy=9.0, drag=1.2, cool=0.35):
+    def step(self, dt, g, buoy=9.0, drag=1.2, cool=0.35,
+             vortex=0.0, cap_y=0.0, ring_a=1.0):
         self._d_pos.assign(self.pos)
         self._d_vel.assign(self.vel)
         self._d_temp.assign(self.temp)
@@ -153,7 +170,8 @@ class ParticleSystem:
         wp.launch(_integrate, dim=self.max_n,
                   inputs=[self._d_pos, self._d_vel, self._d_temp, self._d_age,
                           self._d_life, self._d_kind, float(dt), float(g),
-                          float(buoy), float(drag), float(cool)],
+                          float(buoy), float(drag), float(cool),
+                          float(vortex), float(cap_y), float(ring_a)],
                   device=self.device)
         wp.synchronize_device(self.device)
         self.pos = self._d_pos.numpy()
