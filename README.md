@@ -14,7 +14,9 @@ jets along the magnetic axis, magnetic field rings, orbiting matter, and a
 cube-mapped starfield — a Warp port of the GLSL Shadertoy original kept at
 [`reference/neutron-star.frag`](reference/neutron-star.frag).
 
-![neutron star](docs/preview.png)
+| neutron star | sun |
+|---|---|
+| ![neutron star](docs/preview.png) | ![sun](docs/sun.png) |
 
 ## Install
 
@@ -94,6 +96,15 @@ has no swizzles and distinguishes scalars from vectors:
 | `p.xz = rotate(p.xz, a)` | rebuild: `r = rot2(wp.vec2(p[0], p[2]), a); p = wp.vec3(r[0], p[1], r[1])` |
 | `v.x` / `v.y` / `v.z` | `v[0]` / `v[1]` / `v[2]` |
 | `void f(out float m)` | return a tuple: `return dist, m` |
+| `texture(iChannel0, uv)` (image) | a procedural `@wp.func` (fBm/noise) — see `sun.py`'s `sun_tex` |
+| `texture(iChannel1, ...)` (audio FFT) | a synthetic spectrum derived from `time` — see `sun.py` |
+
+**Channel convention.** Shadertoy shaders often read image/audio/video from
+`iChannelN`. This gallery has no bound channels, so ports substitute them
+procedurally: image textures become noise `@wp.func`s, audio reactivity becomes
+a `time`-driven synthetic spectrum. That keeps every scene self-contained and
+asset-free. (If a scene ever needs a real image, we can add a texture-array
+sampling path then — the kernel contract stays the same.)
 
 Reusable building blocks live in `warp_shaders/sdf.py` (`hash2d`, `noise2d`,
 `fbm2d`, `rot2`, `sd_torus`, `fract`). Grow that toolkit as scenes share more
@@ -109,11 +120,14 @@ warp_shaders/
   sdf.py                         reusable @wp.func toolkit (hash/noise/fbm/rot/SDF)
   scenes/
     neutron_star.py              flagship pulsar scene
-    starfield.py                 minimal second scene (registry demo)
+    sun.py                       trisomie21 star corona (audio+texture -> procedural)
+    starfield.py                 minimal scene (registry demo)
     _template.py                 copy-me starter (skipped by discovery)
 reference/
-  neutron-star.frag              original GLSL shader (provenance / cross-check)
-docs/preview.png                 rendered still
+  neutron-star.frag              original GLSL shaders (provenance / cross-check)
+  sun.frag
+docs/preview.png                 rendered stills
+docs/sun.png
 requirements.txt
 ```
 
