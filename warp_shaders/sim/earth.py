@@ -23,7 +23,11 @@ import math
 import numpy as np
 import warp as wp
 
+from ..earthgfx import earth_color
 from .engine import splat_points
+
+_SUN_DIR = np.array([-0.5, 0.28, 0.82], np.float32)
+_SUN_DIR = _SUN_DIR / np.linalg.norm(_SUN_DIR)
 
 # --- real-world constants (for the honest report) ---
 G = 6.674e-11
@@ -75,6 +79,36 @@ def _grav(pos: wp.array(dtype=wp.vec3), vel: wp.array(dtype=wp.vec3),
     v = vel[i] - (p / r) * (g * dt)
     pos[i] = p + v * dt
     vel[i] = v
+
+
+@wp.kernel
+def _globe(img: wp.array2d(dtype=wp.vec3), width: int, height: int,
+          eye: wp.vec3, right: wp.vec3, upv: wp.vec3, fwd: wp.vec3, f: float,
+          sun: wp.vec3, time: float, soot: float):
+    """Render the realistic Earth for a camera matching splat_points' projection."""
+    i, j = wp.tid()
+    cx = ((float(j) + 0.5) - 0.5 * float(width)) / f
+    cy = (0.5 * float(height) - (float(i) + 0.5)) / f
+    rd = wp.normalize(right * cx + upv * cy + fwd)
+    img[i, j] = earth_color(eye, rd, sun, time, soot)
+
+
+def _render_globe(width, height, eye, target, fov_deg, sun, time, soot, device):
+    fwd = np.asarray(target, np.float32) - np.asarray(eye, np.float32)
+    fwd /= np.linalg.norm(fwd) + 1e-9
+    right = np.cross(fwd, np.array([0, 1, 0], np.float32))
+    right /= np.linalg.norm(right) + 1e-9
+    upv = np.cross(right, fwd)
+    f = (height * 0.5) / np.tan(np.radians(fov_deg) * 0.5)
+    img = wp.zeros((height, width), dtype=wp.vec3, device=device)
+    wp.launch(_globe, dim=(height, width),
+              inputs=[img, width, height, wp.vec3(*[float(x) for x in eye]),
+                      wp.vec3(*[float(x) for x in right]), wp.vec3(*[float(x) for x in upv]),
+                      wp.vec3(*[float(x) for x in fwd]), float(f),
+                      wp.vec3(*[float(x) for x in sun]), float(time), float(soot)],
+              device=device)
+    wp.synchronize_device(device)
+    return img.numpy()
 
 
 def build_earth(n, rng):
@@ -187,29 +221,24 @@ def simulate_earth(arsenal="total", outcome="grounded", frames=130, n=30000,
         eye = np.array([dist * math.sin(az), 0.7, dist * math.cos(az)], np.float32)
         target = np.array([0, 0, 0], np.float32)
 
-        # --- planet coloring / visibility per outcome ---
-        col = base_col.copy()
-        normals = dirs
-        to_eye = eye[None, :] - pos
-        facing = np.einsum("ij,ij->i", normals, to_eye) > 0.0
-        shade = np.clip(normals @ sun, 0.0, 1.0) * 0.85 + 0.15
-
+        # --- base frame per outcome ---
         if outcome == "shatter":
-            bright = np.full(n, 0.9, np.float32)          # all debris visible
+            # Dispersed debris: render the particle cloud (a solid globe can't
+            # shatter). Fresh debris glows hot and fades as it expands.
+            col = base_col.copy()
+            bright = np.full(n, 0.9, np.float32)
             if detonated:
-                # fresh debris glows hot, fading with expansion
                 glow = np.clip(1.4 - 0.03 * (f - det_frame), 0.0, 1.0)
                 col = col + np.array([1.0, 0.5, 0.2], np.float32) * glow * 0.5
+            frame = splat_points(width, height, pos, col, bright, eye, target,
+                                 fov_deg=40.0, stamp_radius=2)
         else:
-            bright = np.where(is_surface & facing, shade * 1.1, 0.0).astype(np.float32)
+            # Intact planet: render the realistic globe (same shader as the
+            # `earth` scene). toxic greys/dims the surface (nuclear winter).
             if outcome == "toxic" and detonated:
                 toxic_prog = min(1.0, toxic_prog + 0.02)
-                grey = np.array([0.18, 0.17, 0.16], np.float32)
-                col = col * (1.0 - 0.85 * toxic_prog) + grey * (0.85 * toxic_prog)
-                bright *= (1.0 - 0.55 * toxic_prog)        # global dimming = winter
-
-        frame = splat_points(width, height, pos, col, bright, eye, target,
-                             fov_deg=40.0, stamp_radius=2)
+            frame = _render_globe(width, height, eye, target, 40.0,
+                                  _SUN_DIR, f * dt, toxic_prog, device) * 1.7
 
         # --- detonation flashes at every site ---
         if flash > 0.03:

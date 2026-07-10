@@ -14,11 +14,18 @@ jets along the magnetic axis, magnetic field rings, orbiting matter, and a
 cube-mapped starfield — a Warp port of the GLSL Shadertoy original kept at
 [`reference/neutron-star.frag`](reference/neutron-star.frag).
 
-| neutron star | sun |
-|---|---|
-| ![neutron star](docs/preview.png) | ![sun](docs/sun.png) |
-| **black hole** | **planet** |
-| ![black hole](docs/black-hole.png) | ![planet](docs/planet.png) |
+| neutron star | sun | black hole |
+|---|---|---|
+| ![neutron star](docs/preview.png) | ![sun](docs/sun.png) | ![black hole](docs/black-hole.png) |
+| **planet** | **earth** (realistic) | |
+| ![planet](docs/planet.png) | ![earth](docs/earth.png) | |
+
+The **earth** scene is a realistic globe: ray-sphere planet with atmospheric
+scattering (blue rim + sunset limb), oceans with a specular sun-glint, procedural
+continents, drifting clouds, a day/night terminator with night-side city lights,
+over a starfield — fully procedural, no texture asset. Shading lives in
+[`warp_shaders/earthgfx.py`](warp_shaders/earthgfx.py), shared with the Earth
+blast simulation below.
 
 ## The atom, from the bottom up
 
@@ -151,8 +158,10 @@ VERDICT: PLANET INTACT. ...
 ```
 
 - **grounded / toxic** are real physics: the planet is in equilibrium and stays
-  put; the arsenal only scorches the surface. `toxic` layers on the firestorm
-  soot shroud (nuclear winter) — the honest catastrophe.
+  put; the arsenal only scorches the surface. They render the **realistic globe**
+  (the same `earthgfx` shader as the `earth` scene) with detonation flashes
+  clustered over real basing regions; `toxic` greys the surface and layers on the
+  firestorm soot shroud (nuclear winter) — the honest catastrophe.
 - **shatter** is explicitly labeled non-physical: energy scaled to Earth's
   binding energy (~10¹³× the real arsenal) so the planet disperses; inner debris
   falls back into clumps under self-gravity (`_grav` kernel) — a shambling rock +
@@ -264,6 +273,7 @@ warp_shaders/
   scene.py                       Scene contract + auto-discovery registry
   sdf.py                         reusable @wp.func toolkit (hash/noise/fbm/rot/SDF)
   particles.py                   particle primitives (quark/gluon/nucleon + camera + volumetrics)
+  earthgfx.py                    realistic-Earth shading (scene + sim share it)
   sim/                           stateful particle simulation (Warp physics)
     engine.py                    ParticleSystem: integrate kernel + splat renderer
     blast.py                     gravity drop + chain-reaction kinetics + fireball
@@ -277,6 +287,7 @@ warp_shaders/
     quark.py  proton.py          the atom, bottom-up: quark -> nucleons ...
     neutron.py electron.py atom.py   ... -> electron -> hydrogen atom
     elements.py                  18 stylized Bohr-model elements (one generic kernel)
+    earth.py                     realistic Earth from space (uses earthgfx)
     _template.py                 copy-me starter (skipped by discovery)
 reference/
   neutron-star.frag              original GLSL shaders (provenance / cross-check)
