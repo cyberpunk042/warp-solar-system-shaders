@@ -118,6 +118,48 @@ Runs on CPU here (Warp's CPU codegen); identical on CUDA, in real time. See
 [`warp_shaders/sim/`](warp_shaders/sim/) — `engine.py` (particles + integrate
 kernel + splat renderer) and `blast.py` (drop + kinetics + fireball).
 
+## Earth — every warhead at once (a sensitization piece)
+
+A gravitationally-bound **particle Earth** under simultaneous global detonation.
+Grounded in real numbers, because the truth is sharper than the sci-fi: the
+entire arsenal is **~10⁻¹³ of Earth's gravitational binding energy** — the
+dinosaur-killer impact was **~26,000× larger** and Earth survived geologically.
+So the planet does **not** shatter. What dies is everything living on it.
+
+Three outcomes, chosen one at a time; three arsenals (`current` ~9,500 · `total`
+~12,500 re-armed · `peak` ~60,000):
+
+| grounded (real) | toxic (real) | shatter (hypothetical) |
+|---|---|---|
+| ![grounded](docs/sim/earth_grounded.png) | ![toxic](docs/sim/earth_toxic.png) | ![shatter](docs/sim/earth_shatter.png) |
+| planet intact, global flashes | nuclear-winter soot shroud, dead world | alien "softron" energy → rock + ice cloud |
+
+```bash
+python simulate_earth.py --arsenal total --outcome grounded  --gif out/earth.gif
+python simulate_earth.py --arsenal total --outcome toxic     --gif out/toxic.gif
+python simulate_earth.py --arsenal peak  --outcome shatter    --gif out/shatter.gif
+python simulate_earth.py --arsenal total --no-images          # the honest report:
+```
+
+```
+warheads               : 12,500
+total yield            : 3,800 Mt  =  1.590e+19 J
+arsenal / binding      : 7.09e-14   (need >= 1 to disperse the planet)
+blast dv / escape vel  : 2.66e-07   (escape = 11,186 m/s)
+dino-killer / arsenal  : 26,416x  (and Earth survived that)
+VERDICT: PLANET INTACT. ...
+```
+
+- **grounded / toxic** are real physics: the planet is in equilibrium and stays
+  put; the arsenal only scorches the surface. `toxic` layers on the firestorm
+  soot shroud (nuclear winter) — the honest catastrophe.
+- **shatter** is explicitly labeled non-physical: energy scaled to Earth's
+  binding energy (~10¹³× the real arsenal) so the planet disperses; inner debris
+  falls back into clumps under self-gravity (`_grav` kernel) — a shambling rock +
+  ice cloud. This is the alien-weapon *hypothetical*, not what nukes do.
+
+The point: you never needed to break the planet to end the world on it.
+
 ## Install
 
 ```bash
@@ -217,6 +259,7 @@ primitives. See `warp_shaders/scenes/neutron_star.py` next to
 ```
 render.py                        CLI: per-pixel scenes (--list, --scene, frame / GIF)
 simulate.py                      CLI: particle-sim blasts (nuclear / thermonuclear, --drop)
+simulate_earth.py                CLI: Earth under global detonation (grounded/toxic/shatter)
 warp_shaders/
   scene.py                       Scene contract + auto-discovery registry
   sdf.py                         reusable @wp.func toolkit (hash/noise/fbm/rot/SDF)
@@ -224,6 +267,7 @@ warp_shaders/
   sim/                           stateful particle simulation (Warp physics)
     engine.py                    ParticleSystem: integrate kernel + splat renderer
     blast.py                     gravity drop + chain-reaction kinetics + fireball
+    earth.py                     gravitationally-bound Earth + arsenals + outcomes + report
   scenes/
     neutron_star.py              flagship pulsar scene
     black_hole.py                gravitationally-lensed BH + accretion disk

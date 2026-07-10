@@ -64,6 +64,52 @@ _RAMP_G = np.array([0.10, 0.10, 0.25, 0.55, 0.95, 0.95])
 _RAMP_B = np.array([0.12, 0.10, 0.05, 0.10, 0.55, 1.00])
 
 
+def splat_points(width, height, pos, col, bright, eye, target,
+                 fov_deg=40.0, stamp_radius=3, up=(0.0, 1.0, 0.0)):
+    """Additive-splat colored points (per-particle RGB + brightness) to an image.
+
+    Particles with ``bright <= 0`` are skipped (use this to cull back-facing or
+    hidden points). Returns an (H, W, 3) float array.
+    """
+    frame = np.zeros((height, width, 3), np.float32)
+    keep = bright > 0.0
+    if not keep.any():
+        return frame
+    pos, col, bright = pos[keep], col[keep], bright[keep]
+
+    eye = np.asarray(eye, np.float32)
+    fwd = np.asarray(target, np.float32) - eye
+    fwd /= np.linalg.norm(fwd) + 1e-9
+    right = np.cross(fwd, np.asarray(up, np.float32))
+    right /= np.linalg.norm(right) + 1e-9
+    upv = np.cross(right, fwd)
+
+    rel = pos - eye
+    cz = rel @ fwd
+    front = cz > 0.05
+    if not front.any():
+        return frame
+    rel, col, bright, cz = rel[front], col[front], bright[front], cz[front]
+    cx = rel @ right
+    cy = rel @ upv
+
+    f = (height * 0.5) / np.tan(np.radians(fov_deg) * 0.5)
+    px = np.round(width * 0.5 + (cx / cz) * f).astype(np.int64)
+    py = np.round(height * 0.5 - (cy / cz) * f).astype(np.int64)
+    contrib = col * bright[:, None]
+
+    sigma2 = 2.0 * (stamp_radius * 0.5 + 0.5) ** 2
+    for dy in range(-stamp_radius, stamp_radius + 1):
+        for dx in range(-stamp_radius, stamp_radius + 1):
+            w = np.exp(-(dx * dx + dy * dy) / sigma2)
+            xx = px + dx
+            yy = py + dy
+            ok = (xx >= 0) & (xx < width) & (yy >= 0) & (yy < height)
+            if ok.any():
+                np.add.at(frame, (yy[ok], xx[ok]), contrib[ok] * w)
+    return frame
+
+
 class ParticleSystem:
     def __init__(self, max_n: int, device: str = "cpu"):
         self.max_n = max_n
