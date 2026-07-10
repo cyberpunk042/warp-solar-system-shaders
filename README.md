@@ -9,6 +9,43 @@ It's a **multi-scene gallery**: each shader is one self-contained module in
 `warp_shaders/scenes/`, auto-discovered by a registry. Adding a scene is adding
 a file — no central list to edit.
 
+## Hyper-realistic engine
+
+On top of the scene gallery there's a reusable, **tiered, research-grounded
+rendering engine** — a procedural toolkit + a render engine with one quality
+knob (`--quality low|medium|high|ultra`) so the same scene runs on CPU here and
+scales to a high-end GPU. Every technique cites a primary source in-code and in
+[`docs/research/`](docs/research/); see [`docs/engine.md`](docs/engine.md) for the API.
+
+| noise toolkit | PBR raymarch | atmosphere |
+|---|---|---|
+| ![noise](docs/engine/noise_gallery.png) | ![pbr](docs/engine/pbr_demo.png) | ![sky](docs/engine/sky.png) |
+| **volumetric clouds** | **Earth v2 (flagship)** | |
+| ![clouds](docs/engine/clouds.png) | ![earth](docs/engine/earth_v2.png) | |
+
+- **Procedural toolkit** (`warp_shaders/procedural/`) — value/Perlin/Worley/fbm/
+  ridged/billow/domain-warp/curl noise **with analytic derivatives**, plus an SDF
+  primitive+operator library. Sources: IQ, Gustavson, McGuire, Bridson.
+- **Render engine** (`warp_shaders/engine/`) — `@wp.struct` uniforms (camera/light/
+  frame/quality), an adaptive sphere-tracing raymarcher, **GGX Cook-Torrance PBR**,
+  **physically based atmospheric scattering** (Nishita/O'Neil Rayleigh+Mie), a
+  **volumetric cloud** raymarcher (Schneider density, Henyey-Greenstein, Beer-Lambert,
+  sun light-march), and a host **post** pipeline (ACES/AgX tonemap, bloom, vignette).
+- **LOD tiers** (`warp_shaders/lod.py`) — one knob scales raymarch/shadow/AO/atmosphere/
+  cloud sample counts, octaves, LUT sizes; auto-detected per device.
+
+```bash
+python render.py --scene earth_v2 --quality high -o earth.png   # the flagship
+python render.py --scene sky --quality medium --frames 120 --gif out/day.gif
+python render.py --scene pbr_demo --quality ultra -o pbr.png
+python -m tests.test_procedural                                  # toolkit tests
+```
+
+The earlier scenes and the nuclear/Earth **simulations** now render through the
+engine's post pipeline too. Grounded in Warp v1.12+ hardware textures
+(`wp.Texture2D/3D`, mipmaps) — precomputed atmosphere LUTs and a Blue Marble map
+are the next tier of realism.
+
 The flagship scene is a **neutron star**: a dense pulsar core with relativistic
 jets along the magnetic axis, magnetic field rings, orbiting matter, and a
 cube-mapped starfield — a Warp port of the GLSL Shadertoy original kept at

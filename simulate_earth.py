@@ -28,14 +28,15 @@ import os
 import numpy as np
 import warp as wp
 
+from warp_shaders.engine import post
 from warp_shaders.sim.earth import simulate_earth
 
 
 def tonemap(frame):
-    c = np.clip(frame, 0.0, None)
-    c = c / (1.0 + c)
-    c = np.power(c, 1.0 / 2.2)
-    return (np.clip(c, 0, 1) * 255 + 0.5).astype(np.uint8)
+    # Engine post: gentle bloom on the bright detonation flashes, then ACES.
+    hdr = post.bloom(np.clip(frame, 0.0, None), threshold=1.6, strength=0.35,
+                     radius=max(2, int(frame.shape[1] * 0.01)), passes=2)
+    return (post.tonemap(hdr, mode="aces", exposure=1.0) * 255 + 0.5).astype(np.uint8)
 
 
 def main():

@@ -22,15 +22,16 @@ import os
 import numpy as np
 import warp as wp
 
+from warp_shaders.engine import post
 from warp_shaders.sim import simulate
 
 
 def tonemap(frame):
-    # Filmic-ish: additive HDR -> [0,1]. Reinhard then gamma.
-    c = np.clip(frame, 0.0, None)
-    c = c / (1.0 + c)
-    c = np.power(c, 1.0 / 2.2)
-    return (np.clip(c, 0, 1) * 255 + 0.5).astype(np.uint8)
+    # Engine post: HDR bloom (fireball glow) -> ACES tonemap. Reuses the render
+    # engine's post pipeline over the simulation's HDR frames.
+    hdr = post.bloom(np.clip(frame, 0.0, None), threshold=0.9, strength=0.4,
+                     radius=max(2, int(frame.shape[1] * 0.012)), passes=2)
+    return (post.tonemap(hdr, mode="aces", exposure=1.0) * 255 + 0.5).astype(np.uint8)
 
 
 def main():
