@@ -60,6 +60,9 @@ def main() -> None:
     ap.add_argument("--out-dir", default=None, help="directory to write frame_####.png into")
     ap.add_argument("--gif", default=None, help="write the sequence as an animated GIF at this path")
     ap.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
+    ap.add_argument("--quality", default="auto",
+                    choices=["auto", "low", "medium", "high", "ultra"],
+                    help="LOD tier for engine/LOD-aware scenes (auto = by device)")
     args = ap.parse_args()
 
     wp.init()
@@ -72,7 +75,9 @@ def main() -> None:
 
     scene = get_scene(args.scene)
     device = pick_device(args.device)
-    print(f"scene: {scene.name}  |  device: {device}")
+    from warp_shaders.lod import set_active
+    tier = set_active(args.quality, device)
+    print(f"scene: {scene.name}  |  device: {device}  |  quality: {tier.name}")
 
     if args.frames <= 1:
         frame = scene.render(args.width, args.height, args.time, tuple(args.mouse), device)
