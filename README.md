@@ -14,9 +14,11 @@ jets along the magnetic axis, magnetic field rings, orbiting matter, and a
 cube-mapped starfield — a Warp port of the GLSL Shadertoy original kept at
 [`reference/neutron-star.frag`](reference/neutron-star.frag).
 
-| neutron star | sun | black hole |
-|---|---|---|
-| ![neutron star](docs/preview.png) | ![sun](docs/sun.png) | ![black hole](docs/black-hole.png) |
+| neutron star | sun |
+|---|---|
+| ![neutron star](docs/preview.png) | ![sun](docs/sun.png) |
+| **black hole** | **planet** |
+| ![black hole](docs/black-hole.png) | ![planet](docs/planet.png) |
 
 ## Install
 
@@ -122,15 +124,18 @@ warp_shaders/
   scenes/
     neutron_star.py              flagship pulsar scene
     black_hole.py                gravitationally-lensed BH + accretion disk
+    planet.py                    lit planet + distant star + lens flare (iq/mu6k)
     sun.py                       trisomie21 star corona (texture -> procedural)
     starfield.py                 minimal scene (registry demo)
     _template.py                 copy-me starter (skipped by discovery)
 reference/
   neutron-star.frag              original GLSL shaders (provenance / cross-check)
   black-hole.frag
+  planet.frag
   sun.frag
 docs/preview.png                 rendered stills
 docs/black-hole.png
+docs/planet.png
 docs/sun.png
 requirements.txt
 ```
