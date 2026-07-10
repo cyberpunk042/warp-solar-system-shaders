@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Warp kernel cache
+.warp/
+
+# Rendered output (keep docs/preview.png tracked)
+/out/
+frame.png
+*.gif
+
+# Editor / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
