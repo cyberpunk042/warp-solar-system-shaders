@@ -20,6 +20,39 @@ cube-mapped starfield — a Warp port of the GLSL Shadertoy original kept at
 | **black hole** | **planet** |
 | ![black hole](docs/black-hole.png) | ![planet](docs/planet.png) |
 
+## The atom, from the bottom up
+
+A second, composable strand: build an atom out of its constituents. These scenes
+are **physics-informed but stylized**, and each higher level reuses the lower
+primitives from [`warp_shaders/particles.py`](warp_shaders/particles.py).
+
+| quark | proton | neutron |
+|---|---|---|
+| ![quark](docs/quark.png) | ![proton](docs/proton.png) | ![neutron](docs/neutron.png) |
+| color charge r→g→b, gluon wisps | up+up+down, color-neutral | up+down+down, color-neutral |
+
+| electron | atom (hydrogen) |
+|---|---|
+| ![electron](docs/electron.png) | ![atom](docs/atom.png) |
+| 1s probability cloud | proton nucleus inside the 1s cloud |
+
+What's modeled (stylized, not to scale):
+
+- **Quark** — a lone quark can't be isolated (confinement), so it's shown as one
+  orb whose QCD **color charge** cycles red→green→blue, with gluon wisps.
+- **Proton / neutron** — three quarks (`uud` / `udd`) whose red/green/blue color
+  charges sum to **color-neutral**, bound by **gluon flux tubes**. Same shared
+  `nucleon` primitive; down quarks render dimmer, and the confinement "bag" is
+  warm for the proton (+1) vs cool for the neutron (0).
+- **Electron** — a point lepton rendered as the hydrogen **1s orbital**
+  probability cloud (`exp(-r/a)`), volumetrically integrated with quantum sparkle.
+- **Atom** — a proton nucleus wrapped by the electron's 1s cloud. The nucleus is
+  exaggerated (a real one is ~1e-5 of the atom) so its structure stays visible.
+
+The build is genuinely bottom-up: `atom` composes the same `nucleon` used by
+`proton`, and the same cloud integrator used by `electron`. Heavier atoms (more
+nucleons, more electron shells) extend the same primitives.
+
 ## Install
 
 ```bash
@@ -121,22 +154,22 @@ render.py                        CLI: --list, --scene, single frame / sequence /
 warp_shaders/
   scene.py                       Scene contract + auto-discovery registry
   sdf.py                         reusable @wp.func toolkit (hash/noise/fbm/rot/SDF)
+  particles.py                   particle primitives (quark/gluon/nucleon + camera + volumetrics)
   scenes/
     neutron_star.py              flagship pulsar scene
     black_hole.py                gravitationally-lensed BH + accretion disk
     planet.py                    lit planet + distant star + lens flare (iq/mu6k)
     sun.py                       trisomie21 star corona (texture -> procedural)
     starfield.py                 minimal scene (registry demo)
+    quark.py  proton.py          the atom, bottom-up: quark -> nucleons ...
+    neutron.py electron.py atom.py   ... -> electron -> hydrogen atom
     _template.py                 copy-me starter (skipped by discovery)
 reference/
   neutron-star.frag              original GLSL shaders (provenance / cross-check)
   black-hole.frag
   planet.frag
   sun.frag
-docs/preview.png                 rendered stills
-docs/black-hole.png
-docs/planet.png
-docs/sun.png
+docs/*.png                       rendered stills (one per scene)
 requirements.txt
 ```
 
