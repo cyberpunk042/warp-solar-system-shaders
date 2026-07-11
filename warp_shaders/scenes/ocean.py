@@ -12,6 +12,7 @@ import warp as wp
 
 from ..engine import post
 from ..engine.pbr import distribution_ggx, fresnel_schlick
+from ..engine.shading import apply_fog
 from ..engine.uniforms import Camera, camera_ray_dir, make_camera
 from ..lod import active_tier
 from ..scene import Scene
@@ -118,8 +119,7 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
     col = col + wp.vec3(0.9, 0.94, 0.98) * wp.clamp(foam, 0.0, 0.5)
 
     # distance haze to the horizon
-    fog = 1.0 - wp.exp(-t * 0.004)
-    col = col * (1.0 - fog) + _sky(rd, sun) * fog
+    col = apply_fog(col, t, _sky(rd, sun), 0.004)
     img[i, j] = col
 
 
