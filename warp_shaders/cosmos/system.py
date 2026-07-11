@@ -155,17 +155,24 @@ def _stars_kernel(img: wp.array2d(dtype=wp.vec3), depth: wp.array2d(dtype=float)
 # host helpers                                                                #
 # --------------------------------------------------------------------------- #
 
+def _basis_from(eye, target, fov, width, height):
+    """Camera basis (matching engine.make_camera's convention) from an explicit
+    eye / look-at / fov — shared by the default and cinematic-camera paths."""
+    eye = np.asarray(eye, np.float32)
+    fwd = np.asarray(target, np.float32) - eye
+    fwd /= (np.linalg.norm(fwd) + 1e-9)
+    right = np.cross(fwd, np.array([0, 1, 0], np.float32))
+    right /= np.linalg.norm(right) + 1e-9
+    up = np.cross(right, fwd)
+    tanf = math.tan(math.radians(fov) * 0.5)
+    return eye, fwd, right, up, tanf, width / height
+
+
 def _cam_basis(sys: SystemConfig, width, height):
     d, az, el = sys.dist, sys.az, sys.el
     eye = np.array([d * math.cos(el) * math.sin(az), d * math.sin(el),
                     d * math.cos(el) * math.cos(az)], np.float32)
-    fwd = -eye / (np.linalg.norm(eye) + 1e-9)
-    right = np.cross(fwd, np.array([0, 1, 0], np.float32))
-    right /= np.linalg.norm(right) + 1e-9
-    up = np.cross(right, fwd)
-    tanf = math.tan(math.radians(sys.fov) * 0.5)
-    aspect = width / height
-    return eye, fwd, right, up, tanf, aspect
+    return _basis_from(eye, (0.0, 0.0, 0.0), sys.fov, width, height)
 
 
 def _project(P, eye, fwd, right, up, tanf, aspect, W, H):
@@ -230,17 +237,25 @@ def _planet_sun(P, spos, eye, proj_planet, proj_star):
 
 
 def render_system(sys: SystemConfig, width: int, height: int, time: float = 0.0,
-                  device: str = "cpu", positions=None) -> np.ndarray:
+                  device: str = "cpu", positions=None, camera=None) -> np.ndarray:
     """Render the system at `time` to an ``(H, W, 3)`` image.
 
     `positions` optionally supplies precomputed (star_pos, planet_pos) world
     arrays (used by the destructive N-body driver); otherwise Kepler orbits are
     evaluated at ``time * tscale``.
+
+    `camera` optionally overrides the fixed system view with an explicit
+    ``(eye, target, fov)`` — e.g. a `CameraPath.sample(t)` — for cinematic moves.
     """
     t = time * sys.tscale
-    eye, fwd, right, up, tanf, aspect = _cam_basis(sys, width, height)
-    cam = make_camera(tuple(eye), (0.0, 0.0, 0.0), fov_deg=sys.fov,
-                      aspect=aspect)
+    if camera is not None:
+        c_eye, c_tgt, c_fov = camera
+        eye, fwd, right, up, tanf, aspect = _basis_from(c_eye, c_tgt, c_fov, width, height)
+        cam = make_camera(tuple(np.asarray(c_eye, float)), tuple(np.asarray(c_tgt, float)),
+                          fov_deg=float(c_fov), aspect=aspect)
+    else:
+        eye, fwd, right, up, tanf, aspect = _cam_basis(sys, width, height)
+        cam = make_camera(tuple(eye), (0.0, 0.0, 0.0), fov_deg=sys.fov, aspect=aspect)
 
     if positions is not None:
         star_pos, planet_pos = positions
