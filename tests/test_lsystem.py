@@ -4,7 +4,10 @@ known expansions from ABOP (Prusinkiewicz & Lindenmayer, 1990).
 Run: `python -m tests.test_lsystem` (or under pytest).
 """
 
+import numpy as np
+
 from warp_shaders.life.lsystem import LSystem, Module, Rule, parse, word_to_str
+from warp_shaders.life.turtle import TurtleConfig, interpret
 
 
 def test_parse_roundtrip():
@@ -93,8 +96,36 @@ def test_context_bracket_aware():
     assert ls._right_context(w, 1).sym == "B"
 
 
+# --- turtle interpreter ------------------------------------------------------
+
+
+def test_turtle_straight():
+    geo = interpret(parse("FF"), TurtleConfig(step=1.0))
+    assert len(geo.segments) == 2 and len(geo.leaves) == 0
+    np.testing.assert_allclose(geo.segments[0].p0, [0, 0, 0], atol=1e-5)
+    np.testing.assert_allclose(geo.segments[1].p1, [0, 2, 0], atol=1e-5)  # grew up +Y
+
+
+def test_turtle_branch():
+    geo = interpret(parse("F[+F]F"), TurtleConfig(step=1.0, angle=90.0))
+    assert len(geo.segments) == 3
+    # main stem: two segments straight up
+    np.testing.assert_allclose(geo.segments[2].p1, [0, 2, 0], atol=1e-5)
+    # branch segment starts at the top of the first F and is NOT vertical
+    br = geo.segments[1]
+    np.testing.assert_allclose(br.p0, [0, 1, 0], atol=1e-5)
+    assert abs(br.p1[1] - 1.0) < 1e-4                # +90 yaw -> horizontal branch
+
+
+def test_turtle_leaf_and_bounds():
+    geo = interpret(parse("F L"), TurtleConfig(step=2.0))
+    assert len(geo.segments) == 1 and len(geo.leaves) == 1
+    lo, hi = geo.bounds()
+    assert hi[1] - lo[1] >= 1.99                      # spans the 2-unit stem
+
+
 if __name__ == "__main__":
-    print("L-System core tests:")
+    print("L-System + turtle tests:")
     test_parse_roundtrip(); print("  parse round-trip: OK")
     test_d0l_algae(); print("  D0L algae (Fibonacci lengths): OK")
     test_d0l_koch(); print("  D0L Koch curve: OK")
@@ -102,6 +133,9 @@ if __name__ == "__main__":
     test_stochastic_reproducible(); print("  stochastic (seeded, reproducible): OK")
     test_parametric(); print("  parametric (param arithmetic): OK")
     test_parametric_condition(); print("  parametric (conditional): OK")
-    test_context_sensitive_signal(); print("  context-sensitive (signal propagation): OK")
-    test_context_bracket_aware(); print("  context (bracket-aware neighbours): OK")
+    test_context_sensitive_signal(); print("  context-sensitive (signal): OK")
+    test_context_bracket_aware(); print("  context (bracket-aware): OK")
+    test_turtle_straight(); print("  turtle straight stem: OK")
+    test_turtle_branch(); print("  turtle branch: OK")
+    test_turtle_leaf_and_bounds(); print("  turtle leaf + bounds: OK")
     print("ALL PASSED")
