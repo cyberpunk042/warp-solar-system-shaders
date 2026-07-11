@@ -16,10 +16,10 @@ def barren():
 
 
 def earthlike():
-    """A living earth-like world: oceans, green continents, snow caps, air."""
+    """A living earth-like world: oceans, green continents, snow caps, air, clouds."""
     return make_config(seed=1.0, mountain=0.6, sea_level=0.0, has_ocean=1,
                        has_rivers=1, snow=1.0, has_atmo=1, atmo=1.0, veg=0.9,
-                       cloud=0.0)
+                       cloud=0.7)
 
 
 def arid():
