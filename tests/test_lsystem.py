@@ -216,6 +216,44 @@ def test_grow_mesh_env_responds():
 
 
 
+# --- molecular scales (DNA / protein) ----------------------------------------
+from warp_shaders.life import molecular as _mol
+
+
+def test_build_helix():
+    mesh, (lo, hi) = _mol.build_helix(bp=12, seed=1)
+    assert mesh.n_tris > 0
+    n = mesh.verts.shape[0]
+    assert mesh.normals.shape == (n, 3) and mesh.colors.shape == (n, 3)
+    assert np.isfinite(mesh.verts).all() and np.isfinite(mesh.normals).all()
+    assert int(mesh.indices.max()) < n
+    assert float(hi[1] - lo[1]) > 0.5                  # helix has height
+    # more base pairs -> taller helix + more geometry
+    big, (blo, bhi) = _mol.build_helix(bp=24, seed=1)
+    assert big.n_tris > mesh.n_tris
+    assert float(bhi[1] - blo[1]) > float(hi[1] - lo[1])
+
+
+def test_build_protein_folds():
+    ext, (elo, ehi) = _mol.build_protein(n=40, fold=0.0)
+    fld, (flo, fhi) = _mol.build_protein(n=40, fold=1.0)
+    assert ext.n_tris > 0 and fld.n_tris == ext.n_tris  # same chain, reshaped
+    # extended is longer end-to-end than the compact fold
+    ext_span = float(ehi[1] - elo[1])
+    fld_diag = float(np.linalg.norm(np.asarray(fhi) - np.asarray(flo)))
+    assert ext_span > fld_diag
+    n = fld.verts.shape[0]
+    assert fld.colors.shape == (n, 3) and np.isfinite(fld.verts).all()
+
+
+def test_cell_divides():
+    from warp_shaders.life.cell import render_cell
+    one = render_cell(64, 64, 0.0, (0.0, 0.0), 0.0, "cpu")
+    two = render_cell(64, 64, 0.0, (0.0, 0.0), 1.0, "cpu")
+    assert one.shape == (64, 64, 3) and np.isfinite(one).all()
+    assert float(np.abs(one - two).max()) > 0.0        # division changes the image
+
+
 if __name__ == "__main__":
     print("L-System + turtle tests:")
     test_parse_roundtrip(); print("  parse round-trip: OK")
@@ -237,4 +275,7 @@ if __name__ == "__main__":
     test_mesh_plant_counts(); print("  mesh plant counts: OK")
     test_plant_specs_grow(); print("  plant grammars grow (grass/herb/tree/fern/sapling/weeper): OK")
     test_grow_mesh_env_responds(); print("  grow_mesh_env responds to light + fold: OK")
+    test_build_helix(); print("  DNA helix builds (colored, scales with bp): OK")
+    test_build_protein_folds(); print("  protein folds (extended > compact): OK")
+    test_cell_divides(); print("  cell division changes the render: OK")
     print("ALL PASSED")
