@@ -59,6 +59,9 @@ def main() -> None:
     ap.add_argument("-o", "--out", default="frame.png", help="output path for a single frame")
     ap.add_argument("--out-dir", default=None, help="directory to write frame_####.png into")
     ap.add_argument("--gif", default=None, help="write the sequence as an animated GIF at this path")
+    ap.add_argument("--video", default=None,
+                    help="write the sequence as a video; extension picks the container "
+                         "(.mp4/.webm via ffmpeg, or .webp/.gif/.apng via Pillow)")
     ap.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
     ap.add_argument("--quality", default="auto",
                     choices=["auto", "low", "medium", "high", "ultra"],
@@ -115,26 +118,32 @@ def main() -> None:
         os.makedirs(args.out_dir, exist_ok=True)
 
     dt = 1.0 / args.fps
-    gif_frames = []
+    keep = args.gif or args.video          # collect frames only if we encode a sequence
+    frames = []
     for k in range(args.frames):
         t = k * dt
         frame = render_frame(t)
-        u8 = to_uint8(frame)
         if args.out_dir:
             save_png(os.path.join(args.out_dir, f"frame_{k:04d}.png"), frame)
-        if args.gif:
-            from PIL import Image
-            gif_frames.append(Image.fromarray(u8, mode="RGB"))
+        if keep:
+            frames.append(to_uint8(frame))
         print(f"  frame {k + 1}/{args.frames}  t={t:.3f}", end="\r", flush=True)
     print()
 
     if args.gif:
         os.makedirs(os.path.dirname(os.path.abspath(args.gif)), exist_ok=True)
-        gif_frames[0].save(
-            args.gif, save_all=True, append_images=gif_frames[1:],
-            duration=int(1000 / args.fps), loop=0,
-        )
+        from PIL import Image
+        imgs = [Image.fromarray(f, mode="RGB") for f in frames]
+        imgs[0].save(args.gif, save_all=True, append_images=imgs[1:],
+                     duration=int(1000 / args.fps), loop=0)
         print(f"wrote {args.gif}  ({args.frames} frames @ {args.fps} fps)")
+
+    if args.video:
+        d = os.path.dirname(os.path.abspath(args.video))
+        os.makedirs(d, exist_ok=True)
+        from warp_shaders.engine.video import write_video
+        wrote = write_video(frames, args.video, fps=args.fps)
+        print(f"wrote {wrote}  ({args.frames} frames @ {args.fps} fps)")
 
 
 if __name__ == "__main__":
