@@ -20,8 +20,10 @@ scales to a high-end GPU. Every technique cites a primary source in-code and in
 | noise toolkit | PBR raymarch | atmosphere |
 |---|---|---|
 | ![noise](docs/engine/noise_gallery.png) | ![pbr](docs/engine/pbr_demo.png) | ![sky](docs/engine/sky.png) |
-| **volumetric clouds** | **Earth v2 (flagship)** | |
-| ![clouds](docs/engine/clouds.png) | ![earth](docs/engine/earth_v2.png) | |
+| **volumetric clouds** | **Earth v2 (flagship)** | **baked-map Earth** |
+| ![clouds](docs/engine/clouds.png) | ![earth](docs/engine/earth_v2.png) | ![earth map](docs/engine/earth_map.png) |
+| **terrain** | **ocean** | **volumetric nebula** |
+| ![terrain](docs/engine/terrain.png) | ![ocean](docs/engine/ocean.png) | ![nebula](docs/engine/nebula.png) |
 
 - **Procedural toolkit** (`warp_shaders/procedural/`) — value/Perlin/Worley/fbm/
   ridged/billow/domain-warp/curl noise **with analytic derivatives**, plus an SDF
@@ -33,6 +35,10 @@ scales to a high-end GPU. Every technique cites a primary source in-code and in
   sun light-march), and a host **post** pipeline (ACES/AgX tonemap, bloom, vignette).
 - **LOD tiers** (`warp_shaders/lod.py`) — one knob scales raymarch/shadow/AO/atmosphere/
   cloud sample counts, octaves, LUT sizes; auto-detected per device.
+- **Textures & LUTs** (`warp_shaders/textures.py`) — portable bilinear sampling over
+  `wp.array2d` (CPU+CUDA): equirectangular planet maps (bake once, or drop in a NASA
+  **Blue Marble** JPG via `load_equirect`) and a precomputed **atmosphere transmittance
+  LUT** that removes the sky's inner light-march at high/ultra.
 
 ```bash
 python render.py --scene earth_v2 --quality high -o earth.png   # the flagship

@@ -9,7 +9,8 @@ import numpy as np
 import warp as wp
 
 from warp_shaders.procedural.noise import (
-    billow3, domain_warp3, fbm3, noised3, perlin3, ridged3, value3, worley3,
+    billow3, domain_warp3, fbm3, noised3, perlin3, ridged3, simplex3, value3,
+    value_tiled3, worley3,
 )
 from warp_shaders.procedural.sdf import op_smooth_union, sd_box, sd_sphere
 
@@ -36,7 +37,15 @@ def _scalar(pts: wp.array(dtype=wp.vec3), which: int, out: wp.array(dtype=float)
         v = billow3(p, 6)
     elif which == 6:
         v = domain_warp3(p, 5, 1.0)
+    elif which == 7:
+        v = simplex3(p)
     out[i] = v
+
+
+@wp.kernel
+def _tiled(pts: wp.array(dtype=wp.vec3), period: float, out: wp.array(dtype=float)):
+    i = wp.tid()
+    out[i] = value_tiled3(pts[i], period)
 
 
 @wp.kernel
@@ -66,9 +75,9 @@ def test_noise_finite_and_ranged():
     rng = np.random.default_rng(0)
     pts = (rng.random((4096, 3)) * 20.0 - 10.0).astype(np.float32)
     ranges = {0: (0, 1), 1: (-1.2, 1.2), 2: (0, 1.9), 3: (0, 1),
-              4: (0, 1), 5: (0, 1), 6: (0, 1)}
+              4: (0, 1), 5: (0, 1), 6: (0, 1), 7: (-1.1, 1.1)}
     names = {0: "value3", 1: "perlin3", 2: "worley3", 3: "fbm3",
-             4: "ridged3", 5: "billow3", 6: "domain_warp3"}
+             4: "ridged3", 5: "billow3", 6: "domain_warp3", 7: "simplex3"}
     for which, (lo, hi) in ranges.items():
         v = _sample_scalar(pts, which)
         assert np.isfinite(v).all(), f"{names[which]}: non-finite"
@@ -122,11 +131,30 @@ def test_sdf():
     print("  sdf primitives+ops: OK")
 
 
+def test_tileable():
+    rng = np.random.default_rng(3)
+    period = 4.0
+    pts = (rng.random((2048, 3)) * 8.0 - 4.0).astype(np.float32)
+    d0 = wp.array(pts, dtype=wp.vec3, device=_DEV)
+    o0 = wp.zeros(len(pts), dtype=float, device=_DEV)
+    wp.launch(_tiled, dim=len(pts), inputs=[d0, period, o0], device=_DEV)
+    # shift by exactly one period on each axis -> must match
+    shifted = pts + np.array([period, period, period], np.float32)
+    d1 = wp.array(shifted, dtype=wp.vec3, device=_DEV)
+    o1 = wp.zeros(len(pts), dtype=float, device=_DEV)
+    wp.launch(_tiled, dim=len(pts), inputs=[d1, period, o1], device=_DEV)
+    wp.synchronize_device(_DEV)
+    err = np.abs(o0.numpy() - o1.numpy()).max()
+    assert err < 1e-4, f"value_tiled3 not periodic: max diff {err:.5f}"
+    print(f"  value_tiled3 periodicity: OK (max diff {err:.6f})")
+
+
 def main():
     print("procedural toolkit tests:")
     test_noise_finite_and_ranged()
     test_analytic_gradient()
     test_sdf()
+    test_tileable()
     print("ALL PASSED")
 
 

@@ -61,6 +61,31 @@ def bloom(hdr, threshold=1.0, strength=0.6, radius=6, passes=3):
     return c + b * strength
 
 
+def godrays(hdr, cx, cy, samples=28, density=0.9, decay=0.95, weight=0.6,
+            threshold=1.2):
+    """Radial light shafts from a screen-space light at (cx, cy) in [0,1].
+
+    Accumulates a threshold-masked bright image sampled at progressively
+    center-ward positions (Mitchell/GPU Gems 3 volumetric light scattering)."""
+    c = np.asarray(hdr, np.float32)
+    if not (0.0 <= cx <= 1.0 and 0.0 <= cy <= 1.0):
+        return c
+    h, w = c.shape[:2]
+    lum = c.max(axis=2, keepdims=True)
+    bright = c * np.clip((lum - threshold) / max(threshold, 1e-3), 0.0, 1.0)
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    lx, ly = cx * w, cy * h
+    acc = np.zeros_like(c)
+    illum = 1.0
+    for i in range(samples):
+        s = 1.0 - density * (i + 1) / samples
+        ix = np.clip((lx + (xx - lx) * s).astype(np.int64), 0, w - 1)
+        iy = np.clip((ly + (yy - ly) * s).astype(np.int64), 0, h - 1)
+        acc += bright[iy, ix] * (illum * weight)
+        illum *= decay
+    return c + acc / samples
+
+
 def vignette(frame, amount=0.35):
     h, w = frame.shape[:2]
     yy, xx = np.mgrid[0:h, 0:w]
