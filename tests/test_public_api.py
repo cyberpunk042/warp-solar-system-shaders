@@ -29,8 +29,19 @@ def test_subsystem_namespaces():
     assert ws.engine.atmosphere.atmosphere and ws.engine.atmosphere.atmosphere_lut
     assert ws.engine.volumetric.march_clouds and ws.engine.volumetric.hg_phase
     assert ws.engine.post.tonemap and ws.engine.post.bloom and ws.engine.post.godrays
+    # engine: colour science, ray intersection, sky backgrounds (new)
+    assert ws.engine.kelvin_to_rgb and ws.engine.blackbody and ws.engine.luminance
+    assert ws.engine.color.kelvin_to_rgb_np is not None
+    assert ws.engine.ray_sphere and ws.engine.sphere_t and ws.engine.ray_box
+    assert ws.engine.starfield and ws.engine.milky_way
+    assert ws.engine.post.exposure and ws.engine.post.chromatic_aberration
+    assert ws.engine.post.film_grain and ws.engine.post.sharpen
     # textures: 2D/3D/equirect samplers
     assert ws.textures.sample2d and ws.textures.sample3d and ws.textures.sample_equirect
+    # the big content packages are reachable from the top level
+    assert ws.life.plants and ws.life.get_spec and ws.life.grow_mesh
+    assert ws.superearth.make_config and ws.superearth.render_planet
+    assert ws.cosmos.make_star and ws.cosmos.render_system and ws.cosmos.presets
     # every name in each __all__ actually resolves
     for mod in (ws.procedural, ws.engine):
         for name in mod.__all__:
