@@ -10,6 +10,7 @@ import warp as wp
 
 from warp_shaders.engine import color as C
 from warp_shaders.engine import intersect as I
+from warp_shaders.engine import post as P
 
 wp.init()
 
@@ -80,6 +81,29 @@ def test_intersect_device():
     assert abs(a[3][0] - 4.0) < 1e-4 and abs(a[3][1] - 6.0) < 1e-4   # ray_box
 
 
+def test_post_ops():
+    rng = np.random.default_rng(0)
+    hdr = (rng.random((32, 48, 3)).astype(np.float32) * 3.0)   # HDR-ish
+    # exposure doubles per stop
+    assert np.allclose(P.exposure(hdr, 1.0), hdr * 2.0, atol=1e-4)
+    # auto-exposure brings geometric-mean luminance near the key
+    ae = P.auto_exposure(hdr * 0.01, key=0.18)
+    lum = 0.2126 * ae[..., 0] + 0.7152 * ae[..., 1] + 0.0722 * ae[..., 2]
+    gm = float(np.exp(np.mean(np.log(np.maximum(lum, 1e-4)))))
+    assert 0.08 < gm < 0.4
+    disp = np.clip(hdr / 3.0, 0, 1)
+    for op in (P.chromatic_aberration, P.sharpen):
+        out = op(disp)
+        assert out.shape == disp.shape and np.all(np.isfinite(out))
+    # film grain is deterministic from seed, and actually changes pixels
+    g1 = P.film_grain(disp, amount=0.05, seed=3)
+    g2 = P.film_grain(disp, amount=0.05, seed=3)
+    assert np.array_equal(g1, g2) and not np.allclose(g1, disp)
+    # chromatic aberration shifts channels near the edges (centre ~unchanged)
+    ca = P.chromatic_aberration(disp, amount=0.02)
+    assert not np.allclose(ca[:, 0], disp[:, 0])
+
+
 if __name__ == "__main__":
     test_color_host_anchors()
     print("  colour host anchors (blackbody + sRGB): OK")
@@ -87,4 +111,6 @@ if __name__ == "__main__":
     print("  colour device (kelvin/blackbody/srgb/luminance): OK")
     test_intersect_device()
     print("  intersect device (sphere/plane/disk/box): OK")
+    test_post_ops()
+    print("  post ops (exposure/auto/CA/grain/sharpen): OK")
     print("ALL PASSED")

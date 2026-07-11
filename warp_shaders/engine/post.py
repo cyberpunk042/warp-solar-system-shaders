@@ -1,11 +1,19 @@
 """Host-side post-processing over the HDR framebuffer (NumPy).
 
-Tonemapping (ACES / Reinhard / AgX-ish), threshold bloom (integral-image box blur
-≈ Gaussian, no SciPy dependency), and vignette. Runs on the (H,W,3) float HDR
-buffer a render kernel produces, returning display-ready [0,1] gamma-encoded RGB.
+A small compositing pipeline, no SciPy dependency. Typical order:
+
+    hdr -> exposure / auto_exposure -> bloom / godrays -> tonemap
+        -> chromatic_aberration -> sharpen -> vignette -> film_grain
+
+- **exposure / auto_exposure** — scale the HDR buffer (photographic stops, or a
+  geometric-mean-luminance auto key) *before* tonemapping.
+- **bloom / godrays** — threshold-masked glow / radial light shafts (HDR).
+- **tonemap** — ACES / Reinhard / AgX-ish, then gamma encode to [0,1].
+- **chromatic_aberration / sharpen / vignette / film_grain** — the lens + film
+  look, on the display-range buffer.
 
 Sources (docs/research): Narkowicz 2016 (ACES fit); Reinhard et al. 2002;
-Troy Sobotka AgX (approximation here).
+Troy Sobotka AgX (approximation here); integral-image box blur ≈ Gaussian.
 """
 
 import numpy as np
@@ -94,3 +102,66 @@ def vignette(frame, amount=0.35):
     r2 = (dx * dx + dy * dy) * 2.0
     v = (1.0 - amount * r2)[..., None]
     return frame * np.clip(v, 0.0, 1.0)
+
+
+# --------------------------------------------------------------------------- #
+# exposure (operate on the HDR buffer, before tonemap)                        #
+# --------------------------------------------------------------------------- #
+
+def exposure(hdr, ev=0.0):
+    """Scale the HDR buffer by 2**ev stops (photographic exposure)."""
+    return np.asarray(hdr, np.float32) * (2.0 ** ev)
+
+
+def auto_exposure(hdr, key=0.18, max_gain=8.0):
+    """Scale the HDR buffer so its **geometric-mean luminance** lands near `key`
+    (the classic middle-grey key value) — a simple global auto-exposure that
+    keeps bright scenes from clipping and dim ones from crushing."""
+    c = np.asarray(hdr, np.float32)
+    lum = 0.2126 * c[..., 0] + 0.7152 * c[..., 1] + 0.0722 * c[..., 2]
+    avg = float(np.exp(np.mean(np.log(np.maximum(lum, 1e-4)))))
+    gain = float(np.clip(key / max(avg, 1e-4), 1.0 / max_gain, max_gain))
+    return c * gain
+
+
+# --------------------------------------------------------------------------- #
+# lens + film look (operate on the display buffer, after tonemap)             #
+# --------------------------------------------------------------------------- #
+
+def chromatic_aberration(frame, amount=0.004):
+    """Radial lens dispersion — the red channel is sampled slightly outward and
+    the blue channel inward from the centre, growing toward the edges. `amount`
+    is the peak shift as a fraction of the frame size."""
+    c = np.asarray(frame, np.float32)
+    h, w = c.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32)
+    cx, cy = (w - 1) * 0.5, (h - 1) * 0.5
+    dx = (xx - cx) / max(w, 1)
+    dy = (yy - cy) / max(h, 1)
+
+    def _samp(chan, s):
+        sx = np.clip((xx + dx * s * w).astype(np.int64), 0, w - 1)
+        sy = np.clip((yy + dy * s * h).astype(np.int64), 0, h - 1)
+        return c[sy, sx, chan]
+
+    out = c.copy()
+    out[..., 0] = _samp(0, amount)
+    out[..., 2] = _samp(2, -amount)
+    return out
+
+
+def film_grain(frame, amount=0.04, seed=0):
+    """Additive film grain — deterministic from `seed`, slightly stronger in the
+    shadows (filmic). Operates on a display-range [0,1] buffer."""
+    c = np.asarray(frame, np.float32)
+    rng = np.random.default_rng(seed)
+    n = rng.standard_normal(c.shape[:2]).astype(np.float32)[..., None]
+    lum = c.max(axis=2, keepdims=True)
+    return np.clip(c + n * amount * (0.5 + 0.5 * (1.0 - lum)), 0.0, 1.0)
+
+
+def sharpen(frame, amount=0.5, radius=2):
+    """Unsharp mask: add back a fraction of (image − blur) to crisp up detail."""
+    c = np.asarray(frame, np.float32)
+    blur = _box_blur(c, radius)
+    return np.clip(c + (c - blur) * amount, 0.0, 1.0)
