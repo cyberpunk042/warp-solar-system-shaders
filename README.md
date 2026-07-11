@@ -413,6 +413,48 @@ cfg = make_config(has_ocean=1, has_rivers=1, mountain=0.8, veg=0.9, cloud=0.6)
 img = render_planet(cfg, 960, 540, quality="high")   # your own world, by config
 ```
 
+## The solar system — the namesake
+
+The project's namesake: a **configurable solar system** (`warp_shaders.cosmos`).
+One renderer draws any mix of **1–7 stars** — **sun**, **neutron star**, **white
+dwarf**, **black hole** — and **configurable planets** (each a super-earth
+`PlanetConfig`) on chosen **Keplerian orbits**, plus an optional **nebula**. Each
+body is built from real physics: convection granulation + limb darkening on the
+sun, twin precessing pulsar beams on the neutron star, and a black hole rendered
+by integrating the **GR photon-orbit equation** — Einstein ring, photon ring,
+Doppler-beamed accretion disk (the *Interstellar* look), and it lenses the whole
+system around it. See [Research 10](docs/research/10-solar-system.md).
+
+| sun | neutron star | white dwarf | black hole |
+|---|---|---|---|
+| ![sun](docs/cosmos/body_sun.png) | ![neutron](docs/cosmos/body_neutron.png) | ![dwarf](docs/cosmos/body_dwarf.png) | ![blackhole](docs/cosmos/body_blackhole.png) |
+
+The first system is a live, precessing **neutron star with one planet** on an
+inclined ellipse; others are a **binary**, a **trinary** of mixed star types, a
+**black-hole system**, and a system cradled in a **nebula**:
+
+| the first system | trinary (mixed stars) | black-hole system |
+|---|---|---|
+| ![first](docs/cosmos/solar_system.png) | ![trinary](docs/cosmos/ss_trinary.png) | ![blackhole](docs/cosmos/ss_blackhole.png) |
+
+And a **destructive** scenario — the default is stable, but a switch runs real
+**N-body** gravity: two suns spiral in, **merge**, and (past the mass thresholds)
+**collapse** into a black hole with a supernova flash, which then **swallows** the
+planet:
+
+![collapsing system](docs/cosmos/ss_collapse.gif)
+
+```bash
+python render.py --scene solar_system --frames 60 --fps 12 --gif out/ss.gif
+python render.py --scene ss_blackhole -o out/bh_system.png   # a hole lensing its system
+python render.py --scene ss_collapse  --frames 60 --fps 16 --gif out/collapse.gif
+```
+
+```python
+from warp_shaders.cosmos import presets, render_system
+img = render_system(presets.get("trinary"), 960, 540, time=0.0)   # or build your own
+```
+
 ## Install
 
 ```bash
