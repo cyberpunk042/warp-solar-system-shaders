@@ -47,13 +47,22 @@ class Orbit:
     phase: float = 0.0    # mean anomaly at t=0
 
 
-def solve_kepler(M: float, e: float, iters: int = 8) -> float:
-    """Eccentric anomaly E from mean anomaly M: M = E - e·sin E (Newton)."""
+def solve_kepler(M: float, e: float, iters: int = 30) -> float:
+    """Eccentric anomaly E from mean anomaly M: M = E - e·sin E (Newton).
+
+    Uses Danby's initial guess E0 = M + 0.85·e·sign(sin M), which keeps Newton
+    stable for every e < 1 (a plain E0 = π diverges near high eccentricity)."""
     M = (M + math.pi) % (2.0 * math.pi) - math.pi
-    E = M if e < 0.8 else math.pi
+    if e < 1e-8:
+        return M
+    E = M + 0.85 * e * (1.0 if math.sin(M) >= 0.0 else -1.0)
     for _ in range(iters):
         f = E - e * math.sin(E) - M
-        E = E - f / (1.0 - e * math.cos(E))
+        fp = 1.0 - e * math.cos(E)
+        dE = f / fp
+        E = E - dE
+        if abs(dE) < 1e-12:
+            break
     return E
 
 
