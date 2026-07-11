@@ -370,6 +370,49 @@ VERDICT: PLANET INTACT. ...
 
 The point: you never needed to break the planet to end the world on it.
 
+## Super-Earth — one planet, every knob
+
+A "cheated" planet: one Warp kernel driven by a `PlanetConfig` struct where
+**every feature is an independent knob** — ocean, lakes, rivers, mountains, snow,
+volcanoes, lava, vegetation, a living bioluminescence, city lights, atmosphere,
+clouds, moons. Turn any of them on or off; the same code renders a barren rock, a
+living earth, an ocean world, or a molten hell. It's a stress-test of the engine
+— *play with it and find the limits.* See
+[Research 09](docs/research/09-super-earth.md).
+
+| earth-like | volcanic | living (night) | flat (no mountains) |
+|---|---|---|---|
+| ![earthlike](docs/superearth/super_earth.png) | ![volcanic](docs/superearth/se_volcanic.png) | ![living](docs/superearth/se_living.png) | ![flat](docs/superearth/se_flat.png) |
+
+Then the **super-planets** — higher degrees of freedom, no solid surface: a
+banded **gas giant** with a great red spot, a **windstorm** world of turbulent
+bands and cyclone eyes, and a dark **electrostorm** crackling with lightning.
+
+| gas giant | windstorm | electrostorm |
+|---|---|---|
+| ![gas](docs/superearth/se_gas.png) | ![windstorm](docs/superearth/se_windstorm.png) | ![electrostorm](docs/superearth/se_electrostorm.png) |
+
+And a configurable orbital **bombardment** — warhead count, distribution formula
+(uniform / clustered / equatorial / spiral), delay, interval, and detonations in
+parallel per wave — fireballs cooling through a blackbody ramp, each leaving an
+expanding shock-ring scar:
+
+![se_nuked](docs/superearth/se_nuked.gif)
+
+```bash
+python render.py --scene super_earth  -o out/earthlike.png       # earth-like preset
+python render.py --scene se_gas       -o out/gas.png             # a gas giant
+python render.py --scene se_flat      -o out/flat.png            # mountains off
+python render.py --scene se_electrostorm --frames 40 --gif out/electro.gif
+python render.py --scene se_nuked     --frames 56 --fps 16 --gif out/nuked.gif
+```
+
+```python
+from warp_shaders.superearth import make_config, render_planet
+cfg = make_config(has_ocean=1, has_rivers=1, mountain=0.8, veg=0.9, cloud=0.6)
+img = render_planet(cfg, 960, 540, quality="high")   # your own world, by config
+```
+
 ## Install
 
 ```bash
