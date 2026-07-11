@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (99 scenes).
+`python render.py --list` for the full, current list (102 scenes).
 
 ## Engine showcase
 
@@ -31,6 +31,23 @@ like any SDF and coloured from the **orbit trap**. Escape-time
 |---|---|---|
 | **Mandelbulb**<br>White–Nylander triplex power, glowing; power morphs 2→8<br>![mandelbulb](engine/mandelbulb.png) | **Mandelbox**<br>Lowe box-fold + sphere-fold (scale −1.5), the ringed cube<br>![mandelbox](engine/mandelbox.png) | **Menger sponge**<br>Quilez exact SDF, drilled-cube recursion 1→4<br>![menger](engine/menger.png) |
 | **Sierpinski tetrahedron**<br>plane folds + scale, crystalline 3D gasket<br>![sierpinski](engine/sierpinski.png) | **kaleidoscopic temple**<br>KIFS fold+rotate+scale — fractal architecture<br>![kifs_temple](engine/kifs_temple.png) | |
+
+## Nuclear detonations
+
+A research-grade nuclear-fireball model (`warp_shaders.blast`) sized entirely
+from declassified scaling laws (Glasstone & Dolan), calibrated to the measured
+**Tsar Bomba**: the fireball, blast-damage rings, thermal radius, shock front and
+mushroom rise all come from the yield. See
+[Research 15](research/15-nuclear-fireball.md).
+
+| | | |
+|---|---|---|
+| **Tsar Bomba** (50 Mt)<br>physically-sized fireball, shock ring flattening the forest, mushroom cloud<br>![tsar_bomba](engine/tsar_bomba.png) | **Super Tsar** (500 Mt)<br>10× yield — ~2.5× fireball, ~2.15× wider blast zone<br>![super_tsar](engine/super_tsar.png) | **Super Tsar in space**<br>vacuum burst over a planet — no blast/mushroom, a ballistic plasma shell<br>![super_tsar_space](engine/super_tsar_space.png) |
+
+The full sequence — thermal **flash** → fireball → **shock front** flattening the
+forest → **mushroom** climb (`--frames`):
+
+![tsar bomba sequence](engine/tsar_bomba.gif)
 
 ## Life — molecule to cell
 
