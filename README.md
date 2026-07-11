@@ -55,6 +55,8 @@ for every public symbol.
 | ![gas giant](docs/engine/gas_giant.png) | ![alien](docs/engine/alien.png) | ![galaxy](docs/engine/galaxy.png) |
 | **aurora** | **lava planet** | **desert dunes** |
 | ![aurora](docs/engine/aurora.png) | ![lava planet](docs/engine/lava_planet.png) | ![dunes](docs/engine/dunes.png) |
+| **glacier** | | |
+| ![glacier](docs/engine/glacier.png) | | |
 
 - **Procedural toolkit** (`warp_shaders/procedural/`) — value/Perlin/Worley/fbm/
   ridged/billow/domain-warp/curl noise **with analytic derivatives**, plus an SDF

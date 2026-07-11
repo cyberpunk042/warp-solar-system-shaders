@@ -12,6 +12,7 @@ import warp as wp
 
 from ..engine import post
 from ..engine.pbr import shade_pbr
+from ..engine.shading import apply_fog
 from ..engine.uniforms import Camera, camera_ray_dir, make_camera
 from ..lod import active_tier
 from ..procedural.noise import fbm_perlin3, ridged3
@@ -126,8 +127,7 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, s1: wp.vec3, s2: 
     amb = wp.cw_mul(_sky(n, s1, s2), albedo) * (0.18 * (0.5 + 0.5 * n[1]))
     col = c1 + c2 + amb
 
-    fog = 1.0 - wp.exp(-t * 0.0042)
-    col = col * (1.0 - fog) + _sky(rd, s1, s2) * fog
+    col = apply_fog(col, t, _sky(rd, s1, s2), 0.0042)
     img[i, j] = col
 
 
