@@ -34,11 +34,18 @@ def volcanic():
                        lava=1.0)
 
 
+def riverlands():
+    """A continental world laced with rivers and dotted with lakes."""
+    return make_config(seed=8.0, mountain=0.7, sea_level=-0.15, has_ocean=1,
+                       has_lakes=1, has_rivers=1, snow=0.8, has_atmo=1, atmo=1.0)
+
+
 _REGISTRY = {
     "barren": barren,
     "earthlike": earthlike,
     "ocean_world": ocean_world,
     "volcanic": volcanic,
+    "riverlands": riverlands,
 }
 
 

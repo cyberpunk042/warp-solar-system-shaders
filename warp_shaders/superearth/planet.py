@@ -20,7 +20,7 @@ from ..earthgfx import stars
 from ..engine import post
 from ..engine.pbr import shade_pbr
 from ..engine.uniforms import Camera, camera_ray_dir, make_camera
-from ..procedural.noise import domain_warp3, fbm3, ridged3, worley3
+from ..procedural.noise import domain_warp3, fbm3, ridged3, worley3, worley3_f2
 
 _R = 1.0                      # planet radius (normalised)
 _RS = 0.055                   # relief scale (fraction of radius)
@@ -192,35 +192,57 @@ def _shade(dir: wp.vec3, n: wp.vec3, rd: wp.vec3, sun: wp.vec3,
     sun_col = wp.vec3(1.0, 0.97, 0.92)
     lat = wp.abs(dir[1])
 
-    is_water = 0.0
+    s2 = s + wp.vec3(11.0, 7.0, 3.0)
+    s3 = s + wp.vec3(23.0, 17.0, 5.0)
+    is_ocean = 0.0
     if cfg.has_ocean != 0 and e < sea:
-        is_water = 1.0
+        is_ocean = 1.0
+    # freshwater on land: lakes (isolated basins) + rivers (branching channels)
+    fresh = float(0.0)
+    if is_ocean < 0.5:
+        hh = wp.clamp((e - sea) * 0.7, 0.0, 1.0)
+        if cfg.has_lakes != 0:
+            fresh = wp.max(fresh, wp.smoothstep(0.34, 0.29, fbm3(dir * 9.0 + s2, 4))
+                           * (1.0 - wp.smoothstep(0.4, 0.7, hh)))
+        if cfg.has_rivers != 0:
+            ed = worley3_f2(dir * 13.0 + s3)
+            riv = wp.smoothstep(0.05, 0.005, ed[1] - ed[0])
+            fresh = wp.max(fresh, riv * (1.0 - wp.smoothstep(0.55, 0.85, hh)))
+    is_water = wp.max(is_ocean, fresh)
 
     col = wp.vec3(0.0, 0.0, 0.0)
     if is_water > 0.5:
-        depth = wp.clamp((sea - e) * 2.0, 0.0, 1.0)
-        shallow = wp.vec3(0.10, 0.42, 0.48)
-        deep = wp.vec3(0.01, 0.05, 0.16)
-        albedo = shallow * (1.0 - depth) + deep * depth
-        lit = shade_pbr(n, v, sun, albedo, 0.06, 0.0, sun_col) * 4.5
+        if is_ocean > 0.5:
+            depth = wp.clamp((sea - e) * 2.0, 0.0, 1.0)
+            albedo = wp.vec3(0.10, 0.42, 0.48) * (1.0 - depth) \
+                + wp.vec3(0.01, 0.05, 0.16) * depth
+            lit = shade_pbr(n, v, sun, albedo, 0.06, 0.0, sun_col) * 4.5
+        else:
+            albedo = wp.vec3(0.04, 0.16, 0.22)       # freshwater — deeper, calmer
+            lit = shade_pbr(n, v, sun, albedo, 0.16, 0.0, sun_col) * 2.4
         col = lit + wp.cw_mul(albedo, wp.vec3(0.05, 0.10, 0.16))
     else:
-        h = wp.clamp((e - sea) * 0.7, 0.0, 1.0)          # height above sea
-        # earthy lowlands -> tan highlands -> bare grey peaks
-        low = wp.vec3(0.32, 0.27, 0.17)
-        mid = wp.vec3(0.42, 0.34, 0.22)
-        peak = wp.vec3(0.34, 0.31, 0.29)
+        elev_above = e - sea                             # raw height above sea
+        h = wp.clamp(elev_above * 0.6, 0.0, 1.0)          # normalised for colour
+        # earthy lowlands -> tan highlands -> bare grey peaks (kept dark, as
+        # real land reads from orbit; bloom then stays off the rock)
+        low = wp.vec3(0.20, 0.17, 0.11)
+        mid = wp.vec3(0.32, 0.26, 0.16)
+        peak = wp.vec3(0.30, 0.28, 0.25)
         tex = fbm3(dir * 12.0 + s, 4)
         rock = low * (1.0 - h) + mid * h
         rock = rock * (1.0 - wp.smoothstep(0.55, 0.95, h)) \
             + peak * wp.smoothstep(0.55, 0.95, h)
-        rock = rock * (0.82 + 0.36 * tex)                # surface mottling
+        rock = rock * (0.74 + 0.28 * tex)                # surface mottling
         rock = rock * (1.0 - 0.55 * cfg.lava)            # dark basalt on molten worlds
-        # snow only near the poles or on the very highest ground
-        snow_m = cfg.snow * wp.smoothstep(0.72, 0.95, lat + h * 0.35)
-        albedo = rock * (1.0 - snow_m) + wp.vec3(0.92, 0.94, 0.98) * snow_m
-        lit = shade_pbr(n, v, sun, albedo, 0.85, 0.0, sun_col) * 1.5
-        col = albedo * (0.05 + 0.9 * wp.max(ndl, 0.0)) * 0.6 + lit
+        # snow only near the poles or on the very highest peaks (kept separate
+        # so raising the land doesn't flood the mid-latitudes with snow)
+        polar = wp.smoothstep(0.82, 0.99, lat)
+        peak_snow = wp.smoothstep(1.05, 1.6, elev_above)   # only genuine peaks
+        snow_m = cfg.snow * wp.clamp(polar + peak_snow, 0.0, 1.0)
+        albedo = rock * (1.0 - snow_m) + wp.vec3(0.90, 0.93, 0.98) * snow_m
+        lit = shade_pbr(n, v, sun, albedo, 0.88, 0.0, sun_col) * 1.15
+        col = albedo * (0.04 + 0.72 * wp.max(ndl, 0.0)) * 0.5 + lit
 
     # molten lava: emissive, overrides surface lighting where hot
     lava_i = _lava_intensity(dir, e, cfg)
@@ -381,5 +403,5 @@ def render_planet(cfg: PlanetConfig, width: int, height: int, time: float = 0.0,
     wp.synchronize_device(device)
     hdr = img.numpy()
     r = max(3, int(min(width, height) * 0.02))
-    hdr = post.bloom(hdr, threshold=1.7, strength=0.4, radius=r, passes=3)
-    return post.tonemap(hdr, mode="aces", exposure=1.12)
+    hdr = post.bloom(hdr, threshold=2.4, strength=0.45, radius=r, passes=3)
+    return post.tonemap(hdr, mode="aces", exposure=1.02)

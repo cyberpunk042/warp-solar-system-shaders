@@ -32,4 +32,6 @@ SCENES = [
           description="super-earth preset: ocean world with island arcs."),
     Scene(name="se_volcanic", renderer=_scene("volcanic"),
           description="super-earth preset: young volcanic world."),
+    Scene(name="se_rivers", renderer=_scene("riverlands"),
+          description="super-earth preset: continents laced with rivers + lakes."),
 ]
