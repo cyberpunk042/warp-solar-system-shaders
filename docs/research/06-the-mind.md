@@ -45,11 +45,21 @@ the will.
 The mind steers the plant through the exact hook the "obvious rules" were built
 on: it constructs a per-frame `TurtleConfig` (light gain, gravity gain, leaf
 fold) from `Mind.decision()` and calls `plants.grow_mesh_env(spec, gen, cfg)`, so
-the *same* grammar re-expresses under the mind's command every frame. Today the
-decision is **whole-plant**; the context-sensitive L-System class (a decision
-symbol propagating through the structure, [Research 04](04-lsystems.md)) is the
-substrate for a future **per-branch** mind — one shoot chasing the light while
-another rests.
+the *same* grammar re-expresses under the mind's command every frame.
+
+## Per-branch — closing *pieces of itself* (`mind_branches`)
+
+The whole-plant decision is only the first step. The operator's phrasing was
+*"close **piece of itself**"* — parts of one plant deciding independently. The
+`mind_branches` scene realises that: one plant grows several shoots, and
+`Mind.decisions(k)` splits the grid into `k` vertical bands, each an independent
+drive. Shoot *i* reads band *i*, so one shoot **reaches up and opens** toward the
+light while its neighbour — reading a quieter region of the same mind — **sags
+and folds shut**. Each shoot is the `sapling` grammar grown with its own
+`TurtleConfig`, rotated out from a common base and merged into one mesh; the inset
+shows the grid split into colour-tinted bands with one drive bar per shoot. The
+mind is no longer a single switch but a little field of local decisions — closer
+to how a real organism regulates its parts.
 
 ## The conceptual horizon (operator framing)
 
@@ -66,8 +76,9 @@ noted for where this strand goes next.
 
 ## What comes next
 
-Up from here: a **per-branch** mind (context-sensitive signals steering
-individual shoots), competition between plants in the `meadow`, and the
-wave/collapse timescale above. Down the ladder is already built — DNA → protein →
-cell ([Research 05](05-molecular-to-cell.md)) — so the engine now shows life from
-molecule to mind.
+Up from here: **context-sensitive** per-node signals (a decision symbol
+propagating through the structure, [Research 04](04-lsystems.md)) so a single
+shoot's *tip* can decide differently from its base; competition between plants in
+the `meadow`; and the wave/collapse timescale above. Down the ladder is already
+built — DNA → protein → cell ([Research 05](05-molecular-to-cell.md)) — so the
+engine now shows life from molecule to mind.
