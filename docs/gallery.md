@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (48 scenes).
+`python render.py --list` for the full, current list (51 scenes).
 
 ## Engine showcase
 
@@ -18,6 +18,20 @@ volumetrics + post) and honours `--quality low..ultra`.
 | **aurora**<br>volumetric light curtains over a night landscape<br>![aurora](engine/aurora.png) | **lava planet**<br>molten sea, cooled-crust rafts, basalt islands<br>![lava_planet](engine/lava_planet.png) | **desert dunes**<br>wind ripples, long low-sun shadows, aerial haze<br>![dunes](engine/dunes.png) |
 | **glacier**<br>blue ice + snow, subsurface glow, cold low sun<br>![glacier](engine/glacier.png) | **depth of field**<br>thin-lens focus pull, near/far bokeh<br>![dof_showcase](engine/dof_showcase.png) | **slot canyon**<br>layered sandstone + volumetric god-rays<br>![canyon](engine/canyon.png) |
 | **underwater reef**<br>rippling caustics, blue-green depth, god-rays<br>![reef](engine/reef.png) | | |
+
+## Life — grown from L-Systems
+
+Real plants grown from L-System grammars (`warp_shaders.life`), tessellated to
+a mesh and **ray-cast** through the Warp engine. Generation advances with
+`time`, so they grow. See [Research 04](research/04-lsystems.md).
+
+| | | |
+|---|---|---|
+| **grass**<br>tuft of arching blades<br>![grass](life/grass.png) | **herb**<br>stochastic leafy plant, golden-angle leaves<br>![herb](life/herb.png) | **tree**<br>parametric tapering tree + leafy canopy<br>![tree](life/tree.png) |
+
+Growth (`--frames 8 --fps 1`), sprout → tree:
+
+![tree growing](life/tree_grow.gif)
 
 ## Cosmos & bodies
 
