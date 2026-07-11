@@ -61,9 +61,25 @@ precess, seed)` builds one. Kinds: `SUN`, `NEUTRON`, `WHITE_DWARF`, `BLACK_HOLE`
 | `render_system(sys, w, h, time, device, positions=None)` | host | render the composited system (stars + planets + nebula + lensing) |
 | `dynamics.simulate(sys, frames, dt, …)` | run the destructive N-body scenario → a frame list |
 
+## Stellar life-cycle — `cosmos.stellar_evolution`
+
+One star across its whole life on a normalized timeline (see
+[Research 11](../research/11-stellar-evolution.md)).
+
+| Symbol | Where | Purpose |
+|---|---|---|
+| `phase_state(t, mass)` | host | the star's appearance at time `t in [0,1]` for an initial mass: kind / radius / temperature / activity / envelope / flash / H-R coords + phase name |
+| `remnant_kind(mass)` | host | the end-state body: white dwarf (`<8 M☉`) / neutron star (`<20`) / black hole |
+| `render_lifecycle(t, mass, w, h, …, hr_inset=True)` | host | render the evolving star + envelope (cradle / planetary nebula / supernova ejecta) + the H-R inset; a black-hole remnant delegates to the lensing pass |
+| `draw_hr_inset(frame, t, mass, phase)` | host | composite the H-R diagram panel (reference track + trail + marker) into a corner |
+
+Scenes: `stellar_lifecycle` (Sun-like → white dwarf), `stellar_massive`
+(14 M☉ → neutron star), `stellar_collapse` (30 M☉ → black hole). `time` walks the
+life over 20 s: `python render.py --scene stellar_lifecycle --frames 120 --fps 6 --video life.mp4`.
+
 ## Presets & scenes
 
 `presets.get(name)` / `presets.names()`: `first`, `binary`, `trinary`,
 `blackhole`, `nebula_cradle`, `collapse`. Scenes: `solar_system`, `ss_binary`,
-`ss_trinary`, `ss_blackhole`, `ss_nebula`, `ss_collapse` — render with
+`ss_trinary`, `ss_blackhole`, `ss_nebula`, `ss_collapse`, `ss_flyby` — render with
 `python render.py --scene ss_blackhole -o out.png` (add `--frames` to animate).

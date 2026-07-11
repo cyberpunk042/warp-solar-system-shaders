@@ -60,6 +60,7 @@ nav:
       - Ecosystem: research/08-ecosystem.md
       - Super-Earth: research/09-super-earth.md
       - The solar system: research/10-solar-system.md
+      - Stellar evolution: research/11-stellar-evolution.md
 
 markdown_extensions:
   - admonition

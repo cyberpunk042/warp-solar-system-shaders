@@ -459,6 +459,20 @@ python render.py --scene ss_blackhole -o out/bh_system.png   # a hole lensing it
 python render.py --scene ss_collapse  --frames 60 --fps 16 --gif out/collapse.gif
 ```
 
+And the **stellar life-cycle** (`cosmos.stellar_evolution`) — one star across its
+whole life on a timeline: protostar in a dusty **cradle** → **main sequence** →
+**red giant** → **planetary nebula + white dwarf**, or (massive) → **red
+supergiant** → **supernova** → **neutron star** / **black hole**, with a live
+**H-R diagram** inset tracing its path. Same code, three masses, three endings.
+
+![a Sun-like star's whole life](docs/cosmos/stellar_lifecycle.gif)
+
+```bash
+python render.py --scene stellar_lifecycle --frames 120 --fps 6 --video out/life.mp4
+python render.py --scene stellar_massive --time 14 -o supergiant.png   # 14 M_sun -> neutron star
+python render.py --scene stellar_collapse --time 16 -o collapse.png    # 30 M_sun -> black hole
+```
+
 ```python
 from warp_shaders.cosmos import presets, render_system
 img = render_system(presets.get("trinary"), 960, 540, time=0.0)   # or build your own
