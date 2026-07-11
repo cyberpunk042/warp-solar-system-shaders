@@ -48,6 +48,12 @@ def test_quality_tiers():
 def test_host_builders():
     cam = ws.make_camera((0.0, 0.0, 5.0), (0.0, 0.0, 0.0), fov_deg=45.0, aspect=1.6)
     assert cam is not None
+    assert cam.aperture == 0.0            # pinhole by default
+    assert abs(cam.focus_dist - 5.0) < 1e-4  # focus defaults to eye->target dist
+    # depth-of-field camera + its device helpers are exposed
+    dof = ws.make_camera((0.0, 0.0, 5.0), (0.0, 0.0, 0.0), aperture=0.1, focus_dist=4.0)
+    assert dof.aperture == 0.1 and abs(dof.focus_dist - 4.0) < 1e-4
+    assert ws.engine.lens_offset and ws.engine.focus_point
     mat = ws.make_material((0.8, 0.2, 0.2), roughness=0.3, metallic=1.0)
     assert mat is not None
     assert ws.make_light((0.5, 1.0, 0.3), (1.0, 1.0, 1.0), 3.0) is not None
