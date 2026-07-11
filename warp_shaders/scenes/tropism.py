@@ -12,8 +12,8 @@ There is no decision-making here — these are fixed physical responses. A futur
 "mind" layer chooses *when* to follow the light or close up; the mechanism it
 steers is exactly this.
 
-    python render.py --scene phototropism --frames 8 --fps 6 --gif out/photo.gif
-    python render.py --scene rain_fold --time 6 -o rain.png
+    python render.py --scene phototropism --frames 24 --fps 12 --gif out/photo.gif
+    python render.py --scene rain_fold --time 5 -o rain.png
 """
 
 import math
@@ -45,8 +45,10 @@ def _frame_cam(lo, hi, time, mouse, extra=1.7):
 
 def _phototropism(width, height, time, mouse, device):
     spec = _plants.get_spec("sapling")
-    # light arcs from one side of the sky to the other as time advances
-    ang = (0.15 + 0.7 * (time / 8.0)) * math.pi        # 0..~pi over 8s
+    # light arcs from one side of the sky to the other over ~2s; the stem
+    # tracks it, so a --frames run sweeps the whole bend
+    u = min(max(time / 2.0, 0.0), 1.0)
+    ang = (0.15 + 0.7 * u) * math.pi
     lx, ly, lz = math.cos(ang) * 9.0, 5.5, math.sin(ang) * 4.0
     cfg = replace(spec.cfg, light=(lx, ly, lz), light_e=0.14)
     mesh, (lo, hi) = _plants.grow_mesh_env(spec, spec.gens, cfg)
@@ -85,7 +87,7 @@ def _rain_fold(width, height, time, mouse, device):
 SCENES = [
     Scene(name="phototropism", renderer=_phototropism,
           description="Sapling bending to follow a light arcing overhead "
-                      "(phototropism). --time 0..8."),
+                      "(phototropism). --time 0..2."),
     Scene(name="weeping", renderer=_weeping,
           description="Weeping plant whose shoots sag under gravity "
                       "(gravitropism)."),

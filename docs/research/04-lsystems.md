@@ -66,11 +66,41 @@ Increasing complexity, the start of the DNA → cell → grass → plant → tre
 Growth is simply deriving to a higher generation: advancing `time` grows the
 plant one generation, so it rises into frame from a sprout.
 
+## Environmental response — the "obvious rules" (`life/turtle.py`, ABOP §2.3.4)
+
+Before a plant has any *decision*, it still reacts to its environment through
+fixed physical laws. ABOP §2.3.4 models this as a **tropism**: after each drawn
+segment the turtle's heading **H** is bent toward a direction **T** by an angle
+proportional to `e · |H × T|`, rotating about the axis `H × T` (`e` is the
+*susceptibility*). The torque vanishes when H already points along T and is
+greatest when H is perpendicular to it — exactly the behaviour of a stem being
+tugged by an external field.
+
+Three responses fall straight out of that one mechanism:
+
+- **Gravitropism** — a constant `T = (0, −1, 0)`. Upright growth is a degenerate
+  equilibrium (`H × T = 0`), but any real shoot starts a little off-vertical and
+  then **sags**; long side-shoots arch over into a *weeping* form.
+- **Phototropism** — `T = normalize(light − position)`, recomputed each step, so
+  the stem **curves to follow a light** and keeps tracking it as the light moves.
+  This is an *open* / environmentally-sensitive L-System: the environment feeds
+  the rewriting (ABOP ch. 2).
+- **Nyctinasty (rain / night fold)** — not a heading tropism but a leaf response:
+  a `leaf_fold ∈ [0,1]` signal pitches each leaf blade down and shrinks it, so the
+  plant **closes up in the rain** and reopens when it passes.
+
+`TurtleConfig` carries these as data (`tropism` + `tropism_e`, `light` + `light_e`,
+`leaf_fold`); the `phototropism` / `weeping` / `rain_fold` scenes drive them from
+`time`, rebuilding the geometry each frame with `plants.grow_mesh_env`. Crucially
+there is **no choice** here — a downward tropism *always* sags, a light *always*
+pulls. That is the substrate the mind layer below will *steer*.
+
 ## What comes next
 
 The roadmap continues down (DNA → protein → cell, the sub-plant scales) and then
 adds a **mind**: a decision layer (Conway-style local rules maturing into
-choice) that overrides the plant's default growth — turning toward light, closing
-in rain — and, per the operator's framing, reaches *backward* through a
-wave-collapse timescale. The context-sensitive class above is the substrate for
-those signals.
+choice) that *chooses when* to obey or override these obvious rules — turning
+toward light only when it's worth the cost, closing in rain, competing with
+neighbours — and, per the operator's framing, reaches *backward* through a
+wave-collapse timescale. The context-sensitive class is the substrate for those
+signals; the tropism layer is the actuator they will command.

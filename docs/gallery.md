@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (51 scenes).
+`python render.py --list` for the full, current list (54 scenes).
 
 ## Engine showcase
 
@@ -32,6 +32,20 @@ a mesh and **ray-cast** through the Warp engine. Generation advances with
 Growth (`--frames 8 --fps 1`), sprout → tree:
 
 ![tree growing](life/tree_grow.gif)
+
+### Environmental response (the "obvious rules", ABOP §2.3.4)
+
+Before any mind, the plant obeys physics — a **tropism** bends the turtle's
+heading toward a direction each step, so the same grammar reacts to its world.
+
+| | | |
+|---|---|---|
+| **phototropism**<br>sapling bends to follow a moving light<br>![phototropism](life/phototropism.png) | **weeping**<br>shoots sag under gravity into a fountain<br>![weeping](life/weeping.png) | **rain-fold**<br>leaves fold shut as rain sets in<br>![rain-fold](life/rain_fold.png) |
+
+Following the light (`phototropism`) and closing in the rain (`rain_fold`):
+
+![light tracking](life/photo_track.gif)
+![rain fold](life/rain_fold.gif)
 
 ## Cosmos & bodies
 
