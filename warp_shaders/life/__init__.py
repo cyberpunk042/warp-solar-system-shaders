@@ -15,8 +15,10 @@ layer to come.
 
 from .lsystem import LSystem, Module, Rule, parse, word_to_str
 from .turtle import Geometry, Leaf, Segment, TurtleConfig, interpret
+from .mesh import Mesh, build_mesh
 
 __all__ = [
     "LSystem", "Rule", "Module", "parse", "word_to_str",
     "interpret", "TurtleConfig", "Geometry", "Segment", "Leaf",
+    "build_mesh", "Mesh",
 ]
