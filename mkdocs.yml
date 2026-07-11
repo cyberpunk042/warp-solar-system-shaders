@@ -44,6 +44,7 @@ nav:
       - lod: api/lod.md
       - scene: api/scene.md
       - life (L-Systems): api/life.md
+      - super-earth: api/superearth.md
   - Gallery: gallery.md
   - Research notes:
       - Foundations: research/00-foundations.md
@@ -55,6 +56,7 @@ nav:
       - The mind: research/06-the-mind.md
       - Wave and collapse: research/07-wave-and-collapse.md
       - Ecosystem: research/08-ecosystem.md
+      - Super-Earth: research/09-super-earth.md
 
 markdown_extensions:
   - admonition

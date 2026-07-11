@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (66 scenes).
+`python render.py --list` for the full, current list (79 scenes).
 
 ## Engine showcase
 
@@ -117,6 +117,41 @@ sky). See [Research 08](research/08-ecosystem.md).
 A few years, seasons cycling and the meadow turning over:
 
 ![ecosystem over the years](life/ecosystem.gif)
+
+## Super-Earth — one planet, every knob
+
+One Warp kernel driven by a `PlanetConfig` struct: turn oceans, lakes, rivers,
+mountains, snow, volcanoes, lava, vegetation, life, cities, atmosphere, clouds
+and moons on or off independently — same code, a whole family of worlds. Then the
+**super-planets** (no solid surface) and a configurable orbital bombardment. See
+[Research 09](research/09-super-earth.md).
+
+| | | |
+|---|---|---|
+| **earth-like**<br>oceans, green continents, rivers, snow, clouds<br>![super_earth](superearth/super_earth.png) | **barren**<br>cratered dead rock, no air or water<br>![barren](superearth/se_barren.png) | **ocean world**<br>mostly water with island arcs<br>![ocean](superearth/se_ocean.png) |
+| **volcanic**<br>young molten world, lava vents<br>![volcanic](superearth/se_volcanic.png) | **riverlands**<br>continents laced with rivers + lakes<br>![rivers](superearth/se_rivers.png) | **arid**<br>desert continents (vegetation off)<br>![arid](superearth/se_arid.png) |
+| **living** (night)<br>bioluminescence + city lights<br>![living](superearth/se_living.png) | **flat** (mountains off)<br>the with/without-mountains knob<br>![flat](superearth/se_flat.png) | **moons**<br>configurable system (rocky/icy/lava/desert)<br>![moons](superearth/se_moons.png) |
+
+### Super-planets — higher degrees of freedom
+
+| | | |
+|---|---|---|
+| **gas giant**<br>banded zonal flow + great red spot<br>![gas](superearth/se_gas.png) | **windstorm**<br>turbulent bands + cyclone eyes<br>![windstorm](superearth/se_windstorm.png) | **electrostorm**<br>slate thunderheads + lightning<br>![electrostorm](superearth/se_electrostorm.png) |
+
+Lightning crackling across the electrostorm:
+
+![electrostorm](superearth/se_electrostorm.gif)
+
+### Orbital bombardment (`se_nuked`)
+
+Configurable strikes — warhead **count**, spatial **distribution** (uniform /
+clustered / equatorial / spiral), **delay**, **interval**, and detonations **in
+parallel** per wave. Fireballs cool through a blackbody ramp; each strike leaves
+an expanding shock-ring scar.
+
+![se_nuked](superearth/se_nuked.png)
+
+![se_nuked animated](superearth/se_nuked.gif)
 
 ## Cosmos & bodies
 

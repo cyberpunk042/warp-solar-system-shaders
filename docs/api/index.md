@@ -16,6 +16,7 @@ A reminder from [Concepts](../concepts.md): symbols marked **device** are
 | **[textures](textures.md)** | portable 2D / 3D / equirectangular sampling and the host loaders |
 | **[lod](lod.md)** | `QualityTier` presets and tier selection |
 | **[scene](scene.md)** | the `Scene` contract and the registry (`render`, `list_scenes`, `get_scene`) |
+| **[super-earth](superearth.md)** | the configurable procedural planet — `PlanetConfig` knobs, presets, moons, and orbital bombardment |
 
 ## Top-level symbols
 
