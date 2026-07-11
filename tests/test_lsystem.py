@@ -316,6 +316,17 @@ def test_mind_deterministic_and_bounded():
     assert hi.decision() >= lo.decision()
 
 
+def test_mind_per_branch_decisions():
+    # k independent band-drives, each bounded; a left-heavy grid drives its
+    # left bands higher than its (empty) right bands
+    m = Mind(size=20, seed=0, stimulus_every=0)
+    m.grid[:] = 0
+    m.grid[:, :10] = 1                                  # fill the left half
+    ds = m.decisions(4)
+    assert len(ds) == 4 and all(0.0 <= d <= 1.0 for d in ds)
+    assert ds[0] >= ds[-1] and ds[0] > 0.5 and ds[-1] < 0.5
+
+
 if __name__ == "__main__":
     print("L-System + turtle tests:")
     test_parse_roundtrip(); print("  parse round-trip: OK")
@@ -344,4 +355,5 @@ if __name__ == "__main__":
     test_conway_blinker_period_2(); print("  mind: Conway blinker period-2: OK")
     test_conway_block_still_life(); print("  mind: Conway block still-life: OK")
     test_mind_deterministic_and_bounded(); print("  mind: deterministic + bounded decision: OK")
+    test_mind_per_branch_decisions(); print("  mind: per-branch band decisions: OK")
     print("ALL PASSED")

@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (63 scenes).
+`python render.py --list` for the full, current list (64 scenes).
 
 ## Engine showcase
 
@@ -84,6 +84,13 @@ rests (sags, leaves folded) — a decision, not a reflex. The inset shows the gr
 
 ![the mind choosing](life/mind.png)
 ![the mind deliberating](life/mind.gif)
+
+And a **per-branch** mind (`mind_branches`) — each shoot of one plant steered by a
+different band of the grid, so some reach for the light and open while others sag
+and fold shut, all at once ("close *piece of itself*"):
+
+![per-branch mind](life/mind_branches.png)
+![per-branch mind animating](life/mind_branches.gif)
 
 ## Cosmos & bodies
 

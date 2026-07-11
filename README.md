@@ -184,10 +184,16 @@ grid + a drive bar.
 
 ![the mind choosing](docs/life/mind.png)
 
+And a **per-branch** mind (`mind_branches`): one plant with several shoots, each
+steered by a different band of the same grid — so some shoots reach up and open
+toward the light while others sag and fold shut, all at once. This is the
+operator's *"close piece of itself"* — the decision is per-part, not global.
+
+![per-branch mind](docs/life/mind_branches.png)
+
 The mind steers the plant through the same per-frame seam the obvious rules use
 (`grow_mesh_env`), so it commands the very reflexes the plant already has. The
-context-sensitive L-System class is the substrate for a future per-branch mind;
-the operator's wave-collapse / "backward in time" framing is the horizon. See
+operator's wave-collapse / "backward in time" framing is the horizon. See
 [docs/research/06-the-mind.md](docs/research/06-the-mind.md) and
 [04-lsystems.md](docs/research/04-lsystems.md).
 

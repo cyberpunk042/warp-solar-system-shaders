@@ -64,6 +64,14 @@ class Mind:
         """
         return _smoothstep((self.population() - self.lo) / (self.hi - self.lo))
 
+    def decisions(self, k: int) -> list:
+        """`k` independent drives, one per vertical band of the grid — so
+        different *parts* of one plant can be steered by different regions of the
+        same mind (a per-branch decision, not a whole-plant one)."""
+        bands = np.array_split(self.grid, k, axis=1)
+        return [_smoothstep((float(b.mean()) - self.lo) / (self.hi - self.lo))
+                for b in bands]
+
 
 def run_to(size: int, seed: int, steps: int) -> Mind:
     """Fresh `Mind` advanced `steps` generations (scenes are stateless per frame)."""
