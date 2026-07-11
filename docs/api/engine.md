@@ -79,6 +79,19 @@ common path; reach for these when you need the terms directly.
 
 ---
 
+## Shading helpers — `engine.shading`
+
+Small, map-independent **device** helpers every scene tends to re-derive. Compose
+the look instead of copy-pasting it.
+
+| Function | Signature | Role |
+|---|---|---|
+| `apply_fog` | `(col: vec3, dist: float, fog_col: vec3, density: float) -> vec3` | exponential distance fog / aerial perspective — `f = 1 - exp(-density·dist)` |
+| `sun_disk` | `(rd: vec3, sun: vec3, disk_col: vec3, size: float, glow: float) -> vec3` | additive sun disk + soft halo for a background ray (`size ≈ 0.9990–0.9999`) |
+| `sky_gradient` | `(rd: vec3, horizon: vec3, zenith: vec3) -> vec3` | two-stop vertical sky gradient by ray elevation |
+
+---
+
 ## Atmosphere — `engine.atmosphere`
 
 Physically based single-scatter sky (Rayleigh + Mie, Cornette–Shanks phase,
