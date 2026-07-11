@@ -19,6 +19,8 @@ import warp as wp
 
 from ..engine import post
 from ..engine.color import kelvin_to_rgb
+from ..engine.intersect import sphere_t
+from ..engine.sky import starfield
 from ..engine.uniforms import Camera, camera_ray_dir, make_camera
 from ..lod import active_tier
 from ..procedural.hash import hash21, hash22
@@ -279,9 +281,9 @@ def render_ground(width, height, time, mouse, device, yield_kt, flash=True):
     stem_r = r_fb * 0.7
 
     az = 0.0 + float(mouse[0]) * 0.01
-    dist = 52.0
-    eye = (math.sin(az) * dist, 2.4, math.cos(az) * dist)
-    target = (0.0, burst_alt + lift * 0.6 + 2.0, 0.0)
+    dist = 40.0 + 1.6 * r_fb                       # pull back for bigger yields
+    eye = (math.sin(az) * dist, 0.02 * dist, math.cos(az) * dist)
+    target = (0.0, burst_alt + lift * 0.6 + 0.25 * r_fb, 0.0)
     cam = make_camera(eye, target, fov_deg=62.0, aspect=width / height)
     sun = wp.normalize(wp.vec3(0.4, 0.5, 0.3))
 
@@ -304,3 +306,118 @@ def render_ground(width, height, time, mouse, device, yield_kt, flash=True):
     out = post.tonemap(hdr, mode="aces", exposure=1.1)
     out = post.chromatic_aberration(out, 0.0018)
     return post.vignette(out, 0.32)
+
+
+# --- vacuum burst over a planet (no atmosphere -> no blast/fireball/mushroom) -
+@wp.func
+def _planet_shade(p: wp.vec3, pc: wp.vec3, rp: float, sun: wp.vec3, rd: wp.vec3) -> wp.vec3:
+    n = wp.normalize(p - pc)
+    cont = fbm_perlin3(n * 2.4 + wp.vec3(11.0, 3.0, 7.0), 5)
+    land = wp.smoothstep(0.48, 0.56, cont * 0.5 + 0.5)
+    ocean = wp.vec3(0.02, 0.12, 0.32)
+    green = wp.vec3(0.08, 0.26, 0.10)
+    base = ocean * (1.0 - land) + green * land
+    cloud = wp.smoothstep(0.58, 0.72, fbm_perlin3(n * 3.3 + wp.vec3(-4.0, 9.0, 2.0), 5) * 0.5 + 0.5)
+    base = base * (1.0 - cloud * 0.8) + wp.vec3(0.9, 0.92, 0.95) * (cloud * 0.8)
+    ndl = wp.dot(n, sun)
+    day = wp.clamp(ndl, 0.0, 1.0)
+    col = base * (0.04 + 1.15 * day)
+    rim = wp.pow(1.0 - wp.max(wp.dot(n, -rd), 0.0), 3.0)
+    col = col + wp.vec3(0.25, 0.45, 0.85) * (rim * (0.3 + 0.7 * day))     # atmosphere limb
+    return col
+
+
+@wp.kernel
+def render_space_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
+                        pc: wp.vec3, rp: float, burst: wp.vec3, shell_r: float,
+                        shell_w: float, core_k: float, flash: float, t: float,
+                        vol_steps: int, width: int, height: int):
+    i, j = wp.tid()
+    u = (2.0 * (float(j) + 0.5) / float(width)) - 1.0
+    v = (2.0 * (float(height - 1 - i) + 0.5) / float(height)) - 1.0
+    ro = cam.eye
+    rd = camera_ray_dir(cam, u, v)
+
+    # background: planet or stars
+    pt = sphere_t(ro, rd, pc, rp)
+    t_hit = float(1.0e9)
+    if pt > 0.0:
+        t_hit = pt
+        col = _planet_shade(ro + rd * pt, pc, rp, sun, rd)
+    else:
+        col = starfield(rd)
+
+    # Starfish-Prime aurora: a faint glow on the planet near the burst footprint
+    if pt > 0.0:
+        sp = ro + rd * pt
+        fp = pc + wp.normalize(burst - pc) * rp                # burst ground track
+        au = wp.exp(-wp.length(sp - fp) / (0.5 * rp)) * wp.smoothstep(shell_r * 0.2, shell_r, wp.length(sp - fp) + shell_r * 0.2)
+        col = col + wp.vec3(0.1, 0.6, 0.3) * (au * 0.5)
+
+    # expanding plasma / debris shell (ballistic; no blast wave, no mushroom)
+    t_end = wp.min(t_hit, 400.0)
+    dt = t_end / float(vol_steps)
+    tv = dt * 0.5
+    trans = float(1.0)
+    acc = wp.vec3(0.0, 0.0, 0.0)
+    shell_col = kelvin_to_rgb(core_k)
+    for _ in range(vol_steps):
+        if trans < 0.02:
+            break
+        p = ro + rd * tv
+        d = wp.length(p - burst)
+        # thin bright shell at the expanding front (hollow inside)
+        e = (d - shell_r) / (shell_w + 1.0e-3)
+        shell = wp.exp(-e * e)
+        # radial debris streaks, concentrated at the front
+        dir = wp.normalize(p - burst + wp.vec3(1.0e-4, 0.0, 0.0))
+        streak = wp.pow(fbm_perlin3(dir * 10.0, 4) * 0.5 + 0.5, 4.0)
+        dens = shell * (0.7 + 2.5 * streak)
+        if dens > 0.001:
+            emis = shell_col * (dens * flash * 3.0)
+            a = wp.clamp(dens * 0.7, 0.0, 1.0)
+            acc = acc + emis * (a * trans)
+            trans = trans * (1.0 - a)
+        tv += dt
+    # faint hollow after-glow just inside the shell
+    col = col * trans + acc
+
+    img[i, j] = col
+
+
+def render_space(width, height, time, mouse, device, yield_kt):
+    """Render one frame of a vacuum burst above a planet — no atmosphere, so no
+    blast wave, no incandescent fireball, no mushroom: a ballistic plasma shell."""
+    tier = active_tier()
+    _, vs = _counts(tier.name)
+
+    rp = 26.0
+    pc = (0.0, -6.0, 0.0)
+    burst = (10.0, 22.0, 6.0)                         # above the planet limb
+    # ballistic shell: radius linear in time (per blast.debris_shell_radius)
+    shell_r = 1.5 + 5.0 * time
+    shell_w = 0.5 + 0.22 * time                       # thickens + dims as it expands
+    age = min(time / 6.0, 1.0)
+    core_k = float(P.fireball_temp(age * 0.7))        # X-ray-hot -> cools; stays bluer
+    flash = max(0.1, 1.5 * math.exp(-time * 0.3)) / (1.0 + 0.05 * shell_r)
+
+    az = 0.2 + float(mouse[0]) * 0.01
+    dist = 80.0
+    eye = (math.sin(az) * dist, 16.0, math.cos(az) * dist)
+    cam = make_camera(eye, (0.0, 6.0, 0.0), fov_deg=52.0, aspect=width / height)
+    sun = wp.normalize(wp.vec3(0.7, 0.35, 0.5))
+
+    img = wp.zeros((height, width), dtype=wp.vec3, device=device)
+    wp.launch(render_space_kernel, dim=(height, width),
+              inputs=[img, cam, sun, wp.vec3(*pc), float(rp), wp.vec3(*burst),
+                      float(shell_r), float(shell_w), float(core_k), float(flash),
+                      float(time), int(vs), int(width), int(height)], device=device)
+    wp.synchronize_device(device)
+    hdr = img.numpy()
+    if time < 0.8:
+        f = (0.8 - time) / 0.8
+        hdr = hdr + np.array([0.9, 0.95, 1.0], np.float32) * (f * f * 3.0)   # X-ray flash
+    r = max(3, int(min(width, height) * 0.016))
+    hdr = post.bloom(hdr, threshold=1.2, strength=0.45, radius=r, passes=3)
+    out = post.tonemap(hdr, mode="aces", exposure=1.05)
+    return post.vignette(out, 0.34)
