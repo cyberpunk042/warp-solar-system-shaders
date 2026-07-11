@@ -84,6 +84,35 @@ def test_render_roundtrip():
     assert graded.min() >= 0.0 and graded.max() <= 1.0
 
 
+def test_hdr_io(tmp_path=None):
+    import os
+    import tempfile
+    d = tempfile.mkdtemp()
+    # an HDR frame with values well above display range (stars/suns)
+    rng = np.random.default_rng(7)
+    hdr = (rng.random((20, 30, 3)).astype(np.float32) ** 2) * np.float32([40.0, 6.0, 120.0])
+    # .npy is lossless; RGBE .hdr preserves the bright range
+    p_npy = os.path.join(d, "f.npy")
+    p_hdr = os.path.join(d, "f.hdr")
+    ws.save_npy(p_npy, hdr)
+    ws.save_hdr(p_hdr, hdr)
+    assert np.array_equal(np.load(p_npy), hdr)
+    back = ws.load_hdr(p_hdr)
+    assert back.shape == hdr.shape
+    # brightest channels survive to a few percent (RGBE shared-exponent)
+    assert abs(float(back.max()) - float(hdr.max())) / float(hdr.max()) < 0.02
+    bright = hdr.max(axis=2) > 1.0
+    rel = np.abs(back - hdr)[bright] / np.maximum(hdr[bright], 1e-3)
+    assert float(np.median(rel)) < 0.02
+    # RenderTarget dispatches by extension; PNG tonemaps HDR into display range
+    rt = ws.RenderTarget(hdr)
+    p_png = os.path.join(d, "f.png")
+    rt.save(p_png)
+    assert os.path.getsize(p_png) > 0
+    disp = rt.tonemapped()
+    assert disp.min() >= 0.0 and disp.max() <= 1.0
+
+
 def test_atmosphere_luts():
     # transmittance + Hillaire multiple-scattering LUTs bake finite and coherent
     atmo = ws.engine.atmosphere
@@ -107,6 +136,8 @@ if __name__ == "__main__":
     print("  host builders (camera/material/light): OK")
     test_atmosphere_luts()
     print("  atmosphere transmittance + multiscatter LUTs: OK")
+    test_hdr_io()
+    print("  HDR/npy output + RenderTarget roundtrip: OK")
     test_render_roundtrip()
     print("  render('pbr_demo') roundtrip: OK")
     print("ALL PASSED")
