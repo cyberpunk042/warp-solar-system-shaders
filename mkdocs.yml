@@ -62,6 +62,7 @@ nav:
       - The solar system: research/10-solar-system.md
       - Stellar evolution: research/11-stellar-evolution.md
       - Galaxy collisions: research/12-galaxy-collisions.md
+      - 3D fractals: research/13-3d-fractals.md
 
 markdown_extensions:
   - admonition
