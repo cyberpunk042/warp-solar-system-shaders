@@ -26,8 +26,11 @@ plain Python.
 """
 
 from . import (
-    atmosphere, camera_path, color, imageio, intersect, pbr, post, shadow, video,
-    volumetric,
+    atmosphere, camera_path, color, imageio, intersect, pbr, post, raytrace,
+    shadow, video, volumetric,
+)
+from .raytrace import (
+    fresnel_dielectric, fresnel_schlick_s, reflect, refract, refract_k, schlick_f0,
 )
 from .camera_path import CameraPath, Keyframe, dolly, fly, orbit
 from .imageio import RenderTarget, load_hdr, save_hdr, save_npy, save_png
@@ -54,7 +57,10 @@ from .uniforms import (
 __all__ = [
     # subsystem namespaces
     "atmosphere", "camera_path", "color", "imageio", "intersect", "pbr", "post",
-    "shadow", "video", "volumetric",
+    "raytrace", "shadow", "video", "volumetric",
+    # reflection / refraction (device)
+    "reflect", "refract", "refract_k", "schlick_f0", "fresnel_dielectric",
+    "fresnel_schlick_s",
     # frame output (host)
     "RenderTarget", "save_png", "save_hdr", "save_npy", "load_hdr", "write_video",
     # camera paths (host)
