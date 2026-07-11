@@ -144,6 +144,21 @@ def test_mesh_plant_counts():
 
 
 
+# --- plant grammars ----------------------------------------------------------
+from warp_shaders.life import plants as _plants
+
+
+def test_plant_specs_grow():
+    for name, gens in [("grass", 9), ("herb", 6), ("tree", 7)]:
+        spec = _plants.get_spec(name)
+        mesh, (lo, hi) = _plants.grow_mesh(spec, gens)
+        assert mesh.n_tris > 0, f"{name}: empty mesh"
+        assert float(hi[1] - lo[1]) > 0.5, f"{name}: no height"
+    # get_spec memoizes (same object -> mesh cache stays warm)
+    assert _plants.get_spec("tree") is _plants.get_spec("tree")
+
+
+
 if __name__ == "__main__":
     print("L-System + turtle tests:")
     test_parse_roundtrip(); print("  parse round-trip: OK")
@@ -160,4 +175,5 @@ if __name__ == "__main__":
     test_turtle_leaf_and_bounds(); print("  turtle leaf + bounds: OK")
     test_mesh_single_tube(); print("  mesh single tube: OK")
     test_mesh_plant_counts(); print("  mesh plant counts: OK")
+    test_plant_specs_grow(); print("  plant grammars grow (grass/herb/tree): OK")
     print("ALL PASSED")
