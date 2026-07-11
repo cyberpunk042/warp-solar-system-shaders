@@ -64,6 +64,7 @@ nav:
       - Galaxy collisions: research/12-galaxy-collisions.md
       - 3D fractals: research/13-3d-fractals.md
       - KIFS fractals: research/14-kifs-fractals.md
+      - Nuclear fireball: research/15-nuclear-fireball.md
 
 markdown_extensions:
   - admonition
