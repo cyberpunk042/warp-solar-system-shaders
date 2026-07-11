@@ -25,7 +25,7 @@ Device functions (``@wp.func``) are meant to be *called inside your own
 plain Python.
 """
 
-from . import atmosphere, color, intersect, pbr, post, volumetric
+from . import atmosphere, color, intersect, pbr, post, shadow, volumetric
 from .color import (blackbody, kelvin_to_rgb, linear_to_srgb, luminance,
                     srgb_to_linear)
 from .intersect import (ray_box, ray_disk, ray_plane, ray_sphere, ray_sphere_o,
@@ -37,6 +37,9 @@ from .pbr import (
     shade_pbr,
 )
 from .shading import apply_fog, sky_gradient, sun_disk
+from .shadow import (
+    ground_contact_ao, penumbra, soft_shadow_sphere, sphere_ao, sphere_occlusion,
+)
 from .uniforms import (
     Camera, Frame, Light, Quality, camera_ray_dir, focus_point, lens_offset,
     make_camera, make_frame, make_light, make_quality,
@@ -44,7 +47,7 @@ from .uniforms import (
 
 __all__ = [
     # subsystem namespaces
-    "atmosphere", "color", "intersect", "pbr", "post", "volumetric",
+    "atmosphere", "color", "intersect", "pbr", "post", "shadow", "volumetric",
     # colour science (device)
     "kelvin_to_rgb", "blackbody", "luminance", "linear_to_srgb", "srgb_to_linear",
     # ray-primitive intersection (device)
@@ -60,6 +63,9 @@ __all__ = [
     "geometry_schlick_ggx", "geometry_smith",
     # reusable shading helpers
     "apply_fog", "sun_disk", "sky_gradient",
+    # analytic soft shadows + ambient occlusion (device)
+    "soft_shadow_sphere", "sphere_occlusion", "sphere_ao", "penumbra",
+    "ground_contact_ao",
     # sky backgrounds (device)
     "starfield", "milky_way",
 ]
