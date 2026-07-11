@@ -36,6 +36,7 @@ nav:
   - Concepts: concepts.md
   - Guides:
       - Writing a scene: guides/writing-a-scene.md
+      - Cinematics (camera paths, video, reel): guides/cinematics.md
   - API reference:
       - Overview: api/index.md
       - procedural: api/procedural.md
