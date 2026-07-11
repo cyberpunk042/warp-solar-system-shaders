@@ -1,0 +1,68 @@
+site_name: Warp Shaders
+site_description: A hyper-realistic procedural rendering engine for NVIDIA Warp.
+site_url: https://cyberpunk042.github.io/warp-solar-system-shaders/
+repo_url: https://github.com/cyberpunk042/warp-solar-system-shaders
+repo_name: warp-solar-system-shaders
+docs_dir: docs
+
+theme:
+  name: material
+  palette:
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/weather-night
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: cyan
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to dark mode
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.tracking
+    - content.code.copy
+    - toc.follow
+    - search.suggest
+
+nav:
+  - Home: index.md
+  - Quickstart: quickstart.md
+  - Concepts: concepts.md
+  - Guides:
+      - Writing a scene: guides/writing-a-scene.md
+  - API reference:
+      - Overview: api/index.md
+      - procedural: api/procedural.md
+      - engine: api/engine.md
+      - textures: api/textures.md
+      - lod: api/lod.md
+      - scene: api/scene.md
+  - Gallery: gallery.md
+  - Research notes:
+      - Foundations: research/00-foundations.md
+      - Textures & LUTs: research/01-textures-and-luts.md
+
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+
+# Build the site:
+#   pip install -r docs/requirements.txt
+#   mkdocs serve         # live preview at http://127.0.0.1:8000
+#   mkdocs build         # static site into ./site
+#
+# The API pages are hand-authored Markdown so the site builds with no import of
+# warp-lang. To auto-generate reference from docstrings instead, add the
+# `mkdocstrings[python]` plugin and `::: warp_shaders.<module>` blocks.
