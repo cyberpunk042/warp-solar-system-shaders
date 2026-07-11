@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (91 scenes).
+`python render.py --list` for the full, current list (93 scenes).
 
 ## Engine showcase
 
@@ -246,4 +246,22 @@ The **mass fork** — same code, three initial masses, three endings:
 ```bash
 python render.py --scene stellar_lifecycle --frames 120 --fps 6 --video out/life.mp4
 python render.py --scene stellar_massive --time 14 -o supergiant.png
+```
+
+## Colliding galaxies — bridges and tails
+
+The largest set-piece: two galaxies in a gravitational fly-by, modelled as a
+**Toomre restricted N-body** encounter (`cosmos.galaxy_dynamics`) — two point-mass
+cores under mutual gravity, each ringed by thousands of **massless test
+particles**. A **prograde** disk throws out a long tidal **tail** and a **bridge**
+toward the companion (the Antennae / Mice look); a **retrograde** disk barely
+responds — the classic Toomre & Toomre 1972 contrast. Each galaxy's stars keep
+their colour, so the tidal debris stays legible. See
+[Research 12](research/12-galaxy-collisions.md).
+
+![two galaxies colliding, tidal tails unfurling](cosmos/galaxy_collision.gif)
+
+```bash
+python render.py --scene galaxy_collision  --frames 64 --fps 6 --video out/tails.mp4
+python render.py --scene galaxy_retrograde --frames 64 --fps 6 --video out/retro.mp4
 ```
