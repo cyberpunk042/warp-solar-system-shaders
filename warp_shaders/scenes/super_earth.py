@@ -41,8 +41,18 @@ SCENES = [
                       "bioluminescence + city lights."),
     Scene(name="se_arid", renderer=_scene("arid"),
           description="super-earth preset: arid desert continents (life off)."),
+    Scene(name="se_flat", renderer=_scene("flatland"),
+          description="super-earth preset: mountains OFF — a flattened world, "
+                      "showing the with/without-mountains knob."),
     Scene(name="se_moons", renderer=_scene("earthlike", moons="many",
                                            dist=6.5, fov=52.0),
           description="super-earth with a system of four moons (rocky / icy / "
                       "lava / desert), configurable in number, type and size."),
+    # super-planets — higher degrees of freedom, no solid surface
+    Scene(name="se_gas", renderer=_scene("gas_giant"),
+          description="super-planet: a banded gas giant with a great red spot."),
+    Scene(name="se_windstorm", renderer=_scene("windstorm"),
+          description="super-planet: a gas world whipped by cyclones."),
+    Scene(name="se_electrostorm", renderer=_scene("electrostorm"),
+          description="super-planet: dark thunderheads crackling with lightning."),
 ]

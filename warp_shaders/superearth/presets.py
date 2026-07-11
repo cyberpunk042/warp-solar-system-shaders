@@ -54,6 +54,31 @@ def riverlands():
                        has_lakes=1, has_rivers=1, snow=0.8, has_atmo=1, atmo=1.0)
 
 
+def flatland():
+    """The earth-like world with the mountains flattened — showing 'no mountains'."""
+    return make_config(seed=1.0, mountain=0.0, sea_level=0.0, has_ocean=1,
+                       has_rivers=1, snow=0.7, has_atmo=1, atmo=1.0, veg=0.9,
+                       cloud=0.5)
+
+
+def gas_giant():
+    """A super-planet: no solid ground, banded gas with a great red spot."""
+    return make_config(seed=4.0, has_ocean=0, has_atmo=0, snow=0.0,
+                       gas=1.0, storm=0.3, spin=0.12)
+
+
+def windstorm():
+    """A gas world whipped by cyclones — heavy turbulence, many storm eyes."""
+    return make_config(seed=7.0, has_ocean=0, has_atmo=0, snow=0.0,
+                       gas=1.0, storm=1.0, spin=0.16)
+
+
+def electrostorm():
+    """A dark super-planet of thunderheads crackling with lightning."""
+    return make_config(seed=9.0, has_ocean=0, has_atmo=0, snow=0.0,
+                       gas=1.0, storm=0.7, electro=1.0, spin=0.14)
+
+
 _REGISTRY = {
     "barren": barren,
     "earthlike": earthlike,
@@ -62,6 +87,10 @@ _REGISTRY = {
     "volcanic": volcanic,
     "riverlands": riverlands,
     "living": living,
+    "flatland": flatland,
+    "gas_giant": gas_giant,
+    "windstorm": windstorm,
+    "electrostorm": electrostorm,
 }
 
 

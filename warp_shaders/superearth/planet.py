@@ -51,6 +51,10 @@ class PlanetConfig:
     has_atmo: int
     atmo: float               # atmosphere density
     cloud: float              # cloud coverage (0 = clear)
+    # super-planet (higher degrees of freedom — no solid surface)
+    gas: float                # gas giant (0 = rocky, >0 = banded gas ball)
+    storm: float              # windstorm turbulence + cyclone eyes
+    electro: float            # electrostorm — dark thunderheads + lightning
     # animation
     spin: float               # rotation rate
 
@@ -414,6 +418,72 @@ def _moon_shade(n: wp.vec3, sun: wp.vec3, mtype: int, center: wp.vec3) -> wp.vec
     return col
 
 
+# --------------------------------------------------------------------------- #
+# super-planet: gas giant / windstorm / electrostorm (no solid surface)        #
+# --------------------------------------------------------------------------- #
+
+@wp.func
+def _shade_gas(dir: wp.vec3, n: wp.vec3, rd: wp.vec3, sun: wp.vec3,
+               cfg: PlanetConfig, time: float) -> wp.vec3:
+    """Banded gas ball: zonal belts warped into turbulent flow, storm vortices,
+    a great red spot, and optional crackling electrostorm."""
+    s = wp.vec3(cfg.seed, cfg.seed * 1.7, cfg.seed * 2.3)
+    lat = dir[1]
+    drift = wp.vec3(time * 0.03, 0.0, 0.0)
+    # zonal flow: strongly latitudinal belts, edges gently wobbled into turbulent
+    # flow (the wobble stays small so the bands never scramble into blobs)
+    wob = domain_warp3(dir * 2.4 + s + drift, 3, 0.6) - 0.5      # ~[-0.5, 0.5]
+    fine = fbm3(dir * 9.0 + s + drift * 2.0, 4) - 0.5
+    band = wp.sin(lat * 14.0 + wob * (1.6 + 3.2 * cfg.storm) + fine * 0.8)
+    z = wp.smoothstep(0.12, 0.88, 0.5 + 0.5 * band)   # sharpen belt/zone contrast
+    zone = wp.vec3(0.88, 0.80, 0.62)                  # bright zone
+    belt = wp.vec3(0.46, 0.30, 0.18)                  # dark belt
+    base = belt * (1.0 - z) + zone * z
+    # fine curl detail along the flow so belts aren't flat stripes
+    curl = fbm3(dir * 20.0 + s + drift * 3.0, 4) - 0.5
+    base = base * (0.9 + 0.28 * (curl + 0.5))
+
+    # cyclone eyes scattered through the storm bands (windstorm)
+    if cfg.storm > 0.0:
+        w = worley3(dir * 5.0 + s + drift)
+        eye = wp.smoothstep(0.20, 0.0, w) * cfg.storm
+        base = base * (1.0 - eye * 0.55) + wp.vec3(0.95, 0.90, 0.82) * (eye * 0.55)
+
+    # one big anticyclone — a great red spot (oval: wider in longitude)
+    grs = wp.normalize(_fib(0, 3, cfg.seed * 5.0) + wp.vec3(0.2, -0.15, 0.0))
+    delta = dir - grs
+    dlat = delta[1]
+    dlon = wp.length(delta - wp.vec3(0.0, dlat, 0.0))
+    rr = (dlon / 0.34) * (dlon / 0.34) + (dlat / 0.17) * (dlat / 0.17)
+    spot = wp.exp(-rr)
+    swirl = 0.5 + 0.5 * wp.sin(rr * 9.0 - time * 0.6)
+    base = base * (1.0 - spot * 0.9) \
+        + wp.vec3(0.80, 0.26, 0.14) * (spot * 0.9) * (0.65 + 0.35 * swirl)
+
+    # lighting: lambert + a warm limb brightening (forward scatter through the haze)
+    ndl = wp.max(wp.dot(n, sun), 0.0)
+    day = wp.smoothstep(-0.15, 0.2, wp.dot(dir, sun))
+    fres = wp.pow(1.0 - wp.max(wp.dot(n, -rd), 0.0), 3.0)
+    col = base * (0.05 + 1.1 * ndl) + base * (fres * 0.35 * day)
+
+    # electrostorm: deep slate thunderheads + sparse branching lightning strikes
+    if cfg.electro > 0.0:
+        storm_dark = wp.vec3(0.04, 0.05, 0.10)
+        col = col * (1.0 - 0.86 * cfg.electro) + storm_dark * (0.86 * cfg.electro)
+        # thin cell-edge network (like the river channels) = branching bolts
+        ed = worley3_f2(dir * 10.0 + s + wp.vec3(0.0, time * 0.5, 0.0))
+        web = wp.smoothstep(0.03, 0.0, ed[1] - ed[0])
+        # only a few drifting storm cells are active at any instant (sparse)
+        active = wp.smoothstep(0.56, 0.76,
+                               fbm3(dir * 3.0 + s + wp.vec3(time * 0.3, 0.0, 0.0), 3))
+        strobe = wp.sin(time * 11.0 + fbm3(dir * 3.0 + s, 2) * 50.0) * 0.5 + 0.5
+        strobe = wp.smoothstep(0.82, 0.99, strobe)
+        bolt = web * active * strobe * cfg.electro
+        col = col + wp.vec3(0.60, 0.80, 1.0) * (bolt * 3.5)              # bolt core
+        col = col + wp.vec3(0.28, 0.42, 0.70) * (active * strobe * cfg.electro * 0.4)
+    return col
+
+
 @wp.kernel
 def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
                   cfg: PlanetConfig, time: float, steps: int, csteps: int,
@@ -440,17 +510,25 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
 
     rmax = _R * (1.0 + 1.2 * _RS)
     surf_t = float(-1.0)
-    if relief == 0:
+    if cfg.gas > 0.0:
+        # super-planet: smooth ball, all detail in the banded gas shading
+        g = _rs(ro, rd, _R)
+        if g[0] > 0.0 and g[0] < 1.0e20:      # real front hit (miss -> g[0]=1e30)
+            hit_t = g[0]
+            d = wp.normalize(ro + rd * hit_t)
+            col = _shade_gas(d, d, rd, sr, cfg, time)
+            surf_t = hit_t
+    elif relief == 0:
         # fast path: analytic base sphere + bump-mapped terrain normal (no march)
         g = _rs(ro, rd, _R)
-        if g[0] > 0.0:
+        if g[0] > 0.0 and g[0] < 1.0e20:      # real front hit (miss -> g[0]=1e30)
             hit_t = g[0]
             d = wp.normalize(ro + rd * hit_t)
             n = _terrain_normal(d, cfg)
             col = _shade(d, n, rd, sr, cfg, time)
             surf_t = hit_t
     outer = _rs(ro, rd, rmax)
-    if relief != 0 and outer[1] > 0.0:
+    if relief != 0 and cfg.gas == 0.0 and outer[1] > 0.0:
         t = wp.max(outer[0], 0.0)
         t1 = outer[1]
         dt = (t1 - t) / float(steps)
@@ -485,12 +563,12 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
             col = _shade(d, n, rd, sr, cfg, time)
             surf_t = hit_t
 
-    col = col + _atmosphere(ro, rd, sr, cfg, surf_t)
-
-    if cfg.cloud > 0.0:
-        cov = wp.clamp(cfg.cloud * 0.5 + 0.25, 0.0, 0.95)
-        cl = _march_clouds(ro, rd, sr, time, surf_t, cov, csteps)
-        col = col * cl[3] + wp.vec3(cl[0], cl[1], cl[2])
+    if cfg.gas == 0.0:
+        col = col + _atmosphere(ro, rd, sr, cfg, surf_t)
+        if cfg.cloud > 0.0:
+            cov = wp.clamp(cfg.cloud * 0.5 + 0.25, 0.0, 0.95)
+            cl = _march_clouds(ro, rd, sr, time, surf_t, cov, csteps)
+            col = col * cl[3] + wp.vec3(cl[0], cl[1], cl[2])
 
     # moons (world space, unrotated): nearest sphere in front of the scene wins
     scene_t = surf_t
@@ -532,6 +610,9 @@ def make_config(**kw) -> PlanetConfig:
     cfg.has_atmo = int(kw.get("has_atmo", 1))
     cfg.atmo = float(kw.get("atmo", 1.0))
     cfg.cloud = float(kw.get("cloud", 0.0))
+    cfg.gas = float(kw.get("gas", 0.0))
+    cfg.storm = float(kw.get("storm", 0.0))
+    cfg.electro = float(kw.get("electro", 0.0))
     cfg.spin = float(kw.get("spin", 0.05))
     return cfg
 
