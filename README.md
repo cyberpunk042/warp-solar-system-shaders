@@ -71,7 +71,9 @@ for every public symbol.
   Hillaire multiple scattering**), a **volumetric cloud** raymarcher (Schneider
   density, Henyey-Greenstein, Beer-Lambert, sun light-march) over a **baked seamless
   3D detail volume**, a **thin-lens depth-of-field** camera, **analytic soft
-  shadows + ambient occlusion** (closed-form sphere shadow/AO, no SDF march), and
+  shadows + ambient occlusion** (closed-form sphere shadow/AO, no SDF march),
+  **reflection + refraction** (mirror/glass bounce loop — Fresnel, Snell, TIR;
+  `engine.raytrace`), and
   a host **post** pipeline (ACES/AgX tonemap, bloom, **god-rays**, chromatic
   aberration, sharpen, grain, vignette) with one-call **named looks** (cinematic /
   film / dreamy / crisp). Frames save to PNG or true **HDR** (`.hdr` RGBE / `.npy`).
