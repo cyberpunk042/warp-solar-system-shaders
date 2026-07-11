@@ -270,6 +270,52 @@ def test_cell_divides():
     assert float(np.abs(one - two).max()) > 0.0        # division changes the image
 
 
+# --- the mind (Conway's Life) -------------------------------------------------
+from warp_shaders.life.mind import Mind
+
+
+def _mind_with(cells, size=6):
+    m = Mind(size=size, seed=0, stimulus_every=0)   # no stimulus for pure Conway
+    m.grid[:] = 0
+    for (r, c) in cells:
+        m.grid[r, c] = 1
+    return m
+
+
+def test_conway_blinker_period_2():
+    # a horizontal blinker becomes vertical, then horizontal again (period 2)
+    horiz = [(2, 1), (2, 2), (2, 3)]
+    m = _mind_with(horiz)
+    m.step()
+    vert = {(1, 2), (2, 2), (3, 2)}
+    assert set(map(tuple, np.argwhere(m.grid))) == vert
+    m.step()
+    assert set(map(tuple, np.argwhere(m.grid))) == set(horiz)
+
+
+def test_conway_block_still_life():
+    block = [(1, 1), (1, 2), (2, 1), (2, 2)]
+    m = _mind_with(block)
+    before = m.grid.copy()
+    for _ in range(5):
+        m.step()
+    assert np.array_equal(m.grid, before)              # block never changes
+
+
+def test_mind_deterministic_and_bounded():
+    a = Mind(size=40, seed=11)
+    b = Mind(size=40, seed=11)
+    for _ in range(20):
+        a.step(); b.step()
+    assert np.array_equal(a.grid, b.grid)              # same seed -> same run
+    d = a.decision()
+    assert 0.0 <= d <= 1.0
+    # decision is monotonic in live-fraction: a denser grid drives higher
+    lo = _mind_with([(2, 2)], size=20); lo.stimulus_every = 0
+    hi = Mind(size=20, seed=1, density=0.5, stimulus_every=0)
+    assert hi.decision() >= lo.decision()
+
+
 if __name__ == "__main__":
     print("L-System + turtle tests:")
     test_parse_roundtrip(); print("  parse round-trip: OK")
@@ -295,4 +341,7 @@ if __name__ == "__main__":
     test_build_helix(); print("  DNA helix builds (colored, scales with bp): OK")
     test_build_protein_folds(); print("  protein folds (extended > compact): OK")
     test_cell_divides(); print("  cell division changes the render: OK")
+    test_conway_blinker_period_2(); print("  mind: Conway blinker period-2: OK")
+    test_conway_block_still_life(); print("  mind: Conway block still-life: OK")
+    test_mind_deterministic_and_bounded(); print("  mind: deterministic + bounded decision: OK")
     print("ALL PASSED")

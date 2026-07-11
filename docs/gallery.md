@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (62 scenes).
+`python render.py --list` for the full, current list (63 scenes).
 
 ## Engine showcase
 
@@ -74,6 +74,16 @@ swaying in a gust (`wind`):
 ![light tracking](life/photo_track.gif)
 ![rain fold](life/rain_fold.gif)
 ![wind sway](life/wind.gif)
+
+### The mind — choosing to obey (Conway's Life)
+
+Top of the ladder: a Conway Game-of-Life **mind** whose living population sets a
+**drive** that *chooses* whether the plant seeks the light (open, phototropic) or
+rests (sags, leaves folded) — a decision, not a reflex. The inset shows the grid
++ drive bar. See [Research 06](research/06-the-mind.md).
+
+![the mind choosing](life/mind.png)
+![the mind deliberating](life/mind.gif)
 
 ## Cosmos & bodies
 
