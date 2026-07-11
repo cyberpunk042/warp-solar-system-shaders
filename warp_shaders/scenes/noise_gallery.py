@@ -8,7 +8,7 @@ tile for legibility. Doubles as the P1 verification scene.
 import warp as wp
 
 from ..procedural import (
-    curl3, domain_warp3, fbm3, perlin3, ridged3, worley3,
+    curl3, domain_warp3, fbm3, ridged3, simplex3, worley3,
 )
 from ..procedural.hash import fract
 from ..scene import Scene
@@ -39,7 +39,7 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), width: int, height: int,
         val = fbm3(p, 6)
         tint = wp.vec3(0.55, 0.75, 1.0)
     elif idx == 1:
-        val = perlin3(p) * 0.5 + 0.5
+        val = simplex3(p) * 0.5 + 0.5
         tint = wp.vec3(1.0, 0.85, 0.5)
     elif idx == 2:
         val = wp.clamp(worley3(p), 0.0, 1.0)
