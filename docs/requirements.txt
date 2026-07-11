@@ -1,0 +1,3 @@
+# Documentation site (mkdocs). Install with:  pip install -r docs/requirements.txt
+# Then:  mkdocs serve   (live preview)   |   mkdocs build   (static ./site)
+mkdocs-material>=9.5
