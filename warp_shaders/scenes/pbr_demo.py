@@ -13,7 +13,7 @@ import numpy as np
 import warp as wp
 
 from ..engine import post
-from ..engine.pbr import shade_pbr
+from ..engine.material import make_mat, shade_material
 from ..engine.uniforms import (
     Camera, Frame, Light, Quality, camera_ray_dir, make_camera, make_frame,
     make_light, make_quality,
@@ -153,7 +153,8 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, light: Light,
         v_dir = -rd
         sh = _soft_shadow(p + n * 0.01, light.dir, time, qual.shadow_steps)
         ao = _ao(p, n, time, qual.ao_steps)
-        direct = shade_pbr(n, v_dir, light.dir, albedo, rough, metallic, light.color) * (light.intensity * sh)
+        mat = make_mat(albedo, rough, metallic)
+        direct = shade_material(mat, n, v_dir, light.dir, light.color, light.intensity * sh)
         # ambient from sky
         amb = wp.cw_mul(_sky(n, light.dir), albedo) * (0.25 * ao)
         col = direct + amb

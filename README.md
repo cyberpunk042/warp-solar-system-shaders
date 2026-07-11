@@ -24,6 +24,10 @@ scales to a high-end GPU. Every technique cites a primary source in-code and in
 | ![clouds](docs/engine/clouds.png) | ![earth](docs/engine/earth_v2.png) | ![earth map](docs/engine/earth_map.png) |
 | **terrain** | **ocean** | **volumetric nebula** |
 | ![terrain](docs/engine/terrain.png) | ![ocean](docs/engine/ocean.png) | ![nebula](docs/engine/nebula.png) |
+| **gas giant + rings** | **alien world (twin suns)** | **spiral galaxy** |
+| ![gas giant](docs/engine/gas_giant.png) | ![alien](docs/engine/alien.png) | ![galaxy](docs/engine/galaxy.png) |
+| **aurora** | | |
+| ![aurora](docs/engine/aurora.png) | | |
 
 - **Procedural toolkit** (`warp_shaders/procedural/`) — value/Perlin/Worley/fbm/
   ridged/billow/domain-warp/curl noise **with analytic derivatives**, plus an SDF
