@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (96 scenes).
+`python render.py --list` for the full, current list (99 scenes).
 
 ## Engine showcase
 
@@ -22,13 +22,15 @@ volumetrics + post) and honours `--quality low..ultra`.
 
 ## 3D fractals
 
-Distance-estimated escape-time fractals (`warp_shaders.procedural.fractal`),
-sphere-traced like any SDF and coloured from the **orbit trap**. See
-[Research 13](research/13-3d-fractals.md).
+Distance-estimated fractals (`warp_shaders.procedural.fractal`), sphere-traced
+like any SDF and coloured from the **orbit trap**. Escape-time
+([Research 13](research/13-3d-fractals.md)) and folding IFS
+([Research 14](research/14-kifs-fractals.md)).
 
 | | | |
 |---|---|---|
-| **Mandelbulb**<br>White–Nylander triplex power, glowing; power morphs 2→8<br>![mandelbulb](engine/mandelbulb.png) | **Mandelbox**<br>Lowe box-fold + sphere-fold (scale −1.5), the ringed cube<br>![mandelbox](engine/mandelbox.png) | |
+| **Mandelbulb**<br>White–Nylander triplex power, glowing; power morphs 2→8<br>![mandelbulb](engine/mandelbulb.png) | **Mandelbox**<br>Lowe box-fold + sphere-fold (scale −1.5), the ringed cube<br>![mandelbox](engine/mandelbox.png) | **Menger sponge**<br>Quilez exact SDF, drilled-cube recursion 1→4<br>![menger](engine/menger.png) |
+| **Sierpinski tetrahedron**<br>plane folds + scale, crystalline 3D gasket<br>![sierpinski](engine/sierpinski.png) | **kaleidoscopic temple**<br>KIFS fold+rotate+scale — fractal architecture<br>![kifs_temple](engine/kifs_temple.png) | |
 
 ## Life — molecule to cell
 

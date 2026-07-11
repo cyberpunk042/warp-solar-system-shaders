@@ -100,11 +100,18 @@ sphere-tracer marches them like any SDF. Each returns a `wp.vec4`:
 |---|---|---|
 | `mandelbulb_de` | `(p: vec3, power: float, iters: int) -> vec4` | Mandelbulb (White–Nylander triplex power; `power=8` is the classic) |
 | `mandelbox_de` | `(p: vec3, scale: float, iters: int) -> vec4` | Mandelbox (Lowe box-fold + sphere-fold; `scale=-1.5` / `2` are classics) |
+| `sierpinski_de` | `(p: vec3, iters: int) -> vec4` | Sierpinski tetrahedron (three plane folds + scale ×2 about a vertex) |
+| `menger_de` | `(p: vec3, iters: int) -> vec4` | Menger sponge — Quilez's **exact** signed distance (drilled-cube recursion) |
+| `kifs_de` | `(p: vec3, scale: float, angle: float, iters: int) -> vec4` | Kaleidoscopic IFS (Knighty: fold + rotate + scale — fractal architecture) |
 
 The analytic Mandelbulb estimator `0.5·log(r)·r/dr` deliberately over-reports
 far from the surface (only near-surface accuracy matters); march with a fudge
-factor `< 1`. See the [`mandelbulb`](../gallery.md) and [`mandelbox`](../gallery.md)
-scenes and [Research 13](../research/13-3d-fractals.md).
+factor `< 1`. The folding IFS DEs are `|z| / scale^iters` (reflections are
+distance isometries), and the Menger sponge is a true exact SDF. See the
+[`mandelbulb`](../gallery.md) / [`mandelbox`](../gallery.md) /
+[`menger`](../gallery.md) / [`sierpinski`](../gallery.md) /
+[`kifs_temple`](../gallery.md) scenes and
+[Research 13](../research/13-3d-fractals.md) + [14](../research/14-kifs-fractals.md).
 
 > **Sources.** SDF primitives and operators follow Inigo Quilez's distance-
 > function reference; noise follows IQ, Stefan Gustavson, Steven Worley, and

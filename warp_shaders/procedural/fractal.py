@@ -84,3 +84,102 @@ def mandelbox_de(p: wp.vec3, scale: float, iters: int) -> wp.vec4:
         dr = dr * wp.abs(scale) + 1.0
         trap = wp.min(trap, wp.length(z))
     return wp.vec4(wp.length(z) / wp.abs(dr), trap, float(iters), wp.length(z))
+
+
+# --- folding fractals (IFS) -------------------------------------------------
+# Reflections are distance-preserving isometries, so an iterated fold + scale is
+# a valid distance estimator: DE = |z| / scale^iters. See docs/research/14.
+
+
+@wp.func
+def _mod2(x: float) -> float:
+    """`x mod 2` (positive), without relying on a builtin mod."""
+    return x - 2.0 * wp.floor(x * 0.5)
+
+
+@wp.func
+def _rot_xz(p: wp.vec3, a: float) -> wp.vec3:
+    c = wp.cos(a)
+    s = wp.sin(a)
+    return wp.vec3(c * p[0] + s * p[2], p[1], -s * p[0] + c * p[2])
+
+
+@wp.func
+def _rot_xy(p: wp.vec3, a: float) -> wp.vec3:
+    c = wp.cos(a)
+    s = wp.sin(a)
+    return wp.vec3(c * p[0] - s * p[1], s * p[0] + c * p[1], p[2])
+
+
+@wp.func
+def sierpinski_de(p: wp.vec3, iters: int) -> wp.vec4:
+    """Distance estimate to the **Sierpinski tetrahedron** — three plane folds
+    against the tetra mirror planes, then scale ×2 about a corner vertex."""
+    z = p
+    trap = float(1.0e10)
+    scale = float(2.0)
+    for i in range(iters):
+        if z[0] + z[1] < 0.0:                       # fold x+y = 0
+            z = wp.vec3(-z[1], -z[0], z[2])
+        if z[0] + z[2] < 0.0:                       # fold x+z = 0
+            z = wp.vec3(-z[2], z[1], -z[0])
+        if z[1] + z[2] < 0.0:                       # fold y+z = 0
+            z = wp.vec3(z[0], -z[2], -z[1])
+        z = z * scale - wp.vec3(1.0, 1.0, 1.0) * (scale - 1.0)   # scale about (1,1,1)
+        trap = wp.min(trap, wp.length(z))
+    de = wp.length(z) * wp.pow(scale, -float(iters))
+    return wp.vec4(de, trap, float(iters), wp.length(z))
+
+
+@wp.func
+def _sd_box_e(p: wp.vec3, b: float) -> float:
+    di = wp.vec3(wp.abs(p[0]) - b, wp.abs(p[1]) - b, wp.abs(p[2]) - b)
+    mc = wp.max(di[0], wp.max(di[1], di[2]))
+    q = wp.vec3(wp.max(di[0], 0.0), wp.max(di[1], 0.0), wp.max(di[2], 0.0))
+    return wp.min(mc, wp.length(q))
+
+
+@wp.func
+def menger_de(p: wp.vec3, iters: int) -> wp.vec4:
+    """**Exact** signed distance to the **Menger sponge** (Quilez): a box, then
+    each level fold to the tiled cell and subtract the drilled cross."""
+    d = _sd_box_e(p, 1.0)
+    s = float(1.0)
+    trap = float(1.0e10)
+    for m in range(iters):
+        ax = _mod2(p[0] * s) - 1.0
+        ay = _mod2(p[1] * s) - 1.0
+        az = _mod2(p[2] * s) - 1.0
+        s = s * 3.0
+        rx = wp.abs(1.0 - 3.0 * wp.abs(ax))
+        ry = wp.abs(1.0 - 3.0 * wp.abs(ay))
+        rz = wp.abs(1.0 - 3.0 * wp.abs(az))
+        da = wp.max(rx, ry)
+        db = wp.max(ry, rz)
+        dc = wp.max(rz, rx)
+        c = (wp.min(da, wp.min(db, dc)) - 1.0) / s          # the carved cross
+        d = wp.max(d, c)
+        trap = wp.min(trap, wp.length(wp.vec3(ax, ay, az)))
+    return wp.vec4(d, trap, float(iters), d)
+
+
+@wp.func
+def kifs_de(p: wp.vec3, scale: float, angle: float, iters: int) -> wp.vec4:
+    """Distance estimate to a **kaleidoscopic IFS** (Knighty): octant fold +
+    rotation + Sierpinski folds + scale about a corner. Rotating `angle`
+    reshapes the fractal architecture (temples, lattices, coral)."""
+    z = p
+    trap = float(1.0e10)
+    off = wp.vec3(1.0, 1.0, 1.0)
+    for i in range(iters):
+        z = wp.vec3(wp.abs(z[0]), wp.abs(z[1]), wp.abs(z[2]))   # octant mirror
+        z = _rot_xz(z, angle)                                   # kaleidoscope
+        if z[0] + z[1] < 0.0:
+            z = wp.vec3(-z[1], -z[0], z[2])
+        if z[0] + z[2] < 0.0:
+            z = wp.vec3(-z[2], z[1], -z[0])
+        z = z * scale - off * (scale - 1.0)                     # scale about (1,1,1)
+        z = _rot_xy(z, angle * 0.5)
+        trap = wp.min(trap, wp.length(z))
+    de = wp.length(z) * wp.pow(wp.abs(scale), -float(iters))
+    return wp.vec4(de, trap, float(iters), wp.length(z))

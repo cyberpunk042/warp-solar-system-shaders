@@ -61,12 +61,16 @@ for every public symbol.
 | ![glacier](docs/engine/glacier.png) | ![depth of field](docs/engine/dof_showcase.png) | ![canyon](docs/engine/canyon.png) |
 | **underwater reef** | **Mandelbulb fractal** | **Mandelbox fractal** |
 | ![reef](docs/engine/reef.png) | ![mandelbulb](docs/engine/mandelbulb.png) | ![mandelbox](docs/engine/mandelbox.png) |
+| **Menger sponge** | **Sierpinski tetrahedron** | **kaleidoscopic temple (KIFS)** |
+| ![menger](docs/engine/menger.png) | ![sierpinski](docs/engine/sierpinski.png) | ![kifs temple](docs/engine/kifs_temple.png) |
 
 - **Procedural toolkit** (`warp_shaders/procedural/`) — value/Perlin/Worley/fbm/
   ridged/billow/domain-warp/curl noise **with analytic derivatives**, plus an SDF
   primitive+operator library and **3D fractal distance estimators**
-  (**Mandelbulb** triplex power + **Mandelbox** folds, with orbit-trap colour;
-  `procedural.fractal`). Sources: IQ, Gustavson, McGuire, Bridson, White-Nylander, Lowe.
+  (**Mandelbulb** triplex power, **Mandelbox** folds, **Menger sponge** exact SDF,
+  **Sierpinski** tetrahedron, and a **kaleidoscopic IFS** temple — all with
+  orbit-trap colour; `procedural.fractal`). Sources: IQ, Gustavson, McGuire,
+  Bridson, White-Nylander, Lowe, Knighty.
 - **Render engine** (`warp_shaders/engine/`) — `@wp.struct` uniforms (camera/light/
   frame/quality), an adaptive sphere-tracing raymarcher, **GGX Cook-Torrance PBR**,
   **physically based atmospheric scattering** (Nishita/O'Neil Rayleigh+Mie **plus
