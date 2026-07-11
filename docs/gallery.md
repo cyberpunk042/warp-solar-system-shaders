@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (51 scenes).
+`python render.py --list` for the full, current list (64 scenes).
 
 ## Engine showcase
 
@@ -19,6 +19,23 @@ volumetrics + post) and honours `--quality low..ultra`.
 | **glacier**<br>blue ice + snow, subsurface glow, cold low sun<br>![glacier](engine/glacier.png) | **depth of field**<br>thin-lens focus pull, near/far bokeh<br>![dof_showcase](engine/dof_showcase.png) | **slot canyon**<br>layered sandstone + volumetric god-rays<br>![canyon](engine/canyon.png) |
 | **underwater reef**<br>rippling caustics, blue-green depth, god-rays<br>![reef](engine/reef.png) | | |
 
+## Life — molecule to cell
+
+The bottom of the "show life" ladder (`warp_shaders.life.molecular` /
+`.cell`) — DNA and proteins as solid ray-traced meshes, the cell as a soft glow
+volume. Each **animates**: the helix assembles, the chain folds, the cell
+divides. See [Research 05](research/05-molecular-to-cell.md).
+
+| | | |
+|---|---|---|
+| **DNA**<br>double helix, colour-coded base pairs (B-DNA)<br>![dna](life/dna.png) | **protein**<br>backbone folding extended→compact, N→C colour<br>![protein](life/protein.png) | **cell**<br>membrane + nucleus + organelles, dividing<br>![cell](life/cell.png) |
+
+Assembling, folding, dividing:
+
+![dna assembling](life/dna_assemble.gif)
+![protein folding](life/protein_fold.gif)
+![cell dividing](life/cell_divide.gif)
+
 ## Life — grown from L-Systems
 
 Real plants grown from L-System grammars (`warp_shaders.life`), tessellated to
@@ -28,10 +45,52 @@ a mesh and **ray-cast** through the Warp engine. Generation advances with
 | | | |
 |---|---|---|
 | **grass**<br>tuft of arching blades<br>![grass](life/grass.png) | **herb**<br>stochastic leafy plant, golden-angle leaves<br>![herb](life/herb.png) | **tree**<br>parametric tapering tree + leafy canopy<br>![tree](life/tree.png) |
+| **fern**<br>bracketed frond unfurling into a fiddlehead (ABOP fig 1.24)<br>![fern](life/fern.png) | **flower**<br>leafy stem that blooms into a whorl of petals at maturity<br>![flower](life/flower.png) | **bush**<br>dense stochastic shrub, wide and leafy<br>![bush](life/bush.png) |
 
-Growth (`--frames 8 --fps 1`), sprout → tree:
+Growth (`--frames 8 --fps 1`), sprout → tree, and the fern unfurling:
 
 ![tree growing](life/tree_grow.gif)
+![fern unfurling](life/fern_grow.gif)
+
+A whole **meadow** — grass, herb, flower, fern and bush merged into one mesh and
+swaying in a single wind:
+
+![meadow](life/meadow.png)
+![meadow swaying](life/meadow.gif)
+
+### Environmental response (the "obvious rules", ABOP §2.3.4)
+
+Before any mind, the plant obeys physics — a **tropism** bends the turtle's
+heading toward a direction each step, so the same grammar reacts to its world.
+
+| | | |
+|---|---|---|
+| **phototropism**<br>sapling bends to follow a moving light<br>![phototropism](life/phototropism.png) | **weeping**<br>shoots sag under gravity into a fountain<br>![weeping](life/weeping.png) | **rain-fold**<br>leaves fold shut as rain sets in<br>![rain-fold](life/rain_fold.png) |
+| **wind**<br>tuft swaying as a gust pulses (time-varying tropism)<br>![wind](life/wind.png) | | |
+
+Following the light (`phototropism`), closing in the rain (`rain_fold`), and
+swaying in a gust (`wind`):
+
+![light tracking](life/photo_track.gif)
+![rain fold](life/rain_fold.gif)
+![wind sway](life/wind.gif)
+
+### The mind — choosing to obey (Conway's Life)
+
+Top of the ladder: a Conway Game-of-Life **mind** whose living population sets a
+**drive** that *chooses* whether the plant seeks the light (open, phototropic) or
+rests (sags, leaves folded) — a decision, not a reflex. The inset shows the grid
++ drive bar. See [Research 06](research/06-the-mind.md).
+
+![the mind choosing](life/mind.png)
+![the mind deliberating](life/mind.gif)
+
+And a **per-branch** mind (`mind_branches`) — each shoot of one plant steered by a
+different band of the grid, so some reach for the light and open while others sag
+and fold shut, all at once ("close *piece of itself*"):
+
+![per-branch mind](life/mind_branches.png)
+![per-branch mind animating](life/mind_branches.gif)
 
 ## Cosmos & bodies
 

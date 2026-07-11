@@ -30,7 +30,7 @@ def _sky(rd: wp.vec3, sun: wp.vec3) -> wp.vec3:
 def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, mesh_id: wp.uint64,
                   indices: wp.array(dtype=wp.int32), vnormals: wp.array(dtype=wp.vec3),
                   vcolors: wp.array(dtype=wp.vec3), sun: wp.vec3, sun_col: wp.vec3,
-                  ground_y: float, width: int, height: int):
+                  ground_y: float, draw_ground: int, width: int, height: int):
     i, j = wp.tid()
     u = (2.0 * (float(j) + 0.5) / float(width)) - 1.0
     v = (2.0 * (float(height - 1 - i) + 0.5) / float(height)) - 1.0
@@ -43,7 +43,7 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, mesh_id: wp.uint6
         t_mesh = q.t
 
     t_gnd = float(1.0e30)
-    if rd[1] < -1.0e-4:
+    if draw_ground != 0 and rd[1] < -1.0e-4:
         tg = (ground_y - ro[1]) / rd[1]
         if tg > 0.0:
             t_gnd = tg
@@ -90,8 +90,12 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, mesh_id: wp.uint6
 def render_plant(mesh: Mesh, width: int, height: int, eye, target,
                  sun_dir=(0.4, 0.8, 0.35), device: str = "cpu",
                  fov: float = 38.0, exposure: float = 1.05,
-                 ground_y: float = 0.0) -> np.ndarray:
-    """Ray-cast a plant mesh into an ``(H, W, 3)`` image via the Warp engine."""
+                 ground_y: float = 0.0, ground: bool = True) -> np.ndarray:
+    """Ray-cast a mesh into an ``(H, W, 3)`` image via the Warp engine.
+
+    Set ``ground=False`` for a floating subject (a molecule / cell) — the
+    shadow-catching soil plane is dropped and the mesh renders on pure sky.
+    """
     if mesh.n_tris == 0:                              # nothing grew yet
         img = np.zeros((height, width, 3), np.float32)
         return img
@@ -109,7 +113,8 @@ def render_plant(mesh: Mesh, width: int, height: int, eye, target,
     wp.launch(render_kernel, dim=(height, width),
               inputs=[img, cam, wmesh.id, idx, vnormals, vcolors, sun,
                       wp.vec3(1.0, 0.96, 0.86), float(ground_y),
-                      int(width), int(height)], device=device)
+                      int(1 if ground else 0), int(width), int(height)],
+              device=device)
     wp.synchronize_device(device)
     hdr = img.numpy()
     r = max(2, int(min(width, height) * 0.01))

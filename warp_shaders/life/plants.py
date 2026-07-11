@@ -80,9 +80,100 @@ def grass(seed: int = 1) -> PlantSpec:
     return PlantSpec(ls, cfg, gens=9, sides=4)
 
 
-_REGISTRY = {"tree": tree, "herb": herb, "grass": grass}
+# --- environmentally-responsive plants (ABOP §2.3.4) -------------------------
+# These carry no tropism in their own cfg; the scene sets the environment
+# (light target, gravity susceptibility, leaf-fold) on a per-frame TurtleConfig
+# so the same grammar visibly responds to a moving light or to rain. This is
+# the "obvious rules" substrate the future mind layer will steer.
+
+def sapling(seed: int = 5) -> PlantSpec:
+    # a young leafy stem: straight-ish internodes with paired leaves, tall
+    # enough that a phototropic bend along its length reads clearly
+    rules = {
+        "X": [
+            ("F[+(35)'(2)L]F[-(35)'(2)L]FX", 0.6),
+            ("F[-(35)'(2)L]F[+(35)'(2)L]FX", 0.4),
+        ],
+    }
+    ls = LSystem("X", rules, seed=seed)
+    cfg = TurtleConfig(step=0.34, angle=30.0, radius=0.05, leaf_size=0.85)
+    return PlantSpec(ls, cfg, gens=7, sides=5)
+
+
+def weeper(seed: int = 2) -> PlantSpec:
+    # a whippy plant whose side shoots sag: many internodes per shoot so a
+    # gentle gravitropism arches them into a weeping form
+    rules = {
+        "X": [
+            ("F[&(20)/(90)S]/(137.5)X", 0.6),
+            ("F[&(25)/(90)S][&(25)/(270)S]/(137.5)X", 0.4),
+        ],
+        "S": "FFF[+(15)'(2)L]FFF[-(15)'(2)L]FFF'(2)L",
+    }
+    ls = LSystem("X", rules, seed=seed)
+    cfg = TurtleConfig(step=0.3, angle=24.0, radius=0.05, leaf_size=0.7)
+    return PlantSpec(ls, cfg, gens=6, sides=5)
+
+
+# --- flowering plant (parametric apex that blooms at maturity) ---------------
+
+def flower() -> PlantSpec:
+    # apex A(n) elongates a leafy stem while n>0, then becomes a bloom K: a whorl
+    # of five bright petals ('(3)) around a small centre. The growing scene pops
+    # the bloom once the stem reaches maturity.
+    # a bloom = a whorl of six bright petals splayed out around a small centre,
+    # emitted inline the moment the apex matures (so it needs no extra generation)
+    petal = "[&(38)'(3)L(1.5)]/(60)"
+    bloom = "'(3)" + petal * 6 + "'(3)L(0.7)"
+
+    def apex(m, l, r):
+        n = m.params[0]
+        if n > 0.5:
+            s = "F(0.55)[+(35)'(1)L(0.7)]/(137.5)[-(35)'(1)L(0.7)]/(137.5)"
+            return parse(s) + [Module("A", (n - 1.0,))]
+        return parse(bloom)
+    ls = LSystem("A(5)", {"A": Rule("A", apex)})
+    cfg = TurtleConfig(step=0.55, angle=32.0, radius=0.05, leaf_size=1.0)
+    return PlantSpec(ls, cfg, gens=6, sides=5)
+
+
+# --- dense low shrub (stochastic, wide) --------------------------------------
+
+def bush(seed: int = 6) -> PlantSpec:
+    rules = {
+        "X": [
+            ("F[+(38)X][-(38)X][&(38)/(90)X]F'(1)L", 0.5),
+            ("F[-(40)X][&(34)X]F'(2)L", 0.3),
+            ("F[+(40)X][^(34)/(90)X]F'(1)L", 0.2),
+        ],
+    }
+    ls = LSystem("X", rules, seed=seed)
+    cfg = TurtleConfig(step=0.34, angle=34.0, radius=0.05, leaf_size=0.7)
+    return PlantSpec(ls, cfg, gens=5, sides=5)
+
+
+# --- bracketed fern (the iconic ABOP §1.6 fig-1.24 plant, in 3D) -------------
+
+def fern(seed: int = 4) -> PlantSpec:
+    # the classic bracketed grammar X -> F+[[X]-X]-F[-FX]+X, F -> FF, with a
+    # periodic roll so successive fronds spiral out of plane (3D), leaves at tips
+    # the canonical bracketed frond X -> F-[[X]+X]+F[+FX]-X (ABOP fig 1.24f),
+    # F left constant so the frond stays lacy instead of compounding a leggy
+    # base; leaves tucked at the sub-frond tips, a gentle roll for 3D depth
+    rules = {
+        "X": "F-[[X]+X'(1)L]+F[+FX'(1)L]-/(35)X",
+    }
+    ls = LSystem("'(2)X", rules, seed=seed)
+    cfg = TurtleConfig(step=0.26, angle=22.5, radius=0.03, leaf_size=0.5)
+    return PlantSpec(ls, cfg, gens=6, sides=4)
+
+
+_REGISTRY = {"tree": tree, "herb": herb, "grass": grass,
+             "sapling": sapling, "weeper": weeper, "fern": fern,
+             "flower": flower, "bush": bush}
 _spec_cache: dict = {}
 _mesh_cache: dict = {}
+_word_cache: dict = {}
 
 
 def get_spec(name: str) -> PlantSpec:
@@ -103,3 +194,26 @@ def grow_mesh(spec: PlantSpec, gen: int) -> Mesh:
         m = build_mesh(geo, sides=spec.sides)
         _mesh_cache[key] = (m, geo.bounds())
     return _mesh_cache[key]
+
+
+def derive_word(spec: PlantSpec, gen: int):
+    """Derive `spec` to generation `gen` (word cached; interpretation isn't)."""
+    gen = max(0, min(gen, spec.gens))
+    key = (id(spec.lsystem), gen)
+    w = _word_cache.get(key)
+    if w is None:
+        w = spec.lsystem.derive(gen)
+        _word_cache[key] = w
+    return w
+
+
+def grow_mesh_env(spec: PlantSpec, gen: int, cfg: TurtleConfig) -> Mesh:
+    """Grow with an environment-modified turtle config (uncached).
+
+    The word for a generation is cached, but interpretation runs every call so
+    a moving light / changing rain re-shapes the same structure per frame.
+    Returns ``(Mesh, (lo, hi))`` like :func:`grow_mesh`.
+    """
+    word = derive_word(spec, gen)
+    geo = interpret(word, cfg)
+    return build_mesh(geo, sides=spec.sides), geo.bounds()

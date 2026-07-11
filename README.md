@@ -109,6 +109,27 @@ over a starfield — fully procedural, no texture asset. Shading lives in
 [`warp_shaders/earthgfx.py`](warp_shaders/earthgfx.py), shared with the Earth
 blast simulation below.
 
+## Life — from molecule to plant
+
+The engine shows life across scales. At the **bottom of the ladder**
+(`warp_shaders.life.molecular` / `.cell`), the sub-plant scales the arc names —
+**DNA → protein → cell** — each animated: a **DNA double helix** assembles
+base-pair by base-pair (B-DNA geometry, colour-coded A/T/G/C), a **protein**
+backbone folds from an extended chain into a compact α-helix/β-strand, and a
+**cell** divides — membrane pinching, nucleus and organelles partitioning into
+two (mitosis). DNA and protein are solid ray-traced meshes; the cell is a soft
+glow volume, bridging the atom strand's look into tangible life.
+
+| DNA | protein | cell (dividing) |
+|---|---|---|
+| ![dna](docs/life/dna.png) | ![protein](docs/life/protein.png) | ![cell](docs/life/cell.png) |
+
+![dna assembling](docs/life/dna_assemble.gif)
+![protein folding](docs/life/protein_fold.gif)
+![cell dividing](docs/life/cell_divide.gif)
+
+See [docs/research/05-molecular-to-cell.md](docs/research/05-molecular-to-cell.md).
+
 ## Life — L-Systems that grow
 
 `warp_shaders.life` grows plants from **L-System grammars** (Prusinkiewicz &
@@ -118,9 +139,13 @@ tessellates to a triangle mesh, and **ray-casts real geometry** through the Warp
 engine (`wp.Mesh` BVH + `wp.mesh_query_ray`, GGX PBR, cast shadow, sky, post).
 Generation advances with `time`, so they grow.
 
-| grass | herb | tree |
-|---|---|---|
-| ![grass](docs/life/grass.png) | ![herb](docs/life/herb.png) | ![tree](docs/life/tree.png) |
+| grass | herb | tree | fern | flower | bush |
+|---|---|---|---|---|---|
+| ![grass](docs/life/grass.png) | ![herb](docs/life/herb.png) | ![tree](docs/life/tree.png) | ![fern](docs/life/fern.png) | ![flower](docs/life/flower.png) | ![bush](docs/life/bush.png) |
+
+A whole **meadow** — several plants merged into one mesh, swaying in one wind:
+
+![meadow](docs/life/meadow.png)
 
 ```bash
 python render.py --scene tree --frames 8 --fps 1 --gif out/tree.gif  # watch it grow
@@ -130,9 +155,47 @@ python -m tests.test_lsystem                                         # grammar t
 
 ![tree growing](docs/life/tree_grow.gif)
 
-The roadmap runs downward (DNA -> protein -> cell) and then adds a **mind** —
-a decision layer that overrides default growth (toward light, closing in rain),
-built on the context-sensitive class. See [docs/research/04-lsystems.md](docs/research/04-lsystems.md).
+**Environmental response — the "obvious rules" (ABOP §2.3.4).** Before any mind,
+the plant obeys physics: a **tropism** bends the turtle's heading toward a
+direction each step. So a sapling bends to **follow a light** (phototropism), a
+weeper's shoots **sag under gravity** (gravitropism), leaves **fold shut in the
+rain** (nyctinasty), and a tuft **sways in a gust** (a time-varying tropism) —
+all emergent from the same grammar plus an environment signal, no decisions yet.
+
+| phototropism | weeping | rain-fold | wind |
+|---|---|---|---|
+| ![phototropism](docs/life/phototropism.png) | ![weeping](docs/life/weeping.png) | ![rain-fold](docs/life/rain_fold.png) | ![wind](docs/life/wind.png) |
+
+| following the light | closing in the rain | swaying in a gust |
+|---|---|---|
+| ![light tracking](docs/life/photo_track.gif) | ![rain fold](docs/life/rain_fold.gif) | ![wind sway](docs/life/wind.gif) |
+
+```bash
+python render.py --scene phototropism --frames 24 --fps 12 --gif out/photo.gif
+python render.py --scene rain_fold --time 5 -o rain.png
+```
+
+**The mind — choosing to obey.** Top of the ladder: a **Conway Game of Life**
+mind whose living population sets a **drive** that *chooses* whether the plant
+seeks the light (open, phototropic) or rests (sags, leaves folded). Unlike the
+reflex `phototropism` scene, here the plant follows the light **only when the
+mind decides to** — a decision, not a reflex. The inset shows the deliberating
+grid + a drive bar.
+
+![the mind choosing](docs/life/mind.png)
+
+And a **per-branch** mind (`mind_branches`): one plant with several shoots, each
+steered by a different band of the same grid — so some shoots reach up and open
+toward the light while others sag and fold shut, all at once. This is the
+operator's *"close piece of itself"* — the decision is per-part, not global.
+
+![per-branch mind](docs/life/mind_branches.png)
+
+The mind steers the plant through the same per-frame seam the obvious rules use
+(`grow_mesh_env`), so it commands the very reflexes the plant already has. The
+operator's wave-collapse / "backward in time" framing is the horizon. See
+[docs/research/06-the-mind.md](docs/research/06-the-mind.md) and
+[04-lsystems.md](docs/research/04-lsystems.md).
 
 ## The atom, from the bottom up
 
