@@ -25,7 +25,8 @@ Device functions (``@wp.func``) are meant to be *called inside your own
 plain Python.
 """
 
-from . import atmosphere, color, intersect, pbr, post, shadow, volumetric
+from . import atmosphere, color, imageio, intersect, pbr, post, shadow, volumetric
+from .imageio import RenderTarget, load_hdr, save_hdr, save_npy, save_png
 from .color import (blackbody, kelvin_to_rgb, linear_to_srgb, luminance,
                     srgb_to_linear)
 from .intersect import (ray_box, ray_disk, ray_plane, ray_sphere, ray_sphere_o,
@@ -47,7 +48,10 @@ from .uniforms import (
 
 __all__ = [
     # subsystem namespaces
-    "atmosphere", "color", "intersect", "pbr", "post", "shadow", "volumetric",
+    "atmosphere", "color", "imageio", "intersect", "pbr", "post", "shadow",
+    "volumetric",
+    # frame output (host)
+    "RenderTarget", "save_png", "save_hdr", "save_npy", "load_hdr",
     # colour science (device)
     "kelvin_to_rgb", "blackbody", "luminance", "linear_to_srgb", "srgb_to_linear",
     # ray-primitive intersection (device)

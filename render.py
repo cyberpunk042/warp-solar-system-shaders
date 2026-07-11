@@ -88,20 +88,26 @@ def main() -> None:
 
     from warp_shaders.engine import post
 
-    def render_frame(t):
+    def render_frame(t, apply_look=True):
         # Supersample: render at ss x resolution, box-average down (universal AA).
         fr = scene.render(args.width * ss, args.height * ss, t, tuple(args.mouse), device)
         if ss > 1:
             h2 = (fr.shape[0] // ss) * ss
             w2 = (fr.shape[1] // ss) * ss
             fr = fr[:h2, :w2].reshape(h2 // ss, ss, w2 // ss, ss, 3).mean(axis=(1, 3))
-        if args.look != "clean":
+        if apply_look and args.look != "clean":
             fr = post.apply_look(fr, args.look, seed=int(t * 60.0) % 997)
         return fr
 
     if args.frames <= 1:
-        frame = render_frame(args.time)
-        save_png(args.out, frame)
+        low = args.out.lower()
+        if low.endswith(".hdr") or low.endswith(".npy"):
+            # HDR containers keep the raw linear buffer — no LDR look/clamp.
+            from warp_shaders.engine.imageio import RenderTarget
+            RenderTarget(render_frame(args.time, apply_look=False)).save(args.out)
+            print(f"wrote {args.out}  ({args.width}x{args.height}, t={args.time}, HDR)")
+            return
+        save_png(args.out, render_frame(args.time))
         print(f"wrote {args.out}  ({args.width}x{args.height}, t={args.time})")
         return
 
