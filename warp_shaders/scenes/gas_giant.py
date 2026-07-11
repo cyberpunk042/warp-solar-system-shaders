@@ -13,6 +13,7 @@ import warp as wp
 
 from ..earthgfx import stars
 from ..engine import post
+from ..engine.intersect import ray_sphere_o as _rs
 from ..engine.uniforms import Camera, camera_ray_dir, make_camera
 from ..procedural.noise import fbm3
 from ..scene import Scene
@@ -20,17 +21,6 @@ from ..scene import Scene
 _R = 1.0
 _RING_IN = 1.35
 _RING_OUT = 2.35
-
-
-@wp.func
-def _rs(ro: wp.vec3, rd: wp.vec3, radius: float) -> wp.vec2:
-    b = wp.dot(ro, rd)
-    c = wp.dot(ro, ro) - radius * radius
-    disc = b * b - c
-    if disc < 0.0:
-        return wp.vec2(1e30, -1e30)
-    s = wp.sqrt(disc)
-    return wp.vec2(-b - s, -b + s)
 
 
 @wp.func

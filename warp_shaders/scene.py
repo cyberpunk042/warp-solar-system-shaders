@@ -108,3 +108,17 @@ def get_scene(name: str) -> Scene:
 def render(scene_name: str, **kwargs) -> np.ndarray:
     """Convenience: render a scene by name. Kwargs forwarded to ``Scene.render``."""
     return get_scene(scene_name).render(**kwargs)
+
+
+def render_image(scene_name: str, look: str = "clean", seed: int = 0,
+                 **kwargs) -> np.ndarray:
+    """Render a scene and apply a named post **look** in one call.
+
+    A thin high-level wrapper over :func:`render` + ``engine.post.apply_look``
+    (looks: ``clean`` / ``cinematic`` / ``film`` / ``dreamy`` / ``crisp``)::
+
+        img = ws.render_image("terrain", look="cinematic", width=960, height=540)
+    """
+    from .engine import post
+    img = get_scene(scene_name).render(**kwargs)
+    return post.apply_look(img, look, seed)

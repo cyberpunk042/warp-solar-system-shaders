@@ -11,6 +11,7 @@ import warp as wp
 from warp_shaders.engine import color as C
 from warp_shaders.engine import intersect as I
 from warp_shaders.engine import post as P
+from warp_shaders.engine import shadow as SH
 from warp_shaders.engine import sky as S
 
 wp.init()
@@ -52,6 +53,48 @@ def _isect_kernel(out: wp.array(dtype=wp.vec4)):
     out[2] = wp.vec4(t, tp, td, 0.0)
     box = I.ray_box(ro, rd, wp.vec3(-1.0, -1.0, -1.0), wp.vec3(1.0, 1.0, 1.0))
     out[3] = wp.vec4(box[0], box[1], 0.0, 0.0)               # (4,6)
+
+
+@wp.kernel
+def _shadow_kernel(out: wp.array(dtype=wp.vec4)):
+    o = wp.vec3(0.0, 0.0, 0.0)
+    fwd = wp.vec3(0.0, 0.0, 1.0)
+    # soft shadow: sphere squarely on the light ray -> full shadow (0);
+    # sphere pushed aside -> lit (1); sphere just past the edge -> penumbra.
+    blocked = SH.soft_shadow_sphere(o, fwd, wp.vec3(0.0, 0.0, 5.0), 1.0, 12.0)
+    lit = SH.soft_shadow_sphere(o, fwd, wp.vec3(3.0, 0.0, 5.0), 1.0, 12.0)
+    graze = SH.soft_shadow_sphere(o, fwd, wp.vec3(1.05, 0.0, 5.0), 1.0, 12.0)
+    out[0] = wp.vec4(blocked, lit, graze, 0.0)
+    # AO: a near sphere the normal faces -> occluded; normal facing away -> none;
+    # a far sphere -> ~none.
+    ao_near = SH.sphere_ao(o, fwd, wp.vec3(0.0, 0.0, 1.2), 1.0)
+    ao_away = SH.sphere_ao(o, wp.vec3(0.0, 0.0, -1.0), wp.vec3(0.0, 0.0, 1.2), 1.0)
+    ao_far = SH.sphere_ao(o, fwd, wp.vec3(0.0, 0.0, 50.0), 1.0)
+    ao_horiz = SH.sphere_occlusion(o, wp.vec3(0.0, 1.0, 0.0),
+                                   wp.vec3(2.0, 0.0, 2.0), 1.0)   # partial-horizon branch
+    out[1] = wp.vec4(ao_near, ao_away, ao_far, ao_horiz)
+    # atoms
+    pen = SH.penumbra(1.0, 0.1, 1.0, 8.0)                        # min(1, 0.8) = 0.8
+    g0 = SH.ground_contact_ao(0.0, 1.0)                          # 0
+    g5 = SH.ground_contact_ao(5.0, 1.0)                          # ~0.993
+    out[2] = wp.vec4(pen, g0, g5, 0.0)
+
+
+def test_shadow_device():
+    o = wp.zeros(3, dtype=wp.vec4, device="cpu")
+    wp.launch(_shadow_kernel, dim=1, inputs=[o], device="cpu")
+    wp.synchronize_device("cpu")
+    a = o.numpy()
+    assert a[0][0] < 1e-4                       # squarely blocked -> full shadow
+    assert a[0][1] > 0.999                       # pushed aside -> lit
+    assert 0.02 < a[0][2] < 0.98                 # just past the edge -> penumbra
+    assert 0.0 <= a[1][0] < 0.8                  # near facing sphere is occluded
+    assert a[1][1] > 0.999                        # normal facing away -> unoccluded
+    assert a[1][2] > 0.98                         # far sphere barely occludes
+    assert 0.0 <= a[1][3] <= 1.0                  # partial-horizon branch stays in range
+    assert a[1][0] < a[1][2]                      # near occludes more than far
+    assert abs(a[2][0] - 0.8) < 1e-4             # penumbra atom
+    assert a[2][1] < 1e-4 and a[2][2] > 0.99     # contact AO: 0 at ground, ~1 high up
 
 
 def test_color_host_anchors():
@@ -125,6 +168,26 @@ def test_post_ops():
     assert not np.allclose(ca[:, 0], disp[:, 0])
 
 
+def test_looks():
+    # the named-look registry + one-call grade
+    names = P.looks()
+    assert names[0] == "clean" and {"cinematic", "film", "dreamy", "crisp"} <= set(names)
+    rng = np.random.default_rng(1)
+    disp = rng.random((24, 40, 3)).astype(np.float32)
+    # "clean" is a no-op (identity within clamp), graded looks change pixels
+    assert np.allclose(P.apply_look(disp, "clean"), np.clip(disp, 0, 1))
+    for look in ("cinematic", "film", "dreamy", "crisp"):
+        out = P.apply_look(disp, look, seed=2)
+        assert out.shape == disp.shape and np.all(np.isfinite(out))
+        assert out.min() >= 0.0 and out.max() <= 1.0
+        assert not np.allclose(out, disp)
+    # a params dict works just like a preset name
+    d = P.apply_look(disp, {"vignette": 0.5})
+    assert d.shape == disp.shape and np.all(np.isfinite(d))
+    # grained looks are deterministic from the seed
+    assert np.array_equal(P.apply_look(disp, "film", 7), P.apply_look(disp, "film", 7))
+
+
 if __name__ == "__main__":
     test_color_host_anchors()
     print("  colour host anchors (blackbody + sRGB): OK")
@@ -136,4 +199,8 @@ if __name__ == "__main__":
     print("  sky device (starfield + milky way): OK")
     test_post_ops()
     print("  post ops (exposure/auto/CA/grain/sharpen): OK")
+    test_looks()
+    print("  looks (clean/cinematic/film/dreamy/crisp + params dict): OK")
+    test_shadow_device()
+    print("  shadow device (soft sphere shadow + analytic AO + atoms): OK")
     print("ALL PASSED")
