@@ -173,10 +173,112 @@ def transmittance_lut(lut: wp.array2d(dtype=wp.vec3), h: float, mu: float) -> wp
     return sample2d(lut, u, v, 0, 0)
 
 
+# ---- precomputed multiple-scattering LUT (Hillaire 2020) ---------------------
+# psi_ms(h, mu): the infinite-order, isotropic multiple-scattered luminance
+# response to unit sun illuminance, per unit local scattering coefficient. At
+# runtime a view sample adds  psi_ms * sigma_s(h) * view_transmittance  — no sun
+# phase, no inner sun march — so it brightens twilight / horizon / shadowed sky
+# without touching the phase-weighted single-scatter term. Consumes the
+# transmittance LUT (sun-path attenuation + ground visibility already baked in).
+
+_MS_GROUND_ALBEDO = 0.30        # Lambertian ground bounce into the light field
+_MS_SCALE = 0.22                # calibration into this model's tuned radiance budget
+                                # (single-scatter here is artistically boosted; a full-
+                                #  strength physical MS would double-count — this scales
+                                #  the Hillaire term to a realistic, non-blowout lift)
+
+
+@wp.func
+def _fib_sphere(k: int, n: int) -> wp.vec3:
+    """Deterministic uniform sphere sample k of n (Fibonacci sphere; y = up)."""
+    ga = 2.39996323             # golden angle = pi * (3 - sqrt(5))
+    z = 1.0 - (2.0 * float(k) + 1.0) / float(n)     # (k+0.5)-centred cosine in (-1,1)
+    r = wp.sqrt(wp.max(1.0 - z * z, 0.0))
+    phi = ga * float(k)
+    return wp.vec3(r * wp.cos(phi), z, r * wp.sin(phi))
+
+
+@wp.kernel
+def bake_multiscatter(ms_lut: wp.array2d(dtype=wp.vec3),
+                      tr_lut: wp.array2d(dtype=wp.vec3),
+                      size: int, dir_samples: int, steps: int):
+    i, j = wp.tid()                                  # i = altitude, j = sun-mu
+    mu = (float(j) + 0.5) / float(size) * 2.0 - 1.0
+    h = (float(i) + 0.5) / float(size) * (_RA - _RG)
+    p0 = wp.vec3(0.0, _RG + h, 0.0)
+    sun = wp.vec3(wp.sqrt(wp.max(1.0 - mu * mu, 0.0)), mu, 0.0)
+
+    L2 = wp.vec3(0.0, 0.0, 0.0)                       # 2nd-order (sun illum = 1)
+    fms = wp.vec3(0.0, 0.0, 0.0)                      # transfer (response to unit ambient)
+
+    for k in range(dir_samples):
+        w = _fib_sphere(k, dir_samples)
+        atm = _ray_sphere(p0, w, _RA)
+        tmax = atm[1]
+        gnd = _ray_sphere(p0, w, _RG)
+        hit_ground = int(0)
+        if gnd[0] > 0.0:
+            tmax = wp.min(tmax, gnd[0])
+            hit_ground = 1
+        if tmax > 0.0:
+            seg = tmax / float(steps)
+            thr = wp.vec3(1.0, 1.0, 1.0)             # throughput T(p0, x') along w
+            l_dir = wp.vec3(0.0, 0.0, 0.0)
+            f_dir = wp.vec3(0.0, 0.0, 0.0)
+            t = 0.5 * seg
+            for _ in range(steps):
+                x = p0 + w * t
+                hh = wp.length(x) - _RG
+                dr = wp.exp(-hh / _HR)
+                dm = wp.exp(-hh / _HM)
+                sig_s = _BETA_R * dr + wp.vec3(_BETA_M, _BETA_M, _BETA_M) * dm
+                sig_t = _BETA_R * dr + wp.vec3(_BETA_M, _BETA_M, _BETA_M) * (1.1 * dm)
+                mus = wp.dot(wp.normalize(x), sun)
+                tsun = transmittance_lut(tr_lut, hh, mus)   # illum 1; visibility folded in
+                # isotropic: phase(1/4pi) x sphere(4pi) cancel -> average over N
+                l_dir += wp.cw_mul(thr, wp.cw_mul(sig_s, tsun)) * seg
+                f_dir += wp.cw_mul(thr, sig_s) * seg
+                thr = wp.cw_mul(thr, _vexp(-sig_t * seg))
+                t += seg
+            if hit_ground == 1:
+                xg = p0 + w * tmax
+                mug = wp.dot(wp.normalize(xg), sun)
+                if mug > 0.0:
+                    tsg = transmittance_lut(tr_lut, 0.0, mug)
+                    l_dir += wp.cw_mul(thr, tsg) * (_MS_GROUND_ALBEDO * mug / _PI)
+            L2 += l_dir
+            fms += f_dir
+
+    inv = 1.0 / float(dir_samples)
+    L2 = L2 * inv
+    fms = fms * inv
+    d = wp.vec3(1.0, 1.0, 1.0) - fms                 # geometric-series denominator
+    ms_lut[i, j] = wp.vec3(L2[0] / wp.max(d[0], 1e-4),
+                           L2[1] / wp.max(d[1], 1e-4),
+                           L2[2] / wp.max(d[2], 1e-4))
+
+
+def build_multiscatter_lut(tr_lut, size=32, device="cpu", dir_samples=32, steps=32):
+    """Bake the multiple-scattering LUT (needs the transmittance LUT, same device)."""
+    ms = wp.zeros((size, size), dtype=wp.vec3, device=device)
+    wp.launch(bake_multiscatter, dim=(size, size),
+              inputs=[ms, tr_lut, int(size), int(dir_samples), int(steps)], device=device)
+    wp.synchronize_device(device)
+    return ms
+
+
+@wp.func
+def multiscatter_lut(ms_lut: wp.array2d(dtype=wp.vec3), h: float, mu: float) -> wp.vec3:
+    u = mu * 0.5 + 0.5
+    v = wp.clamp(h / (_RA - _RG), 0.0, 1.0)
+    return sample2d(ms_lut, u, v, 0, 0)
+
+
 @wp.func
 def atmosphere_lut(ro: wp.vec3, rd: wp.vec3, sun: wp.vec3, view_samples: int,
-                   lut: wp.array2d(dtype=wp.vec3)) -> wp.vec3:
-    """Sky in-scatter using the transmittance LUT for the sun path (no inner loop)."""
+                   lut: wp.array2d(dtype=wp.vec3),
+                   ms_lut: wp.array2d(dtype=wp.vec3)) -> wp.vec3:
+    """Sky in-scatter (single + Hillaire multiple scattering) via the LUTs."""
     atm = _ray_sphere(ro, rd, _RA)
     t0 = wp.max(atm[0], 0.0)
     t1 = atm[1]
@@ -191,6 +293,7 @@ def atmosphere_lut(ro: wp.vec3, rd: wp.vec3, sun: wp.vec3, view_samples: int,
     od_m = float(0.0)
     sum_r = wp.vec3(0.0, 0.0, 0.0)
     sum_m = wp.vec3(0.0, 0.0, 0.0)
+    sum_ms = wp.vec3(0.0, 0.0, 0.0)
     mu = wp.dot(rd, sun)
     phase_r = 3.0 / (16.0 * _PI) * (1.0 + mu * mu)
     g2 = _MIE_G * _MIE_G
@@ -211,14 +314,20 @@ def atmosphere_lut(ro: wp.vec3, rd: wp.vec3, sun: wp.vec3, view_samples: int,
         att = wp.cw_mul(t_view, t_sun)
         sum_r += att * hr
         sum_m += att * hm
+        # Hillaire multiple scattering: isotropic, no sun-phase, no t_sun
+        psi = multiscatter_lut(ms_lut, h, wp.dot(up, sun))
+        scat = _BETA_R * hr + wp.vec3(_BETA_M * hm, _BETA_M * hm, _BETA_M * hm)  # sigma_s * seg
+        sum_ms += wp.cw_mul(psi, wp.cw_mul(scat, t_view))
         t += seg
-    return (wp.cw_mul(sum_r, _BETA_R) * phase_r + sum_m * (_BETA_M * phase_m)) * _SUN_I
+    single = wp.cw_mul(sum_r, _BETA_R) * phase_r + sum_m * (_BETA_M * phase_m)
+    return (single + sum_ms * _MS_SCALE) * _SUN_I
 
 
 @wp.func
 def sky_radiance_lut(ro: wp.vec3, rd: wp.vec3, sun: wp.vec3, view_samples: int,
-                     lut: wp.array2d(dtype=wp.vec3)) -> wp.vec3:
-    col = atmosphere_lut(ro, rd, sun, view_samples, lut)
+                     lut: wp.array2d(dtype=wp.vec3),
+                     ms_lut: wp.array2d(dtype=wp.vec3)) -> wp.vec3:
+    col = atmosphere_lut(ro, rd, sun, view_samples, lut, ms_lut)
     mu = wp.dot(rd, sun)
     disk = wp.smoothstep(0.99985, 0.99992, mu)
     if disk > 0.0:
