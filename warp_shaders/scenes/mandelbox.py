@@ -157,7 +157,7 @@ def _render(width, height, time, mouse, device):
 
 SCENE = Scene(
     name="mandelbox",
-    description="Distance-estimated Mandelbox fractal (Lowe box-fold + sphere-fold) "
-                "— endless nested boxes + spheres, orbit-trap metallic colour.",
+    description="Distance-estimated Mandelbox fractal (Lowe box-fold + sphere-fold, "
+                "scale -1.5) — the iconic ringed cube, orbit-trap iridescent colour.",
     renderer=_render,
 )
