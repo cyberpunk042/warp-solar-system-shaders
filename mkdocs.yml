@@ -45,6 +45,7 @@ nav:
       - scene: api/scene.md
       - life (L-Systems): api/life.md
       - super-earth: api/superearth.md
+      - cosmos (solar system): api/cosmos.md
   - Gallery: gallery.md
   - Research notes:
       - Foundations: research/00-foundations.md
@@ -57,6 +58,7 @@ nav:
       - Wave and collapse: research/07-wave-and-collapse.md
       - Ecosystem: research/08-ecosystem.md
       - Super-Earth: research/09-super-earth.md
+      - The solar system: research/10-solar-system.md
 
 markdown_extensions:
   - admonition

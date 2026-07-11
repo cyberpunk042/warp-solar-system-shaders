@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (79 scenes).
+`python render.py --list` for the full, current list (85 scenes).
 
 ## Engine showcase
 
@@ -184,3 +184,29 @@ thermonuclear blasts and Earth-impact scenarios — see `warp_shaders/sim/`.
 | **nuclear** blast chain<br>![nuclear](sim/nuclear.png) | **thermonuclear** blast<br>![thermonuclear](sim/thermonuclear.png) | **earth impact** (grounded)<br>![impact](sim/earth_grounded.png) |
 
 Animated: [`nuclear.gif`](sim/nuclear.gif), [`thermonuclear.gif`](sim/thermonuclear.gif).
+
+## The solar system — the namesake, configurable end to end
+
+One renderer (`warp_shaders.cosmos`) draws any mix of stars (sun / neutron star /
+white dwarf / black hole) and configurable planets on chosen Keplerian orbits,
+plus an optional nebula. `--frames` animates the orbits. See
+[Research 10](research/10-solar-system.md).
+
+The celestial bodies (each a reusable shader):
+
+| | | | |
+|---|---|---|---|
+| **sun**<br>granulation + spots + corona<br>![sun](cosmos/body_sun.png) | **neutron star**<br>compact + twin pulsar beams<br>![neutron](cosmos/body_neutron.png) | **white dwarf**<br>hot blue-white remnant<br>![dwarf](cosmos/body_dwarf.png) | **black hole**<br>lensing + disk + photon ring<br>![blackhole](cosmos/body_blackhole.png) |
+
+The systems:
+
+| | | |
+|---|---|---|
+| **solar_system** (the first)<br>neutron star + a planet on an ellipse<br>![solar_system](cosmos/solar_system.png) | **binary**<br>two suns + a planet around the pair<br>![binary](cosmos/ss_binary.png) | **trinary**<br>sun + neutron star + white dwarf + gas giant<br>![trinary](cosmos/ss_trinary.png) |
+| **black-hole system**<br>a hole lensing a companion sun + planet<br>![blackhole](cosmos/ss_blackhole.png) | **nebula cradle**<br>a sun + two planets inside a nebula<br>![nebula](cosmos/ss_nebula.png) | **positioned nebula**<br>filamentary volume, placed + sized<br>![nebula](cosmos/body_nebula.png) |
+
+The first system orbiting, and a **collapsing** system — two suns spiral in,
+merge, collapse to a black hole (supernova), which swallows the planet:
+
+![solar system orbiting](cosmos/solar_system.gif)
+![collapsing system](cosmos/ss_collapse.gif)

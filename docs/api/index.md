@@ -17,6 +17,7 @@ A reminder from [Concepts](../concepts.md): symbols marked **device** are
 | **[lod](lod.md)** | `QualityTier` presets and tier selection |
 | **[scene](scene.md)** | the `Scene` contract and the registry (`render`, `list_scenes`, `get_scene`) |
 | **[super-earth](superearth.md)** | the configurable procedural planet — `PlanetConfig` knobs, presets, moons, and orbital bombardment |
+| **[cosmos](cosmos.md)** | the configurable solar system — star shaders, black-hole lensing, Kepler + N-body orbits, nebula, and the composited system renderer |
 
 ## Top-level symbols
 
