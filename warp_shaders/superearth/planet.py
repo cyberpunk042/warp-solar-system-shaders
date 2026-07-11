@@ -25,6 +25,8 @@ from ..procedural.noise import domain_warp3, fbm3, ridged3, worley3, worley3_f2
 _R = 1.0                      # planet radius (normalised)
 _RS = 0.055                   # relief scale (fraction of radius)
 _GOLDEN = 2.399963
+_CB = _R * 1.012              # cloud shell base
+_CT = _R * 1.05               # cloud shell top
 
 
 @wp.struct
@@ -324,12 +326,75 @@ def _atmosphere(ro: wp.vec3, rd: wp.vec3, sun: wp.vec3, cfg: PlanetConfig,
 
 
 # --------------------------------------------------------------------------- #
+# clouds (normalised-scale volumetric shell)                                   #
+# --------------------------------------------------------------------------- #
+
+@wp.func
+def _cloud_d(p: wp.vec3, time: float, cov: float) -> float:
+    r = wp.length(p)
+    hf = wp.clamp((r - _CB) / (_CT - _CB), 0.0, 1.0)
+    d = p / r
+    w = time * 0.02
+    shape = fbm3(d * 4.0 + wp.vec3(w, 0.0, 0.0), 5)
+    dens = wp.clamp((shape - (1.0 - cov)) / wp.max(cov, 1e-3), 0.0, 1.0)
+    gh = wp.smoothstep(0.0, 0.25, hf) * wp.smoothstep(1.0, 0.5, hf)
+    dens = dens * gh
+    det = worley3(d * 15.0 + wp.vec3(w * 3.0, 0.0, 0.0))
+    return wp.clamp(dens - (1.0 - dens) * det * 0.3, 0.0, 1.0)
+
+
+@wp.func
+def _march_clouds(ro: wp.vec3, rd: wp.vec3, sun: wp.vec3, time: float,
+                  surf_t: float, cov: float, steps: int) -> wp.vec4:
+    top = _rs(ro, rd, _CT)
+    if top[1] < 0.0:
+        return wp.vec4(0.0, 0.0, 0.0, 1.0)
+    t0 = wp.max(top[0], 0.0)
+    t1 = top[1]
+    if surf_t > 0.0:
+        t1 = wp.min(t1, surf_t)
+    if t1 <= t0:
+        return wp.vec4(0.0, 0.0, 0.0, 1.0)
+    seg = (t1 - t0) / float(steps)
+    sigma = 620.0
+    trans = float(1.0)
+    scat = wp.vec3(0.0, 0.0, 0.0)
+    g = 0.5
+    g_ph = 0.5 * (1.0 - g * g) / wp.pow(1.0 + g * g - 2.0 * g * wp.dot(rd, sun), 1.5)
+    lsteps = 3
+    seg_l = (_CT - _CB) / float(lsteps)
+    sun_col = wp.vec3(1.0, 0.97, 0.92)
+    amb = wp.vec3(0.34, 0.44, 0.60) * 0.35
+    t = t0 + 0.5 * seg
+    for _ in range(steps):
+        p = ro + rd * t
+        dens = _cloud_d(p, time, cov)
+        if dens > 0.003:
+            up = p / wp.length(p)
+            od = float(0.0)
+            tl = seg_l * 0.5
+            for _ in range(lsteps):
+                od += _cloud_d(p + up * tl, time, cov) * seg_l
+                tl += seg_l
+            t_light = wp.exp(-sigma * od)
+            powder = 1.0 - wp.exp(-2.0 * dens)
+            sample = sun_col * (t_light * g_ph * powder * 3.2) + amb
+            d_tr = wp.exp(-sigma * dens * seg)
+            scat += sample * (trans * (1.0 - d_tr))
+            trans *= d_tr
+            if trans < 0.03:
+                break
+        t += seg
+    return wp.vec4(scat[0], scat[1], scat[2], trans)
+
+
+# --------------------------------------------------------------------------- #
 # kernel                                                                        #
 # --------------------------------------------------------------------------- #
 
 @wp.kernel
 def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
-                  cfg: PlanetConfig, time: float, steps: int,
+                  cfg: PlanetConfig, time: float, steps: int, csteps: int,
                   width: int, height: int):
     i, j = wp.tid()
     u = (2.0 * (float(j) + 0.5) / float(width)) - 1.0
@@ -386,6 +451,12 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
             surf_t = hit_t
 
     col = col + _atmosphere(ro, rd, sr, cfg, surf_t)
+
+    if cfg.cloud > 0.0:
+        cov = wp.clamp(cfg.cloud * 0.5 + 0.25, 0.0, 0.95)
+        cl = _march_clouds(ro, rd, sr, time, surf_t, cov, csteps)
+        col = col * cl[3] + wp.vec3(cl[0], cl[1], cl[2])
+
     img[i, j] = col
 
 
@@ -416,6 +487,10 @@ def _steps_for(quality: str) -> int:
     return {"low": 64, "medium": 110, "high": 170, "ultra": 260}.get(quality, 110)
 
 
+def _cloud_steps_for(quality: str) -> int:
+    return {"low": 20, "medium": 30, "high": 44, "ultra": 64}.get(quality, 30)
+
+
 def render_planet(cfg: PlanetConfig, width: int, height: int, time: float = 0.0,
                   mouse=(0.0, 0.0), device: str = "cpu", quality: str = "medium",
                   sun_az: float = 1.1, sun_el: float = 0.35,
@@ -429,10 +504,11 @@ def render_planet(cfg: PlanetConfig, width: int, height: int, time: float = 0.0,
     sun = wp.vec3(math.cos(sun_el) * math.sin(sun_az), math.sin(sun_el),
                   math.cos(sun_el) * math.cos(sun_az))
     steps = _steps_for(quality)
+    csteps = _cloud_steps_for(quality)
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(render_kernel, dim=(height, width),
-              inputs=[img, cam, sun, cfg, float(time), int(steps),
+              inputs=[img, cam, sun, cfg, float(time), int(steps), int(csteps),
                       int(width), int(height)], device=device)
     wp.synchronize_device(device)
     hdr = img.numpy()
