@@ -34,7 +34,7 @@ them inside your own ``@wp.kernel``. Symbols named ``make_*`` / ``post.*`` /
 __version__ = "0.1.0"
 
 # --- subsystem namespaces (device functions live here; import inside kernels) ---
-from . import engine, lod, procedural, textures
+from . import engine, life, lod, procedural, textures
 
 # --- scene registry (host) ---
 from .scene import Scene, get_scene, list_scenes, render
@@ -55,7 +55,7 @@ from .engine.uniforms import (
 __all__ = [
     "__version__",
     # namespaces
-    "engine", "procedural", "textures", "lod", "post",
+    "engine", "procedural", "textures", "lod", "post", "life",
     # scenes
     "Scene", "get_scene", "list_scenes", "render",
     # quality tiers

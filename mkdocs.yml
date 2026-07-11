@@ -43,12 +43,14 @@ nav:
       - textures: api/textures.md
       - lod: api/lod.md
       - scene: api/scene.md
+      - life (L-Systems): api/life.md
   - Gallery: gallery.md
   - Research notes:
       - Foundations: research/00-foundations.md
       - Textures & LUTs: research/01-textures-and-luts.md
       - Atmosphere scattering: research/02-atmosphere-scattering.md
       - Volumetrics & god-rays: research/03-volumetrics-and-godrays.md
+      - L-Systems (growing life): research/04-lsystems.md
 
 markdown_extensions:
   - admonition
