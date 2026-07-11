@@ -19,7 +19,8 @@ from warp_shaders.engine.material import Material, make_mat, make_material
 ### Structs
 
 **`Camera`** — `eye: vec3`, `forward: vec3`, `right: vec3`, `up: vec3`,
-`tan_half_fov: float`, `aspect: float`.
+`tan_half_fov: float`, `aspect: float`, `aperture: float` (lens radius; `0` =
+pinhole), `focus_dist: float` (distance to the sharp focal plane).
 
 **`Light`** — `dir: vec3` (toward the light), `color: vec3`, `intensity: float`.
 
@@ -35,11 +36,34 @@ from warp_shaders.engine.material import Material, make_mat, make_material
 primary ray direction for normalized screen coords `u, v ∈ [-1, 1]`. This is the
 one call every render kernel starts with.
 
+### Depth of field (thin lens)
+
+By default the camera is a pinhole (`aperture = 0`) and every existing scene is
+unaffected. Pass `aperture` (and optionally `focus_dist`) to `make_camera` for a
+thin-lens camera, then accumulate `K` lens samples per pixel in your kernel:
+
+| Function | Signature | Role |
+|---|---|---|
+| `lens_offset` | `(cam, s1: float, s2: float) -> vec3` | world-space aperture offset from the eye for lens samples `s1,s2 ∈ [0,1]` |
+| `focus_point` | `(cam, u: float, v: float) -> vec3` | the on-focal-plane point for pixel `(u,v)` — objects here stay sharp |
+
+```python
+# inside the kernel, per pixel:
+fp = focus_point(cam, u, v)
+acc = wp.vec3(0.0, 0.0, 0.0)
+for k in range(dof_samples):
+    off = lens_offset(cam, hash(...), hash(...))
+    ro = cam.eye + off
+    rd = wp.normalize(fp - ro)
+    acc += shade(ro, rd)        # raymarch this jittered ray
+acc = acc / float(dof_samples)
+```
+
 ### Host builders
 
 | Function | Signature |
 |---|---|
-| `make_camera` | `(eye, target, fov_deg=45.0, aspect=1.0, up=(0,1,0)) -> Camera` |
+| `make_camera` | `(eye, target, fov_deg=45.0, aspect=1.0, up=(0,1,0), aperture=0.0, focus_dist=None) -> Camera` — `focus_dist=None` focuses on the look-at target |
 | `make_light` | `(direction, color=(1,1,1), intensity=1.0) -> Light` |
 | `make_frame` | `(time, width, height) -> Frame` |
 | `make_quality` | `(tier: QualityTier) -> Quality` |
