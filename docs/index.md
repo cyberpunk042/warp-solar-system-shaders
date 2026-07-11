@@ -42,7 +42,7 @@ source**, composable into your own kernels:
 - **[Concepts](concepts.md)** — the architecture: device vs host, the render pipeline, quality tiers, portability, and Warp gotchas.
 - **[Writing a scene](guides/writing-a-scene.md)** — the full guide, from `map()` to post.
 - **[API reference](api/index.md)** — every public symbol, grouped by subsystem.
-- **[Gallery](gallery.md)** — all 96 scenes.
+- **[Gallery](gallery.md)** — all 99 scenes.
 
 ## Install
 
