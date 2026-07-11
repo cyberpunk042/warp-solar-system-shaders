@@ -145,6 +145,42 @@ def _terrain_normal(dir: wp.vec3, cfg: PlanetConfig) -> wp.vec3:
 
 
 @wp.func
+def _volcano_heat(dir: wp.vec3, cfg: PlanetConfig) -> float:
+    """How molten the crater is at `dir` (1 at a vent, 0 away from vents)."""
+    h = float(0.0)
+    n = wp.max(cfg.volcano_n, 1)
+    for k in range(n):
+        vd = _fib(k, n, cfg.seed * 3.1)
+        ang = wp.acos(wp.clamp(wp.dot(dir, vd), -1.0, 1.0))
+        h = wp.max(h, wp.exp(-(ang / 0.075) * (ang / 0.075)))
+    return h
+
+
+@wp.func
+def _lava_intensity(dir: wp.vec3, e: float, cfg: PlanetConfig) -> float:
+    """Molten fraction 0..1 — glowing vents, plus lava seas on a young world."""
+    if cfg.lava <= 0.0:
+        return 0.0
+    crater = float(0.0)
+    if cfg.has_volcano != 0:
+        crater = _volcano_heat(dir, cfg)
+    sea = wp.smoothstep(0.28, -0.30, e) * wp.smoothstep(0.5, 1.0, cfg.lava)
+    return wp.clamp(wp.max(crater, sea), 0.0, 1.0)
+
+
+@wp.func
+def _lava_emission(dir: wp.vec3, time: float, cfg: PlanetConfig) -> wp.vec3:
+    s = wp.vec3(cfg.seed, cfg.seed * 1.7, cfg.seed * 2.3)
+    temp = fbm3(dir * 22.0 + s + wp.vec3(time * 0.08, 0.0, 0.0), 4)
+    heat = wp.clamp(temp * 1.4 - 0.2, 0.0, 1.0)
+    hot = wp.vec3(0.95, 0.16, 0.02) * (1.0 - heat) + wp.vec3(1.0, 0.72, 0.20) * heat
+    # cooled black crust rafts drift across the molten sheet (coarse, coherent)
+    crust = wp.smoothstep(0.52, 0.74, domain_warp3(dir * 14.0 + s, 3, 0.8))
+    raft = wp.vec3(0.05, 0.02, 0.015)
+    return hot * (0.9 + 1.5 * heat) * (1.0 - crust) + raft * crust
+
+
+@wp.func
 def _shade(dir: wp.vec3, n: wp.vec3, rd: wp.vec3, sun: wp.vec3,
            cfg: PlanetConfig, time: float) -> wp.vec3:
     e = _elevation(dir, cfg)
@@ -179,11 +215,18 @@ def _shade(dir: wp.vec3, n: wp.vec3, rd: wp.vec3, sun: wp.vec3,
         rock = rock * (1.0 - wp.smoothstep(0.55, 0.95, h)) \
             + peak * wp.smoothstep(0.55, 0.95, h)
         rock = rock * (0.82 + 0.36 * tex)                # surface mottling
+        rock = rock * (1.0 - 0.55 * cfg.lava)            # dark basalt on molten worlds
         # snow only near the poles or on the very highest ground
         snow_m = cfg.snow * wp.smoothstep(0.72, 0.95, lat + h * 0.35)
         albedo = rock * (1.0 - snow_m) + wp.vec3(0.92, 0.94, 0.98) * snow_m
         lit = shade_pbr(n, v, sun, albedo, 0.85, 0.0, sun_col) * 1.5
         col = albedo * (0.05 + 0.9 * wp.max(ndl, 0.0)) * 0.6 + lit
+
+    # molten lava: emissive, overrides surface lighting where hot
+    lava_i = _lava_intensity(dir, e, cfg)
+    if lava_i > 0.01:
+        emit = _lava_emission(dir, time, cfg)
+        col = col * (1.0 - lava_i) + emit * lava_i
 
     return col
 
