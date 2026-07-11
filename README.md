@@ -175,11 +175,21 @@ python render.py --scene phototropism --frames 24 --fps 12 --gif out/photo.gif
 python render.py --scene rain_fold --time 5 -o rain.png
 ```
 
-The roadmap runs downward (DNA -> protein -> cell) and then adds a **mind** —
-a decision layer that *chooses* when to follow the light or close up, overriding
-default growth and built on the context-sensitive class. The tropism layer above
-is exactly the mechanism it steers. See
-[docs/research/04-lsystems.md](docs/research/04-lsystems.md).
+**The mind — choosing to obey.** Top of the ladder: a **Conway Game of Life**
+mind whose living population sets a **drive** that *chooses* whether the plant
+seeks the light (open, phototropic) or rests (sags, leaves folded). Unlike the
+reflex `phototropism` scene, here the plant follows the light **only when the
+mind decides to** — a decision, not a reflex. The inset shows the deliberating
+grid + a drive bar.
+
+![the mind choosing](docs/life/mind.png)
+
+The mind steers the plant through the same per-frame seam the obvious rules use
+(`grow_mesh_env`), so it commands the very reflexes the plant already has. The
+context-sensitive L-System class is the substrate for a future per-branch mind;
+the operator's wave-collapse / "backward in time" framing is the horizon. See
+[docs/research/06-the-mind.md](docs/research/06-the-mind.md) and
+[04-lsystems.md](docs/research/04-lsystems.md).
 
 ## The atom, from the bottom up
 
