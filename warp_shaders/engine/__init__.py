@@ -15,6 +15,8 @@ Everything a scene needs to turn a ray into a pixel:
 - **volumetric** — cloud density + light-marching
   (:func:`cloud_density`, :func:`march_clouds`, :func:`hg_phase`).
 - **post** — host-side tonemap / bloom / godrays / vignette.
+- **shading** — small map-independent helpers (:func:`apply_fog`,
+  :func:`sun_disk`, :func:`sky_gradient`).
 
 Device functions (``@wp.func``) are meant to be *called inside your own
 ``@wp.kernel``*; host helpers (``make_*``, ``post.*``, ``build_*_lut``) run in
@@ -27,6 +29,7 @@ from .pbr import (
     distribution_ggx, fresnel_schlick, geometry_schlick_ggx, geometry_smith,
     shade_pbr,
 )
+from .shading import apply_fog, sky_gradient, sun_disk
 from .uniforms import (
     Camera, Frame, Light, Quality, camera_ray_dir, make_camera, make_frame,
     make_light, make_quality,
@@ -43,4 +46,6 @@ __all__ = [
     # pbr device functions
     "shade_pbr", "fresnel_schlick", "distribution_ggx",
     "geometry_schlick_ggx", "geometry_smith",
+    # reusable shading helpers
+    "apply_fog", "sun_disk", "sky_gradient",
 ]
