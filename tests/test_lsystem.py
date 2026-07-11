@@ -124,6 +124,26 @@ def test_turtle_leaf_and_bounds():
     assert hi[1] - lo[1] >= 1.99                      # spans the 2-unit stem
 
 
+# --- mesh tessellation -------------------------------------------------------
+from warp_shaders.life.mesh import build_mesh
+
+
+def test_mesh_single_tube():
+    geo = interpret(parse("F"), TurtleConfig(step=1.0, radius=0.1))
+    m = build_mesh(geo, sides=6)
+    assert m.verts.shape == (12, 3) and m.n_tris == 12
+    assert np.allclose(np.linalg.norm(m.normals, axis=1), 1.0, atol=1e-4)
+    assert int(m.indices.max()) < m.verts.shape[0]
+
+
+def test_mesh_plant_counts():
+    geo = interpret(parse("F[+F][-F]F L"), TurtleConfig(step=1.0, radius=0.08, angle=35))
+    m = build_mesh(geo, sides=6)
+    assert m.n_tris == 4 * 12 + 2           # 4 tubes + 1 leaf
+    assert np.isfinite(m.verts).all()
+
+
+
 if __name__ == "__main__":
     print("L-System + turtle tests:")
     test_parse_roundtrip(); print("  parse round-trip: OK")
@@ -138,4 +158,6 @@ if __name__ == "__main__":
     test_turtle_straight(); print("  turtle straight stem: OK")
     test_turtle_branch(); print("  turtle branch: OK")
     test_turtle_leaf_and_bounds(); print("  turtle leaf + bounds: OK")
+    test_mesh_single_tube(); print("  mesh single tube: OK")
+    test_mesh_plant_counts(); print("  mesh plant counts: OK")
     print("ALL PASSED")
