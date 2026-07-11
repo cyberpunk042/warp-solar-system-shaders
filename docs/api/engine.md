@@ -266,6 +266,37 @@ it, these keep it.
 
 `render.py -o out.hdr` (or `.npy`) writes the raw linear buffer instead of a PNG.
 
+## Video — `engine.video`
+
+Encode a frame sequence to an animated container (**host**); the extension picks
+the format. See the [Cinematics guide](../guides/cinematics.md).
+
+| Function | Signature | Role |
+|---|---|---|
+| `write_video` | `(frames, path, fps=30, quality=8) -> str` | `.mp4`/`.webm` via imageio-ffmpeg when installed (else an animated `.webp` beside the path); `.webp`/`.gif`/`.apng` via Pillow. Returns the path written |
+| `crossfade` | `(a, b, steps) -> iter` | yield `steps` frames dissolving `a` into `b` (the reel's transition) |
+| `save_frames` | `(frames, out_dir, prefix="frame") -> int` | write a numbered PNG per frame |
+
+`render.py --video PATH` uses this per render.
+
+## Camera paths — `engine.camera_path`
+
+Keyframed camera motion (**host**, NumPy). A `CameraPath` interpolates the **eye**
+with a Catmull-Rom spline through the keyframes and eases **target**/**FOV**
+between them; `camera(t, aspect)` builds the engine `Camera`.
+
+| Symbol | Signature | Role |
+|---|---|---|
+| `Keyframe` | `(t, eye, target=(0,0,0), fov=45.0)` | one stop on the path |
+| `CameraPath` | `CameraPath(keyframes, easing="ease_in_out")` | `.sample(t) -> (eye, target, fov)`, `.camera(t, aspect)`, `.add(...)` |
+| `orbit` | `(center, radius, elevation, turns=1.0, fov=45, ...) -> CameraPath` | circle the subject |
+| `dolly` | `(eye0, eye1, target, fov0, fov1=None, ...) -> CameraPath` | push-in / pull-out |
+| `fly` | `(keyframes, easing=...) -> CameraPath` | from `(t, eye[, target, fov])` tuples |
+| `EASINGS` / `ease` | `ease(name, t)` | `linear` / `smoothstep` / `smoother` / `ease_in` / `ease_out` / `ease_in_out` |
+
+The cosmos `render_system(..., camera=(eye, target, fov))` accepts a sampled path;
+the `ss_flyby` scene wires a looping orbit around the trinary system.
+
 > **Sources.** PBR: Cook–Torrance GGX (Karis/UE4). Atmosphere:
 > Nishita/O'Neil single-scatter with a Bruneton/Hillaire transmittance LUT.
 > Volumetrics: Schneider "Nubis", Henyey–Greenstein, Beer–Lambert. Post: ACES
