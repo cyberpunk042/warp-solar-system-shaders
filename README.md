@@ -19,7 +19,8 @@ img = ws.render("earth_v2", width=1280, height=720, time=0.0)  # (H, W, 3) float
 
 # ...or call the engine directly from your own kernel:
 ws.procedural   # noise (value/Perlin/simplex/Worley/fbm/ridged/...) + SDF library
-ws.engine       # uniforms, PBR, Material, atmosphere (+LUT), volumetrics, post
+ws.engine       # uniforms, PBR, Material, atmosphere (+LUT), volumetrics, post,
+                #   analytic soft shadows + AO, colour science, HDR (.hdr/.npy) output
 ws.textures     # portable 2D/3D/equirect sampling over wp.array
 ws.lod          # quality tiers (low/medium/high/ultra)
 ws.life         # L-Systems -> grown plants (grass/herb/tree), ray-cast as real geometry
@@ -69,8 +70,11 @@ for every public symbol.
   **physically based atmospheric scattering** (Nishita/O'Neil Rayleigh+Mie **plus
   Hillaire multiple scattering**), a **volumetric cloud** raymarcher (Schneider
   density, Henyey-Greenstein, Beer-Lambert, sun light-march) over a **baked seamless
-  3D detail volume**, a **thin-lens depth-of-field** camera, and a host **post**
-  pipeline (ACES/AgX tonemap, bloom, **god-rays**, vignette).
+  3D detail volume**, a **thin-lens depth-of-field** camera, **analytic soft
+  shadows + ambient occlusion** (closed-form sphere shadow/AO, no SDF march), and
+  a host **post** pipeline (ACES/AgX tonemap, bloom, **god-rays**, chromatic
+  aberration, sharpen, grain, vignette) with one-call **named looks** (cinematic /
+  film / dreamy / crisp). Frames save to PNG or true **HDR** (`.hdr` RGBE / `.npy`).
 - **LOD tiers** (`warp_shaders/lod.py`) — one knob scales raymarch/shadow/AO/atmosphere/
   cloud sample counts, octaves, LUT sizes; auto-detected per device.
 - **Textures & LUTs** (`warp_shaders/textures.py`) — portable bilinear sampling over

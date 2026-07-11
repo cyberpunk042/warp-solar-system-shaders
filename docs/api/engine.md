@@ -1,7 +1,9 @@
 # `warp_shaders.engine`
 
 The shading half of the engine: uniforms, PBR, materials, atmosphere,
-volumetrics, and the host post pipeline. Import subsystems from the namespace:
+volumetrics, colour science, ray intersection, sky backgrounds, analytic
+shadows/AO, the host post pipeline (with named looks) and HDR frame output.
+Import subsystems from the namespace:
 
 ```python
 from warp_shaders.engine import post                      # host
@@ -222,6 +224,47 @@ Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with
 | `sharpen` | `(frame, amount=0.5, radius=2) -> ndarray` — unsharp mask |
 | `vignette` | `(frame, amount=0.35) -> ndarray` — darken toward the corners |
 | `film_grain` | `(frame, amount=0.04, seed=0) -> ndarray` — deterministic filmic grain |
+
+### Named looks
+
+One-call display-range grades composed from the ops above. Apply after tonemap.
+
+| Function | Signature |
+|---|---|
+| `looks` | `() -> list[str]` — the preset names: `clean`, `cinematic`, `film`, `dreamy`, `crisp` |
+| `apply_look` | `(frame, look="clean", seed=0) -> ndarray` — grade a `[0,1]` frame with a preset **name** or a raw params dict (`glow` / `ca` / `sharpen` / `vignette` / `grain`) |
+
+`render.py --look <name>` applies one per frame; `ws.render_image(scene, look=...)`
+renders a scene and grades it in one call.
+
+## Shadows & AO — `engine.shadow`
+
+Reusable, self-contained analytic soft shadows + ambient occlusion (**device**) —
+no SDF callback, so they compile into any kernel (planets, moons, the
+`shadow_demo` scene). See `scenes/shadow_demo.py`.
+
+| Function | Signature | Role |
+|---|---|---|
+| `soft_shadow_sphere` | `(p, l, ce, ra, k) -> float` | penumbra soft shadow of a sphere occluder along light dir `l`; `1`=lit, `0`=shadow, hardness `k` |
+| `sphere_occlusion` | `(p, n, ce, ra) -> float` | exact analytic occluded fraction of the hemisphere by a sphere |
+| `sphere_ao` | `(p, n, ce, ra) -> float` | occlusion **visibility** (`1 - sphere_occlusion`), multiplies in like a shadow |
+| `penumbra` | `(res, h, t, k) -> float` | the IQ SDF soft-shadow running-min atom, `res = min(res, k·h/t)` |
+| `ground_contact_ao` | `(height, radius) -> float` | cheap contact darkening for a subject above a plane |
+
+## Frame output — `engine.imageio`
+
+LDR + true-HDR containers and a `RenderTarget` wrapper (**host**). Scenes render a
+linear buffer that often exceeds display range (stars, suns, bloom); PNG discards
+it, these keep it.
+
+| Function / class | Signature | Role |
+|---|---|---|
+| `save_png` | `(path, frame)` | clamp `[0,1]` and write 8-bit (no tonemap) |
+| `save_npy` | `(path, frame)` | lossless raw float32 `.npy` |
+| `save_hdr` / `load_hdr` | `(path, frame)` / `(path) -> ndarray` | Radiance **RGBE** `.hdr` — shared 8-bit exponent, any compositor reads it, pure-NumPy |
+| `RenderTarget` | `RenderTarget(hdr).save(path)` | dispatch by extension (`.png` tonemaps, `.npy`/`.hdr` keep linear); `.tonemapped(mode, exposure)` |
+
+`render.py -o out.hdr` (or `.npy`) writes the raw linear buffer instead of a PNG.
 
 > **Sources.** PBR: Cook–Torrance GGX (Karis/UE4). Atmosphere:
 > Nishita/O'Neil single-scatter with a Bruneton/Hillaire transmittance LUT.
