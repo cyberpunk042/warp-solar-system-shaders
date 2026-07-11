@@ -63,6 +63,9 @@ class TurtleConfig:
     light: Tuple[float, float, float] = None      # phototropism target point;
     #   when set, T is recomputed each step as normalize(light - pos)
     light_e: float = 0.0                          # phototropism susceptibility
+    # nyctinasty / rain response: fold leaves shut. 0 = open, 1 = fully folded
+    # (the leaf pitches down toward -U and shrinks). A future "mind" flips this.
+    leaf_fold: float = 0.0
 
 
 @dataclass
@@ -197,6 +200,11 @@ def interpret(word: Sequence[Module], cfg: TurtleConfig = None) -> Geometry:
             color = cfg.palette[idx % len(cfg.palette)].copy()
         elif sym == "L":
             size = a if a is not None else cfg.leaf_size
-            geo.leaves.append(Leaf(pos.copy(), H.copy(), U.copy(), size, color.copy()))
+            lh, lu = H.copy(), U.copy()
+            if cfg.leaf_fold > 0.0:                 # fold shut (rain / night)
+                f = min(max(cfg.leaf_fold, 0.0), 1.0)
+                size *= (1.0 - 0.55 * f)            # shrink the exposed blade
+                lh = _rot(lh, L, -70.0 * f)         # pitch the blade downward
+            geo.leaves.append(Leaf(pos.copy(), lh, lu, size, color.copy()))
         # any other symbol: structural, no geometry
     return geo
