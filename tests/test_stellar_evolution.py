@@ -64,6 +64,23 @@ def test_supernova_flash():
     assert late.flash < head.flash
 
 
+def test_hr_inset():
+    import numpy as np
+    frame = np.full((120, 180, 3), 0.2, np.float32)
+    out = SE.draw_hr_inset(frame, 0.66, 1.0, "red giant")
+    assert out.shape == frame.shape and np.all(np.isfinite(out))
+    assert out.min() >= 0.0 and out.max() <= 1.0
+    # the panel is drawn into the bottom-right, so that corner changes
+    br = (slice(-40, None), slice(-70, None))
+    assert not np.allclose(out[br], frame[br])
+    # the rest of the frame is untouched
+    assert np.allclose(out[:40, :70], frame[:40, :70])
+    # the marker colour tracks temperature (hot bluer than cool)
+    hot = SE._hr_color(0.95)
+    cool = SE._hr_color(0.05)
+    assert hot[2] > cool[2] and cool[0] > cool[2]
+
+
 if __name__ == "__main__":
     test_mass_fork()
     print("  mass fork (WD/NS/BH) + timeline end state: OK")
