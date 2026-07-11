@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (64 scenes).
+`python render.py --list` for the full, current list (65 scenes).
 
 ## Engine showcase
 
@@ -91,6 +91,17 @@ and fold shut, all at once ("close *piece of itself*"):
 
 ![per-branch mind](life/mind_branches.png)
 ![per-branch mind animating](life/mind_branches.gif)
+
+### Wave and collapse — futures resolving to one
+
+The summit of the strand: several *possible* plant futures begin **superposed**
+(a faint overlapping ghost cloud of what the plant might become) and **collapse**
+to a single realised plant — the front sweeping tip→base (the future settling
+first, reaching *backward* into its own history), with the Conway mind biasing
+*which* future resolves. See [Research 07](research/07-wave-and-collapse.md).
+
+![wave collapsing to one plant](life/wavecollapse.png)
+![wave collapse animating](life/wavecollapse.gif)
 
 ## Cosmos & bodies
 
