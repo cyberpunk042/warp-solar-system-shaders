@@ -88,6 +88,24 @@ operators to build a raymarch `map()`.
 | `op_round` | `(d: float, r: float) -> float` | inflate a surface by `r` |
 | `op_onion` | `(d: float, thickness: float) -> float` | hollow shell |
 
+## Fractal distance estimators
+
+Escape-time 3D fractals have no surface equation but admit a **distance
+estimator** — a lower bound on the distance to the set — so the ordinary
+sphere-tracer marches them like any SDF. Each returns a `wp.vec4`:
+`(de, trap, escape_iter, final_r)`, where `trap` is the **orbit trap**
+(minimum `|z|` over the iteration) — the colour signal for the banded shells.
+
+| Function | Signature | Fractal |
+|---|---|---|
+| `mandelbulb_de` | `(p: vec3, power: float, iters: int) -> vec4` | Mandelbulb (White–Nylander triplex power; `power=8` is the classic) |
+| `mandelbox_de` | `(p: vec3, scale: float, iters: int) -> vec4` | Mandelbox (Lowe box-fold + sphere-fold; `scale=-1.5` / `2` are classics) |
+
+The analytic Mandelbulb estimator `0.5·log(r)·r/dr` deliberately over-reports
+far from the surface (only near-surface accuracy matters); march with a fudge
+factor `< 1`. See the [`mandelbulb`](../gallery.md) and [`mandelbox`](../gallery.md)
+scenes and [Research 13](../research/13-3d-fractals.md).
+
 > **Sources.** SDF primitives and operators follow Inigo Quilez's distance-
 > function reference; noise follows IQ, Stefan Gustavson, Steven Worley, and
 > Robert Bridson. See [`docs/research/`](../research/00-foundations.md) for the
