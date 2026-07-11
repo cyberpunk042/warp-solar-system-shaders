@@ -77,6 +77,23 @@ Scenes: `stellar_lifecycle` (Sun-like → white dwarf), `stellar_massive`
 (14 M☉ → neutron star), `stellar_collapse` (30 M☉ → black hole). `time` walks the
 life over 20 s: `python render.py --scene stellar_lifecycle --frames 120 --fps 6 --video life.mp4`.
 
+## Colliding galaxies — `cosmos.galaxy_dynamics`
+
+A Toomre restricted N-body encounter (host, NumPy) — two point-mass cores under
+mutual softened gravity, each ringed by massless test particles (see
+[Research 12](../research/12-galaxy-collisions.md)).
+
+| Symbol | Where | Purpose |
+|---|---|---|
+| `GalaxyConfig(mass, n, r_in, r_out, incl_deg, spin, center, vel, color)` | — | one galaxy: core + test-particle disk (spin ±1 = prograde/retrograde) |
+| `EncounterConfig(g0, g1, soft, seed)` | — | the two galaxies + gravitational softening |
+| `simulate(enc, frames, substeps, dt)` | host | velocity-Verlet integrate the fly-by → a `Collision` (per-frame particle + core positions, galaxy id, colour) |
+| `render_collision(sim, frame, w, h, dist, az, el, fov, …)` | host | project + additively splat the star clouds + cores over a starfield, bloomed into galaxy haze |
+
+Scenes: `galaxy_collision` (prograde — long tidal tails + a bridge) and
+`galaxy_retrograde` (the same encounter, retrograde — barely any tails). `time`
+walks the fly-by over 12 s: `python render.py --scene galaxy_collision --frames 64 --fps 6 --video out/tails.mp4`.
+
 ## Presets & scenes
 
 `presets.get(name)` / `presets.names()`: `first`, `binary`, `trinary`,
