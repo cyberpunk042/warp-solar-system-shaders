@@ -24,6 +24,7 @@ ws.engine       # uniforms, PBR, Material, atmosphere (+LUT), volumetrics, post,
 ws.textures     # portable 2D/3D/equirect sampling over wp.array
 ws.lod          # quality tiers (low/medium/high/ultra)
 ws.life         # L-Systems -> grown plants (grass/herb/tree), ray-cast as real geometry
+ws.blast        # nuclear-detonation physics — Tsar Bomba scaling laws (fireball/blast/mushroom)
 ```
 
 > **📖 Documentation** — the engine has a full manual:
@@ -63,6 +64,8 @@ for every public symbol.
 | ![reef](docs/engine/reef.png) | ![mandelbulb](docs/engine/mandelbulb.png) | ![mandelbox](docs/engine/mandelbox.png) |
 | **Menger sponge** | **Sierpinski tetrahedron** | **kaleidoscopic temple (KIFS)** |
 | ![menger](docs/engine/menger.png) | ![sierpinski](docs/engine/sierpinski.png) | ![kifs temple](docs/engine/kifs_temple.png) |
+| **Tsar Bomba (50 Mt)** | **Super Tsar (500 Mt)** | **Super Tsar in space** |
+| ![tsar bomba](docs/engine/tsar_bomba.png) | ![super tsar](docs/engine/super_tsar.png) | ![super tsar in space](docs/engine/super_tsar_space.png) |
 
 - **Procedural toolkit** (`warp_shaders/procedural/`) — value/Perlin/Worley/fbm/
   ridged/billow/domain-warp/curl noise **with analytic derivatives**, plus an SDF
@@ -342,6 +345,56 @@ Each run has three phases:
 Runs on CPU here (Warp's CPU codegen); identical on CUDA, in real time. See
 [`warp_shaders/sim/`](warp_shaders/sim/) — `engine.py` (particles + integrate
 kernel + splat renderer) and `blast.py` (drop + kinetics + fireball).
+
+## Tsar Bomba — a physically-sized nuclear detonation
+
+Where the particle sim above is dramatised (arbitrary units), this is the
+**research-grade** model: `warp_shaders.blast` sizes the whole event from the
+**yield** using the declassified scaling laws in *The Effects of Nuclear Weapons*
+(Glasstone & Dolan, 1977), calibrated to the measured **Tsar Bomba** — the 50 Mt
+device, ~3,800× Hiroshima. The fireball radius, blast-overpressure damage rings,
+thermal-burn radius, Sedov–Taylor shock front and mushroom-cloud rise are **not
+art-directed** — they come out of the physics.
+
+| Tsar Bomba (50 Mt) | Super Tsar (500 Mt) | Super Tsar in space |
+|---|---|---|
+| ![tsar bomba](docs/engine/tsar_bomba.png) | ![super tsar](docs/engine/super_tsar.png) | ![super tsar space](docs/engine/super_tsar_space.png) |
+
+```python
+import warp_shaders as ws
+print(ws.blast.TSAR.summary())
+# Tsar Bomba: 50 Mt (~3846x Hiroshima) | fireball 3.5 km | destruction 38 km | thermal 100 km
+print(ws.blast.SUPER_TSAR.summary())
+# Super Tsar: 500 Mt (~38462x Hiroshima) | fireball 8.8 km | destruction 82 km | thermal 251 km
+```
+
+```bash
+python render.py --scene tsar_bomba       --frames 48 --fps 12 --video out/tsar.mp4
+python render.py --scene super_tsar        --quality high -o out/super.png
+python render.py --scene super_tsar_space  --quality high -o out/space.png
+```
+
+- **`tsar_bomba`** — a single ray-march composites a procedural landscape + an
+  instanced **forest**, a **volumetric blackbody fireball** (colour straight from
+  `fireball_temp` × `kelvin_to_rgb`), a turbulent rising **mushroom cloud**, an
+  expanding **condensation shock ring**, and the **damage**: trees flattened away
+  from ground zero and the ground scorched, all following the physics-sized shock
+  front. Animate to watch the flash → shock sweep → cloud climb.
+- **`super_tsar`** — the same model at **10× yield** (500 Mt). By the scaling laws
+  the fireball grows ×10^0.4 ≈ 2.5 and every blast ring ×10^⅓ ≈ 2.15 — a far
+  larger fireball and a wider swath of flattened forest (the camera pulls back to
+  keep it in frame).
+- **`super_tsar_space`** — the same device detonated **in vacuum** above a planet.
+  No atmosphere means the physics *changes*: no medium for a blast wave, no air to
+  heat into a fireball, no buoyancy for a mushroom — just an X-ray flash and a thin
+  **ballistic plasma shell** expanding over the planet against the stars, with a
+  faint **Starfish-Prime** aurora at its footprint. The contrast with the
+  atmospheric burst is the point.
+
+The scaling laws are unit-tested against the measured Tsar anchors
+(`tests/test_blast.py`), and the model is built to be re-aimed at other subjects
+(buildings, cities) later. Physics + citations:
+[`docs/research/15-nuclear-fireball.md`](docs/research/15-nuclear-fireball.md).
 
 ## Earth — every warhead at once (a sensitization piece)
 

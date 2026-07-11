@@ -19,6 +19,7 @@ The engine is organised in layers, each importable on its own::
     ws.life         # L-Systems → ray-traced plants, cells, the Conway "mind"
     ws.superearth   # the configurable procedural planet + orbital bombardment
     ws.cosmos       # the configurable solar system (stars, orbits, lensing)
+    ws.blast        # nuclear-detonation physics (Tsar Bomba scaling laws)
 
 Quickstart — render a built-in scene to an HDR array::
 
@@ -39,7 +40,7 @@ them inside your own ``@wp.kernel``. Symbols named ``make_*`` / ``post.*`` /
 __version__ = "0.1.0"
 
 # --- subsystem namespaces (device functions live here; import inside kernels) ---
-from . import cosmos, engine, life, lod, procedural, superearth, textures
+from . import blast, cosmos, engine, life, lod, procedural, superearth, textures
 
 # --- scene registry (host) ---
 from .scene import Scene, get_scene, list_scenes, render, render_image
@@ -62,7 +63,7 @@ __all__ = [
     "__version__",
     # namespaces
     "engine", "procedural", "textures", "lod", "post", "life",
-    "superearth", "cosmos",
+    "superearth", "cosmos", "blast",
     # scenes
     "Scene", "get_scene", "list_scenes", "render", "render_image",
     # frame output
