@@ -8,6 +8,7 @@ scale with `--quality`. iMouse: x = look azimuth, y = raise/lower the sun.
 
 import math
 
+import numpy as np
 import warp as wp
 
 from ..engine import post
@@ -52,7 +53,9 @@ def _render(width, height, time, mouse, device):
 
     # sun sweeps from just above the horizon to near the zenith over a cycle
     el = 1.2 * math.sin(time * 0.12) + float(mouse[1]) * 0.004
-    sun = wp.vec3(math.sin(az) * math.cos(el), math.sin(el), math.cos(az) * math.cos(el))
+    sun_np = np.array([math.sin(az) * math.cos(el), math.sin(el),
+                       math.cos(az) * math.cos(el)], np.float32)
+    sun = wp.vec3(float(sun_np[0]), float(sun_np[1]), float(sun_np[2]))
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(render_kernel, dim=(height, width),
@@ -63,6 +66,21 @@ def _render(width, height, time, mouse, device):
 
     r = max(3, int(min(width, height) * 0.02))
     hdr = post.bloom(hdr, threshold=3.0, strength=0.5, radius=r, passes=3)
+
+    # project the sun to screen space and add godray light shafts
+    fwd_n = np.array(fwd, np.float32)
+    fwd_n /= np.linalg.norm(fwd_n) + 1e-9
+    right = np.cross(fwd_n, np.array([0, 1, 0], np.float32))
+    right /= np.linalg.norm(right) + 1e-9
+    upv = np.cross(right, fwd_n)
+    cz = float(sun_np @ fwd_n)
+    if cz > 0.02:
+        thf = math.tan(math.radians(72.0) * 0.5)
+        asp = width / height
+        cx = 0.5 + 0.5 * (float(sun_np @ right) / cz) / (asp * thf)
+        cy = 0.5 - 0.5 * (float(sun_np @ upv) / cz) / thf
+        hdr = post.godrays(hdr, cx, cy, samples=32, threshold=2.5, weight=0.5)
+
     return post.tonemap(hdr, mode="aces", exposure=1.0)
 
 
