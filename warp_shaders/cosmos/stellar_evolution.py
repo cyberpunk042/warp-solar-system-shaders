@@ -299,22 +299,95 @@ def _lifecycle_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, cfg: StarConf
 
 
 # --------------------------------------------------------------------------- #
+# HR-diagram inset panel (host, via Pillow)                                    #
+# --------------------------------------------------------------------------- #
+
+def _hr_color(hr_temp):
+    """Marker colour by HR temperature (0 cool-red .. 1 hot-blue)."""
+    stops = [(0.0, (1.0, 0.36, 0.12)), (0.35, (1.0, 0.66, 0.28)),
+             (0.6, (1.0, 0.95, 0.72)), (0.8, (0.95, 0.97, 1.0)),
+             (1.0, (0.70, 0.82, 1.0))]
+    x = float(np.clip(hr_temp, 0.0, 1.0))
+    for (t0, c0), (t1, c1) in zip(stops, stops[1:]):
+        if x <= t1:
+            k = (x - t0) / max(t1 - t0, 1e-6)
+            return tuple((c0[i] * (1 - k) + c1[i] * k) for i in range(3))
+    return stops[-1][1]
+
+
+def draw_hr_inset(frame, t, mass, phase, scale=0.34):
+    """Composite a small Hertzsprung–Russell panel into the bottom-right corner:
+    a reference track (main sequence + giant branch + white-dwarf region), the
+    star's **trail** across the diagram so far, and its current marker + the phase
+    name. Returns a new ``(H, W, 3)`` float array."""
+    from PIL import Image, ImageDraw
+    a = np.clip(np.asarray(frame, np.float32), 0.0, 1.0)
+    h, w = a.shape[:2]
+    im = Image.fromarray((a * 255 + 0.5).astype(np.uint8), "RGB").convert("RGBA")
+    pw = int(w * scale)
+    ph = int(pw * 0.82)
+    m = max(6, int(w * 0.02))
+    x0, y0 = w - pw - m, h - ph - m
+
+    panel = Image.new("RGBA", (pw, ph), (8, 10, 20, 165))
+    d = ImageDraw.Draw(panel)
+    pad = int(pw * 0.13)
+    gx0, gy0 = pad, int(ph * 0.16)
+    gx1, gy1 = pw - int(pad * 0.5), ph - int(ph * 0.20)
+
+    def _pt(ht, hl):                                  # HR (temp, lum) -> panel px
+        return (gx0 + (1.0 - float(np.clip(ht, 0, 1))) * (gx1 - gx0),
+                gy0 + (1.0 - float(np.clip(hl, 0, 1))) * (gy1 - gy0))
+
+    d.rectangle([gx0, gy0, gx1, gy1], outline=(120, 130, 150, 120))
+    # reference tracks (dim)
+    ms = [_pt(0.95, 0.92), _pt(0.7, 0.72), _pt(0.55, 0.5), _pt(0.35, 0.28), _pt(0.16, 0.08)]
+    d.line(ms, fill=(90, 110, 160, 150), width=2)     # main sequence
+    giant = [_pt(0.5, 0.5), _pt(0.32, 0.66), _pt(0.18, 0.86)]
+    d.line(giant, fill=(150, 90, 70, 130), width=2)   # giant branch
+    d.ellipse([_pt(0.9, 0.2)[0] - 2, _pt(0.9, 0.2)[1] - 2,
+               _pt(0.78, 0.12)[0] + 2, _pt(0.78, 0.12)[1] + 2],
+              outline=(120, 140, 190, 110))           # white-dwarf region
+
+    # the star's trail across the diagram, up to now
+    trail = [phase_state(tt, mass) for tt in np.linspace(0.0, max(t, 1e-3), 48)]
+    pts = [_pt(s.hr_temp, s.hr_lum) for s in trail]
+    if len(pts) > 1:
+        d.line(pts, fill=(235, 240, 255, 200), width=1)
+    # current marker
+    cur = phase_state(t, mass)
+    cx, cy = _pt(cur.hr_temp, cur.hr_lum)
+    col = tuple(int(c * 255) for c in _hr_color(cur.hr_temp))
+    d.ellipse([cx - 4, cy - 4, cx + 4, cy + 4], fill=col + (255,),
+              outline=(255, 255, 255, 255))
+    # labels
+    d.text((pad, int(ph * 0.03)), "H-R diagram", fill=(210, 220, 240, 230))
+    d.text((gx0, gy1 + int(ph * 0.02)), "hot <- T -> cool", fill=(150, 160, 180, 200))
+    ph_txt = phase if len(phase) <= 30 else phase[:29] + "..."
+    d.text((pad, ph - int(ph * 0.13)), ph_txt, fill=(235, 235, 245, 235))
+
+    im.alpha_composite(panel, (x0, y0))
+    return np.asarray(im.convert("RGB"), np.float32) / 255.0
+
+
+# --------------------------------------------------------------------------- #
 # host render                                                                  #
 # --------------------------------------------------------------------------- #
 
 def render_lifecycle(t: float, mass: float = 1.0, width: int = 640, height: int = 400,
                      device: str = "cpu", dist: float = 6.5, fov: float = 40.0,
-                     anim: float = 20.0):
-    """Render the evolving star + its envelope at time `t` (HR inset lands in
-    SL3). Reuses the star library, the envelope integrator, and — for a
+                     anim: float = 20.0, hr_inset: bool = True):
+    """Render the evolving star + its envelope at time `t`, with the HR-diagram
+    inset panel. Reuses the star library, the envelope integrator, and — for a
     black-hole remnant — the lensing pass."""
     st = phase_state(t, mass)
 
     if st.kind == BLACK_HOLE:
         # the collapsed core lenses light; draw it with the accretion-disk pass.
         bh = make_black_hole(radius=0.6, activity=0.8, spin=1.0, seed=7.0)
-        return render_black_hole(bh, width, height, time=t * anim, device=device,
-                                 dist=11.0, fov=fov)
+        out = render_black_hole(bh, width, height, time=t * anim, device=device,
+                                dist=11.0, fov=fov)
+        return draw_hr_inset(out, t, mass, st.phase) if hr_inset else out
 
     cfg = make_star(kind=st.kind, radius=st.radius, temp=st.temp,
                     activity=st.activity, spin=1.0, precess=st.precess, seed=7.0)
@@ -336,4 +409,5 @@ def render_lifecycle(t: float, mass: float = 1.0, width: int = 640, height: int 
     r = max(3, int(min(width, height) * 0.02))
     hdr = post.bloom(hdr, threshold=1.2, strength=0.5 + 0.9 * st.flash, radius=r,
                      passes=4)
-    return post.tonemap(hdr, mode="aces", exposure=1.02 + 0.5 * st.flash)
+    out = post.tonemap(hdr, mode="aces", exposure=1.02 + 0.5 * st.flash)
+    return draw_hr_inset(out, t, mass, st.phase) if hr_inset else out
