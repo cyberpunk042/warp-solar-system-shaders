@@ -17,21 +17,25 @@ from ..life.render import render_plant
 from ..scene import Scene
 
 
-def _grow_scene(name: str):
+def _grow_scene(name: str, top: float = 0.0, aim: float = 0.45):
+    """A growing-plant scene. `top` pads headroom above the mesh bounds (for a
+    bloom whose leaf blades extend past the segment bounds); `aim` sets how high
+    up the plant the camera looks (0=base, 1=crown)."""
     def _render(width, height, time, mouse, device):
         spec = _plants.get_spec(name)
         # frame to the fully-grown plant so growth rises into a stable view
         _, (lo, hi) = _plants.grow_mesh(spec, spec.gens)
         cx, cy, cz = (float((lo[0] + hi[0]) * 0.5),
                       float(lo[1]), float((lo[2] + hi[2]) * 0.5))
-        size = float(max(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2], 1e-3))
+        span_y = float(hi[1] - lo[1]) + top
+        size = float(max(hi[0] - lo[0], span_y, hi[2] - lo[2], 1e-3))
 
         g = min(spec.gens, 1 + int(time))            # grow one generation / sec
         mesh, _b = _plants.grow_mesh(spec, g)
 
         az = 0.6 + time * 0.06 + float(mouse[0]) * 0.01
         dist = size * 1.7 + 2.0
-        ty = cy + (hi[1] - lo[1]) * 0.45
+        ty = cy + span_y * aim
         eye = (cx + dist * math.sin(az), ty + size * 0.12 + float(mouse[1]) * 0.02,
                cz + dist * math.cos(az))
         return render_plant(mesh, width, height, eye, (cx, ty, cz),
@@ -49,4 +53,8 @@ SCENES = [
           description="L-System tree growing: tapering trunk + leafy canopy. --time 0..7."),
     Scene(name="fern", renderer=_grow_scene("fern"),
           description="L-System bracketed fern unfurling (ABOP fig 1.24, 3D). --time 0..5."),
+    Scene(name="flower", renderer=_grow_scene("flower", top=1.6, aim=0.62),
+          description="L-System flowering plant: leafy stem that blooms at maturity. --time 0..6."),
+    Scene(name="bush", renderer=_grow_scene("bush"),
+          description="L-System dense shrub (stochastic, wide + leafy). --time 0..5."),
 ]

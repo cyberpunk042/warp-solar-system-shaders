@@ -189,7 +189,8 @@ from warp_shaders.life import plants as _plants
 
 def test_plant_specs_grow():
     for name, gens in [("grass", 9), ("herb", 6), ("tree", 7),
-                       ("fern", 6), ("sapling", 7), ("weeper", 6)]:
+                       ("fern", 6), ("sapling", 7), ("weeper", 6),
+                       ("flower", 6), ("bush", 5)]:
         spec = _plants.get_spec(name)
         mesh, (lo, hi) = _plants.grow_mesh(spec, gens)
         assert mesh.n_tris > 0, f"{name}: empty mesh"
@@ -246,6 +247,21 @@ def test_build_protein_folds():
     assert fld.colors.shape == (n, 3) and np.isfinite(fld.verts).all()
 
 
+def test_merge_meshes():
+    from warp_shaders.life.mesh import merge_meshes
+    a = _plants.grow_mesh(_plants.get_spec("grass"), 8)[0]
+    b = _plants.grow_mesh(_plants.get_spec("bush"), 5)[0]
+    m = merge_meshes([a, b], offsets=[(0, 0, 0), (5, 0, 0)])
+    assert m.n_tris == a.n_tris + b.n_tris
+    assert m.verts.shape[0] == a.verts.shape[0] + b.verts.shape[0]
+    assert int(m.indices.max()) < m.verts.shape[0]     # indices re-based, in range
+    # the offset moved the second plant +5 in x
+    assert float(m.verts[:, 0].max()) > float(a.verts[:, 0].max()) + 3.0
+    # empties are skipped, not fatal
+    z = merge_meshes([None])
+    assert z.n_tris == 0
+
+
 def test_cell_divides():
     from warp_shaders.life.cell import render_cell
     one = render_cell(64, 64, 0.0, (0.0, 0.0), 0.0, "cpu")
@@ -275,6 +291,7 @@ if __name__ == "__main__":
     test_mesh_plant_counts(); print("  mesh plant counts: OK")
     test_plant_specs_grow(); print("  plant grammars grow (grass/herb/tree/fern/sapling/weeper): OK")
     test_grow_mesh_env_responds(); print("  grow_mesh_env responds to light + fold: OK")
+    test_merge_meshes(); print("  merge_meshes (re-based, offset): OK")
     test_build_helix(); print("  DNA helix builds (colored, scales with bp): OK")
     test_build_protein_folds(); print("  protein folds (extended > compact): OK")
     test_cell_divides(); print("  cell division changes the render: OK")

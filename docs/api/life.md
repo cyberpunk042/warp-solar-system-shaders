@@ -52,7 +52,9 @@ these fields to *steer* the plant.
 
 `build_mesh(geo, sides=6) -> Mesh` tessellates the geometry into one indexed
 triangle mesh (`verts` / `indices` / per-vertex `normals` / `colors`) — tapered
-tubes for branches, blades for leaves.
+tubes for branches, blades for leaves. `merge_meshes([Mesh, …], offsets=…) ->
+Mesh` concatenates several meshes (indices re-based, optional per-mesh
+translation) into one — the basis for the `meadow` scene.
 
 ## Render — `life.render`
 
@@ -65,7 +67,8 @@ the post pipeline.
 ## Plants — `life.plants`
 
 `get_spec(name)` → a memoized `PlantSpec` for `"grass"`, `"herb"`, `"tree"`,
-`"fern"`, `"sapling"`, or `"weeper"`; `grow_mesh(spec, gen) -> (Mesh, (lo, hi))` derives +
+`"fern"`, `"flower"`, `"bush"`, `"sapling"`, or `"weeper"`;
+`grow_mesh(spec, gen) -> (Mesh, (lo, hi))` derives +
 tessellates to a generation (cached). The `grass` / `herb` / `tree` **scenes**
 grow these with `time`.
 

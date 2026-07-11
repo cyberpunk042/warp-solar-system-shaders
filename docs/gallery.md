@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (59 scenes).
+`python render.py --list` for the full, current list (62 scenes).
 
 ## Engine showcase
 
@@ -45,12 +45,18 @@ a mesh and **ray-cast** through the Warp engine. Generation advances with
 | | | |
 |---|---|---|
 | **grass**<br>tuft of arching blades<br>![grass](life/grass.png) | **herb**<br>stochastic leafy plant, golden-angle leaves<br>![herb](life/herb.png) | **tree**<br>parametric tapering tree + leafy canopy<br>![tree](life/tree.png) |
-| **fern**<br>bracketed frond unfurling into a fiddlehead (ABOP fig 1.24)<br>![fern](life/fern.png) | | |
+| **fern**<br>bracketed frond unfurling into a fiddlehead (ABOP fig 1.24)<br>![fern](life/fern.png) | **flower**<br>leafy stem that blooms into a whorl of petals at maturity<br>![flower](life/flower.png) | **bush**<br>dense stochastic shrub, wide and leafy<br>![bush](life/bush.png) |
 
 Growth (`--frames 8 --fps 1`), sprout → tree, and the fern unfurling:
 
 ![tree growing](life/tree_grow.gif)
 ![fern unfurling](life/fern_grow.gif)
+
+A whole **meadow** — grass, herb, flower, fern and bush merged into one mesh and
+swaying in a single wind:
+
+![meadow](life/meadow.png)
+![meadow swaying](life/meadow.gif)
 
 ### Environmental response (the "obvious rules", ABOP §2.3.4)
 

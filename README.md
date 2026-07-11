@@ -139,9 +139,13 @@ tessellates to a triangle mesh, and **ray-casts real geometry** through the Warp
 engine (`wp.Mesh` BVH + `wp.mesh_query_ray`, GGX PBR, cast shadow, sky, post).
 Generation advances with `time`, so they grow.
 
-| grass | herb | tree | fern |
-|---|---|---|---|
-| ![grass](docs/life/grass.png) | ![herb](docs/life/herb.png) | ![tree](docs/life/tree.png) | ![fern](docs/life/fern.png) |
+| grass | herb | tree | fern | flower | bush |
+|---|---|---|---|---|---|
+| ![grass](docs/life/grass.png) | ![herb](docs/life/herb.png) | ![tree](docs/life/tree.png) | ![fern](docs/life/fern.png) | ![flower](docs/life/flower.png) | ![bush](docs/life/bush.png) |
+
+A whole **meadow** — several plants merged into one mesh, swaying in one wind:
+
+![meadow](docs/life/meadow.png)
 
 ```bash
 python render.py --scene tree --frames 8 --fps 1 --gif out/tree.gif  # watch it grow

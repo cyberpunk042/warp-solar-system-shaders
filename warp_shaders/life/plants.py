@@ -115,6 +115,43 @@ def weeper(seed: int = 2) -> PlantSpec:
     return PlantSpec(ls, cfg, gens=6, sides=5)
 
 
+# --- flowering plant (parametric apex that blooms at maturity) ---------------
+
+def flower() -> PlantSpec:
+    # apex A(n) elongates a leafy stem while n>0, then becomes a bloom K: a whorl
+    # of five bright petals ('(3)) around a small centre. The growing scene pops
+    # the bloom once the stem reaches maturity.
+    # a bloom = a whorl of six bright petals splayed out around a small centre,
+    # emitted inline the moment the apex matures (so it needs no extra generation)
+    petal = "[&(38)'(3)L(1.5)]/(60)"
+    bloom = "'(3)" + petal * 6 + "'(3)L(0.7)"
+
+    def apex(m, l, r):
+        n = m.params[0]
+        if n > 0.5:
+            s = "F(0.55)[+(35)'(1)L(0.7)]/(137.5)[-(35)'(1)L(0.7)]/(137.5)"
+            return parse(s) + [Module("A", (n - 1.0,))]
+        return parse(bloom)
+    ls = LSystem("A(5)", {"A": Rule("A", apex)})
+    cfg = TurtleConfig(step=0.55, angle=32.0, radius=0.05, leaf_size=1.0)
+    return PlantSpec(ls, cfg, gens=6, sides=5)
+
+
+# --- dense low shrub (stochastic, wide) --------------------------------------
+
+def bush(seed: int = 6) -> PlantSpec:
+    rules = {
+        "X": [
+            ("F[+(38)X][-(38)X][&(38)/(90)X]F'(1)L", 0.5),
+            ("F[-(40)X][&(34)X]F'(2)L", 0.3),
+            ("F[+(40)X][^(34)/(90)X]F'(1)L", 0.2),
+        ],
+    }
+    ls = LSystem("X", rules, seed=seed)
+    cfg = TurtleConfig(step=0.34, angle=34.0, radius=0.05, leaf_size=0.7)
+    return PlantSpec(ls, cfg, gens=5, sides=5)
+
+
 # --- bracketed fern (the iconic ABOP §1.6 fig-1.24 plant, in 3D) -------------
 
 def fern(seed: int = 4) -> PlantSpec:
@@ -132,7 +169,8 @@ def fern(seed: int = 4) -> PlantSpec:
 
 
 _REGISTRY = {"tree": tree, "herb": herb, "grass": grass,
-             "sapling": sapling, "weeper": weeper, "fern": fern}
+             "sapling": sapling, "weeper": weeper, "fern": fern,
+             "flower": flower, "bush": bush}
 _spec_cache: dict = {}
 _mesh_cache: dict = {}
 _word_cache: dict = {}
