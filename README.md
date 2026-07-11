@@ -55,8 +55,8 @@ for every public symbol.
 | ![gas giant](docs/engine/gas_giant.png) | ![alien](docs/engine/alien.png) | ![galaxy](docs/engine/galaxy.png) |
 | **aurora** | **lava planet** | **desert dunes** |
 | ![aurora](docs/engine/aurora.png) | ![lava planet](docs/engine/lava_planet.png) | ![dunes](docs/engine/dunes.png) |
-| **glacier** | | |
-| ![glacier](docs/engine/glacier.png) | | |
+| **glacier** | **depth of field** | |
+| ![glacier](docs/engine/glacier.png) | ![depth of field](docs/engine/dof_showcase.png) | |
 
 - **Procedural toolkit** (`warp_shaders/procedural/`) — value/Perlin/Worley/fbm/
   ridged/billow/domain-warp/curl noise **with analytic derivatives**, plus an SDF
@@ -65,7 +65,8 @@ for every public symbol.
   frame/quality), an adaptive sphere-tracing raymarcher, **GGX Cook-Torrance PBR**,
   **physically based atmospheric scattering** (Nishita/O'Neil Rayleigh+Mie), a
   **volumetric cloud** raymarcher (Schneider density, Henyey-Greenstein, Beer-Lambert,
-  sun light-march), and a host **post** pipeline (ACES/AgX tonemap, bloom, vignette).
+  sun light-march), a **thin-lens depth-of-field** camera (aperture + focus plane),
+  and a host **post** pipeline (ACES/AgX tonemap, bloom, vignette).
 - **LOD tiers** (`warp_shaders/lod.py`) — one knob scales raymarch/shadow/AO/atmosphere/
   cloud sample counts, octaves, LUT sizes; auto-detected per device.
 - **Textures & LUTs** (`warp_shaders/textures.py`) — portable bilinear sampling over
