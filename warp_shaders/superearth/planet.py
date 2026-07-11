@@ -417,6 +417,7 @@ def _moon_shade(n: wp.vec3, sun: wp.vec3, mtype: int, center: wp.vec3) -> wp.vec
 @wp.kernel
 def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
                   cfg: PlanetConfig, time: float, steps: int, csteps: int,
+                  relief: int,
                   moon_pos: wp.array(dtype=wp.vec3), moon_rad: wp.array(dtype=float),
                   moon_type: wp.array(dtype=wp.int32), moon_n: int,
                   width: int, height: int):
@@ -438,9 +439,18 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
     col = stars(rd)
 
     rmax = _R * (1.0 + 1.2 * _RS)
-    outer = _rs(ro, rd, rmax)
     surf_t = float(-1.0)
-    if outer[1] > 0.0:
+    if relief == 0:
+        # fast path: analytic base sphere + bump-mapped terrain normal (no march)
+        g = _rs(ro, rd, _R)
+        if g[0] > 0.0:
+            hit_t = g[0]
+            d = wp.normalize(ro + rd * hit_t)
+            n = _terrain_normal(d, cfg)
+            col = _shade(d, n, rd, sr, cfg, time)
+            surf_t = hit_t
+    outer = _rs(ro, rd, rmax)
+    if relief != 0 and outer[1] > 0.0:
         t = wp.max(outer[0], 0.0)
         t1 = outer[1]
         dt = (t1 - t) / float(steps)
@@ -537,8 +547,13 @@ def _cloud_steps_for(quality: str) -> int:
 def render_planet(cfg: PlanetConfig, width: int, height: int, time: float = 0.0,
                   mouse=(0.0, 0.0), device: str = "cpu", quality: str = "medium",
                   sun_az: float = 1.1, sun_el: float = 0.35,
-                  dist: float = 3.4, fov: float = 42.0, moons=None) -> np.ndarray:
-    """Render `cfg` (and any orbiting `moons`) to an ``(H, W, 3)`` image."""
+                  dist: float = 3.4, fov: float = 42.0, moons=None,
+                  relief: bool = True) -> np.ndarray:
+    """Render `cfg` (and any orbiting `moons`) to an ``(H, W, 3)`` image.
+
+    ``relief=False`` uses a fast analytic sphere with bump-mapped terrain
+    shading (no silhouette relief) — ~10x faster, for animations / bombardment.
+    """
     from .moons import moon_state
     moons = moons or []
     az = 0.6 + float(mouse[0]) * 0.01
@@ -559,6 +574,7 @@ def render_planet(cfg: PlanetConfig, width: int, height: int, time: float = 0.0,
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(render_kernel, dim=(height, width),
               inputs=[img, cam, sun, cfg, float(time), int(steps), int(csteps),
+                      int(1 if relief else 0),
                       d_mpos, d_mrad, d_mtyp, int(len(moons)),
                       int(width), int(height)], device=device)
     wp.synchronize_device(device)
