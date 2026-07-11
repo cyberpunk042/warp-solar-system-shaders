@@ -47,8 +47,8 @@ def _normal(p: wp.vec3, power: float, iters: int) -> wp.vec3:
 @wp.func
 def _palette(t: float) -> wp.vec3:
     # IQ cosine palette — iridescent shells keyed on the orbit trap
-    a = wp.vec3(0.42, 0.38, 0.36)
-    b = wp.vec3(0.45, 0.45, 0.42)
+    a = wp.vec3(0.5, 0.45, 0.4)
+    b = wp.vec3(0.5, 0.5, 0.45)
     c = wp.vec3(1.0, 1.0, 1.0)
     d = wp.vec3(0.0, 0.15, 0.35)
     ph = (c * t + d) * _TWO_PI
@@ -100,7 +100,7 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
         p = _roty(ro + rd * t, spin)
         v4 = mandelbulb_de(p, power, iters)
         d = v4[0]
-        glow = glow + wp.exp(-d * 42.0)                 # closest-approach halo
+        glow = glow + wp.exp(-d * 24.0)                 # closest-approach halo
         if d < 0.0006 * t + 0.0004:
             hit = 1
             trap = v4[1]
@@ -121,12 +121,13 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
         sh = _soft_shadow(p + n * 0.004, sun, power, iters, shadow_steps)
         ao = _ao(p, n, power, iters)
         rim = wp.pow(1.0 - wp.max(wp.dot(n, -rd), 0.0), 2.5)
-        col = wp.cw_mul(base, wp.vec3(0.10, 0.12, 0.18) * ao          # ambient
+        col = wp.cw_mul(base, wp.vec3(0.14, 0.16, 0.22) * ao          # ambient
                         + wp.vec3(1.0, 0.94, 0.82) * (ndl * sh))       # sun
-        col = col + base * (rim * 0.35)                                # fresnel rim
+        col = col + base * (rim * 0.4)                                 # fresnel rim
 
-    # glow tint (a thin halo around the fractal, not a wash)
-    col = col + wp.vec3(0.24, 0.40, 0.85) * (glow * 0.02)
+    # glow — a luminous haze bathing the fractal (operator: "the bright one
+    # was spectacular"), tinted electric blue
+    col = col + wp.vec3(0.30, 0.45, 0.85) * (glow * 0.05)
     img[i, j] = col
 
 
@@ -142,7 +143,7 @@ def _render(width, height, time, mouse, device):
     spin = time * 0.15 + float(mouse[0]) * 0.01
     az = 0.6
     el = 0.2 + float(mouse[1]) * 0.004
-    dist = 3.1
+    dist = 2.9
     eye = (dist * math.cos(el) * math.sin(az), dist * math.sin(el),
            dist * math.cos(el) * math.cos(az))
     cam = make_camera(eye, (0.0, 0.0, 0.0), fov_deg=42.0, aspect=width / height)
@@ -155,8 +156,8 @@ def _render(width, height, time, mouse, device):
     wp.synchronize_device(device)
     hdr = img.numpy()
     r = max(2, int(min(width, height) * 0.014))
-    hdr = post.bloom(hdr, threshold=1.15, strength=0.4, radius=r, passes=3)
-    out = post.tonemap(hdr, mode="aces", exposure=1.05)
+    hdr = post.bloom(hdr, threshold=0.95, strength=0.5, radius=r, passes=3)
+    out = post.tonemap(hdr, mode="aces", exposure=1.15)
     return post.vignette(out, 0.3)
 
 
