@@ -65,6 +65,9 @@ def main() -> None:
                     help="LOD tier for engine/LOD-aware scenes (auto = by device)")
     ap.add_argument("--ss", type=int, default=1,
                     help="supersampling factor for anti-aliasing (render NxN, downsample)")
+    ap.add_argument("--look", default="clean",
+                    choices=["clean", "cinematic", "film", "dreamy", "crisp"],
+                    help="post-processing look applied to each frame")
     args = ap.parse_args()
 
     wp.init()
@@ -83,18 +86,28 @@ def main() -> None:
     aa = f"  |  {ss}x AA" if ss > 1 else ""
     print(f"scene: {scene.name}  |  device: {device}  |  quality: {tier.name}{aa}")
 
-    def render_frame(t):
+    from warp_shaders.engine import post
+
+    def render_frame(t, apply_look=True):
         # Supersample: render at ss x resolution, box-average down (universal AA).
         fr = scene.render(args.width * ss, args.height * ss, t, tuple(args.mouse), device)
         if ss > 1:
             h2 = (fr.shape[0] // ss) * ss
             w2 = (fr.shape[1] // ss) * ss
             fr = fr[:h2, :w2].reshape(h2 // ss, ss, w2 // ss, ss, 3).mean(axis=(1, 3))
+        if apply_look and args.look != "clean":
+            fr = post.apply_look(fr, args.look, seed=int(t * 60.0) % 997)
         return fr
 
     if args.frames <= 1:
-        frame = render_frame(args.time)
-        save_png(args.out, frame)
+        low = args.out.lower()
+        if low.endswith(".hdr") or low.endswith(".npy"):
+            # HDR containers keep the raw linear buffer — no LDR look/clamp.
+            from warp_shaders.engine.imageio import RenderTarget
+            RenderTarget(render_frame(args.time, apply_look=False)).save(args.out)
+            print(f"wrote {args.out}  ({args.width}x{args.height}, t={args.time}, HDR)")
+            return
+        save_png(args.out, render_frame(args.time))
         print(f"wrote {args.out}  ({args.width}x{args.height}, t={args.time})")
         return
 

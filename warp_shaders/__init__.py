@@ -42,7 +42,7 @@ __version__ = "0.1.0"
 from . import cosmos, engine, life, lod, procedural, superearth, textures
 
 # --- scene registry (host) ---
-from .scene import Scene, get_scene, list_scenes, render
+from .scene import Scene, get_scene, list_scenes, render, render_image
 
 # --- quality tiers (host) ---
 from .lod import (
@@ -51,6 +51,7 @@ from .lod import (
 
 # --- engine uniforms + material + post (curated re-exports) ---
 from .engine import post
+from .engine.imageio import RenderTarget, load_hdr, save_hdr, save_npy
 from .engine.material import Material, make_material
 from .engine.uniforms import (
     Camera, Frame, Light, Quality, make_camera, make_frame, make_light,
@@ -63,7 +64,9 @@ __all__ = [
     "engine", "procedural", "textures", "lod", "post", "life",
     "superearth", "cosmos",
     # scenes
-    "Scene", "get_scene", "list_scenes", "render",
+    "Scene", "get_scene", "list_scenes", "render", "render_image",
+    # frame output
+    "RenderTarget", "save_hdr", "save_npy", "load_hdr",
     # quality tiers
     "QualityTier", "get_tier", "auto_tier", "set_active", "active_tier",
     # uniforms + material
