@@ -59,12 +59,14 @@ for every public symbol.
 | ![aurora](docs/engine/aurora.png) | ![lava planet](docs/engine/lava_planet.png) | ![dunes](docs/engine/dunes.png) |
 | **glacier** | **depth of field** | **slot canyon** |
 | ![glacier](docs/engine/glacier.png) | ![depth of field](docs/engine/dof_showcase.png) | ![canyon](docs/engine/canyon.png) |
-| **underwater reef** | | |
-| ![reef](docs/engine/reef.png) | | |
+| **underwater reef** | **Mandelbulb fractal** | **Mandelbox fractal** |
+| ![reef](docs/engine/reef.png) | ![mandelbulb](docs/engine/mandelbulb.png) | ![mandelbox](docs/engine/mandelbox.png) |
 
 - **Procedural toolkit** (`warp_shaders/procedural/`) — value/Perlin/Worley/fbm/
   ridged/billow/domain-warp/curl noise **with analytic derivatives**, plus an SDF
-  primitive+operator library. Sources: IQ, Gustavson, McGuire, Bridson.
+  primitive+operator library and **3D fractal distance estimators**
+  (**Mandelbulb** triplex power + **Mandelbox** folds, with orbit-trap colour;
+  `procedural.fractal`). Sources: IQ, Gustavson, McGuire, Bridson, White-Nylander, Lowe.
 - **Render engine** (`warp_shaders/engine/`) — `@wp.struct` uniforms (camera/light/
   frame/quality), an adaptive sphere-tracing raymarcher, **GGX Cook-Torrance PBR**,
   **physically based atmospheric scattering** (Nishita/O'Neil Rayleigh+Mie **plus

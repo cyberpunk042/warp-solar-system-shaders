@@ -10,6 +10,7 @@ from .sdf import (
     op_smooth_union, op_subtract, op_union, sd_box, sd_capsule, sd_cylinder,
     sd_ellipsoid, sd_plane, sd_round_box, sd_sphere, sd_torus,
 )
+from .fractal import mandelbox_de, mandelbulb_de
 
 __all__ = [
     "fract", "hash11", "hash21", "hash22", "hash31", "hash33",
@@ -19,4 +20,5 @@ __all__ = [
     "sd_capsule", "sd_plane", "sd_ellipsoid", "op_union", "op_intersect",
     "op_subtract", "op_smooth_union", "op_smooth_subtract",
     "op_smooth_intersect", "op_round", "op_onion",
+    "mandelbulb_de", "mandelbox_de",
 ]
