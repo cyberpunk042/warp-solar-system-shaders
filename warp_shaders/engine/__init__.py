@@ -31,6 +31,7 @@ from .color import (blackbody, kelvin_to_rgb, linear_to_srgb, luminance,
 from .intersect import (ray_box, ray_disk, ray_plane, ray_sphere, ray_sphere_o,
                         sphere_t)
 from .material import Material, make_mat, make_material, shade_material
+from .sky import milky_way, starfield
 from .pbr import (
     distribution_ggx, fresnel_schlick, geometry_schlick_ggx, geometry_smith,
     shade_pbr,
@@ -59,4 +60,6 @@ __all__ = [
     "geometry_schlick_ggx", "geometry_smith",
     # reusable shading helpers
     "apply_fog", "sun_disk", "sky_gradient",
+    # sky backgrounds (device)
+    "starfield", "milky_way",
 ]
