@@ -327,6 +327,40 @@ def test_mind_per_branch_decisions():
     assert ds[0] >= ds[-1] and ds[0] > 0.5 and ds[-1] < 0.5
 
 
+# --- wave / collapse ----------------------------------------------------------
+from warp_shaders.life import collapse as _collapse
+
+
+def test_superpose():
+    a = np.zeros((4, 4, 3), np.float32)
+    b = np.ones((4, 4, 3), np.float32)
+    np.testing.assert_allclose(_collapse.superpose([a, b]), 0.5)
+    # all weight on one member returns that member
+    np.testing.assert_allclose(_collapse.superpose([a, b], [0.0, 1.0]), 1.0)
+
+
+def test_collapse_blend_endpoints():
+    g = [np.full((10, 6, 3), 0.2, np.float32),
+         np.full((10, 6, 3), 0.8, np.float32),
+         np.full((10, 6, 3), 0.5, np.float32)]
+    cloud = _collapse.superpose(g)                       # 0.5 everywhere
+    # front_frac 0 -> fully superposed (the cloud)
+    out0 = _collapse.collapse_blend(g, chosen_idx=1, front_frac=0.0)
+    np.testing.assert_allclose(out0, cloud, atol=1e-6)
+    # front_frac 1 -> fully collapsed to the chosen member
+    out1 = _collapse.collapse_blend(g, chosen_idx=1, front_frac=1.0)
+    np.testing.assert_allclose(out1, g[1], atol=1e-6)
+    # midway: the top row is collapsed (chosen), the bottom row is still cloud
+    mid = _collapse.collapse_blend(g, chosen_idx=1, front_frac=0.5, band=0.05)
+    assert abs(float(mid[0].mean()) - 0.8) < 1e-3       # top = chosen
+    assert abs(float(mid[-1].mean()) - 0.5) < 1e-3      # bottom = cloud
+
+
+def test_pick_index():
+    assert _collapse.pick_index([0.1, 0.9, 0.3]) == 1
+    assert _collapse.pick_index([0.5, 0.2, 0.2, 0.7]) == 3
+
+
 if __name__ == "__main__":
     print("L-System + turtle tests:")
     test_parse_roundtrip(); print("  parse round-trip: OK")
@@ -356,4 +390,7 @@ if __name__ == "__main__":
     test_conway_block_still_life(); print("  mind: Conway block still-life: OK")
     test_mind_deterministic_and_bounded(); print("  mind: deterministic + bounded decision: OK")
     test_mind_per_branch_decisions(); print("  mind: per-branch band decisions: OK")
+    test_superpose(); print("  collapse: superpose (mean + weighted): OK")
+    test_collapse_blend_endpoints(); print("  collapse: blend endpoints + sweep: OK")
+    test_pick_index(); print("  collapse: pick_index (argmax): OK")
     print("ALL PASSED")
