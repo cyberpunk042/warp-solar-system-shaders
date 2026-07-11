@@ -65,6 +65,9 @@ def main() -> None:
                     help="LOD tier for engine/LOD-aware scenes (auto = by device)")
     ap.add_argument("--ss", type=int, default=1,
                     help="supersampling factor for anti-aliasing (render NxN, downsample)")
+    ap.add_argument("--look", default="clean",
+                    choices=["clean", "cinematic", "film", "dreamy", "crisp"],
+                    help="post-processing look applied to each frame")
     args = ap.parse_args()
 
     wp.init()
@@ -83,6 +86,8 @@ def main() -> None:
     aa = f"  |  {ss}x AA" if ss > 1 else ""
     print(f"scene: {scene.name}  |  device: {device}  |  quality: {tier.name}{aa}")
 
+    from warp_shaders.engine import post
+
     def render_frame(t):
         # Supersample: render at ss x resolution, box-average down (universal AA).
         fr = scene.render(args.width * ss, args.height * ss, t, tuple(args.mouse), device)
@@ -90,6 +95,8 @@ def main() -> None:
             h2 = (fr.shape[0] // ss) * ss
             w2 = (fr.shape[1] // ss) * ss
             fr = fr[:h2, :w2].reshape(h2 // ss, ss, w2 // ss, ss, 3).mean(axis=(1, 3))
+        if args.look != "clean":
+            fr = post.apply_look(fr, args.look, seed=int(t * 60.0) % 997)
         return fr
 
     if args.frames <= 1:

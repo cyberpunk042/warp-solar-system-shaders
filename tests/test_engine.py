@@ -125,6 +125,26 @@ def test_post_ops():
     assert not np.allclose(ca[:, 0], disp[:, 0])
 
 
+def test_looks():
+    # the named-look registry + one-call grade
+    names = P.looks()
+    assert names[0] == "clean" and {"cinematic", "film", "dreamy", "crisp"} <= set(names)
+    rng = np.random.default_rng(1)
+    disp = rng.random((24, 40, 3)).astype(np.float32)
+    # "clean" is a no-op (identity within clamp), graded looks change pixels
+    assert np.allclose(P.apply_look(disp, "clean"), np.clip(disp, 0, 1))
+    for look in ("cinematic", "film", "dreamy", "crisp"):
+        out = P.apply_look(disp, look, seed=2)
+        assert out.shape == disp.shape and np.all(np.isfinite(out))
+        assert out.min() >= 0.0 and out.max() <= 1.0
+        assert not np.allclose(out, disp)
+    # a params dict works just like a preset name
+    d = P.apply_look(disp, {"vignette": 0.5})
+    assert d.shape == disp.shape and np.all(np.isfinite(d))
+    # grained looks are deterministic from the seed
+    assert np.array_equal(P.apply_look(disp, "film", 7), P.apply_look(disp, "film", 7))
+
+
 if __name__ == "__main__":
     test_color_host_anchors()
     print("  colour host anchors (blackbody + sRGB): OK")
@@ -136,4 +156,6 @@ if __name__ == "__main__":
     print("  sky device (starfield + milky way): OK")
     test_post_ops()
     print("  post ops (exposure/auto/CA/grain/sharpen): OK")
+    test_looks()
+    print("  looks (clean/cinematic/film/dreamy/crisp + params dict): OK")
     print("ALL PASSED")
