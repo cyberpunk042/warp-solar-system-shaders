@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (93 scenes).
+`python render.py --list` for the full, current list (94 scenes).
 
 ## Engine showcase
 
@@ -18,6 +18,7 @@ volumetrics + post) and honours `--quality low..ultra`.
 | **aurora**<br>volumetric light curtains over a night landscape<br>![aurora](engine/aurora.png) | **lava planet**<br>molten sea, cooled-crust rafts, basalt islands<br>![lava_planet](engine/lava_planet.png) | **desert dunes**<br>wind ripples, long low-sun shadows, aerial haze<br>![dunes](engine/dunes.png) |
 | **glacier**<br>blue ice + snow, subsurface glow, cold low sun<br>![glacier](engine/glacier.png) | **depth of field**<br>thin-lens focus pull, near/far bokeh<br>![dof_showcase](engine/dof_showcase.png) | **slot canyon**<br>layered sandstone + volumetric god-rays<br>![canyon](engine/canyon.png) |
 | **underwater reef**<br>rippling caustics, blue-green depth, god-rays<br>![reef](engine/reef.png) | **post-FX showcase**<br>blackbody orbs + starfield + full post chain<br>![postfx](engine/postfx.png) | **soft shadows + AO**<br>analytic sphere shadows + ambient occlusion, no SDF march<br>![shadow_demo](engine/shadow_demo.png) |
+| **reflections**<br>Whitted mirror + glass + gold spheres, reflecting each other (bounce loop)<br>![reflections](engine/reflections.png) | | |
 
 ## Life — molecule to cell
 

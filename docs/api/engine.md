@@ -251,6 +251,22 @@ no SDF callback, so they compile into any kernel (planets, moons, the
 | `penumbra` | `(res, h, t, k) -> float` | the IQ SDF soft-shadow running-min atom, `res = min(res, k·h/t)` |
 | `ground_contact_ao` | `(height, radius) -> float` | cheap contact darkening for a subject above a plane |
 
+## Reflection & refraction — `engine.raytrace`
+
+The device atoms a raymarcher needs to **bounce** a ray at a hit (the multi-bounce
+loop lives in the scene — Warp has no recursion; see `scenes/reflections.py`).
+Conventions: `i` = incident direction (unit, toward the surface), `n` = outward
+normal, `eta` = `n1/n2` across the interface.
+
+| Function | Signature | Role |
+|---|---|---|
+| `reflect` | `(i, n) -> vec3` | mirror reflection |
+| `refract` | `(i, n, eta) -> vec3` | Snell refraction; total internal reflection falls back to `reflect` |
+| `refract_k` | `(i, n, eta) -> float` | the Snell discriminant; `< 0` ⇒ TIR |
+| `schlick_f0` | `(ior) -> float` | normal-incidence reflectance `F0` of a dielectric |
+| `fresnel_dielectric` | `(cos_theta, ior) -> float` | Schlick Fresnel of a dielectric (`F0` head-on → `1` grazing) |
+| `fresnel_schlick_s` | `(cos_theta, f0) -> float` | scalar Schlick from an explicit `F0` (metals/tinted mirrors) |
+
 ## Frame output — `engine.imageio`
 
 LDR + true-HDR containers and a `RenderTarget` wrapper (**host**). Scenes render a
