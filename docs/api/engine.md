@@ -157,13 +157,17 @@ kernel. See `scenes/sky.py` for the canonical wiring.
 ## Volumetrics — `engine.volumetric`
 
 Cloud density and light-marching (Schneider density, Henyey–Greenstein phase,
-Beer–Lambert extinction). All **device**.
+Beer–Lambert extinction). The high-frequency edge erosion is read from a
+**baked, seamless 3D detail volume** (`build_cloud_detail`) with trilinear
+`sample3d` — much cheaper than recomputing Worley/fBm per march step (~45 %
+faster on the `clouds` scene) and seamless via `value_tiled3`.
 
-| Function | Signature |
-|---|---|
-| `hg_phase` | `(cos_theta: float, g: float) -> float` — Henyey–Greenstein phase |
-| `cloud_density` | `(p: vec3, time: float, coverage: float, base_y: float, top_y: float) -> float` — density in `[0, 1]` inside the slab `[base_y, top_y]` |
-| `march_clouds` | `(ro, rd, sun, time, coverage, base_y, top_y, steps: int, light_steps: int, sun_col, amb) -> vec4` — raymarch a horizontal cloud slab; returns `(scattered_rgb, transmittance)` |
+| Function | Where | Signature |
+|---|---|---|
+| `build_cloud_detail` | host | `(size=96, device="cpu") -> wp.array3d(float)` — bake the seamless detail volume once |
+| `hg_phase` | device | `(cos_theta: float, g: float) -> float` — Henyey–Greenstein phase |
+| `cloud_density` | device | `(p: vec3, time, coverage, base_y, top_y, vol) -> float` — density in `[0, 1]` inside the slab; `vol` from `build_cloud_detail` |
+| `march_clouds` | device | `(ro, rd, sun, time, coverage, base_y, top_y, steps: int, light_steps: int, sun_col, amb, vol) -> vec4` — raymarch a horizontal cloud slab; returns `(scattered_rgb, transmittance)` |
 
 `steps`/`light_steps` come from the tier (`volumetric_steps`), so cloud detail
 scales with quality.

@@ -14,7 +14,8 @@ Everything a scene needs to turn a ray into a pixel:
   Hillaire multiple-scattering LUTs (``build_transmittance_lut`` /
   ``build_multiscatter_lut``, :func:`atmosphere_lut`).
 - **volumetric** — cloud density + light-marching
-  (:func:`cloud_density`, :func:`march_clouds`, :func:`hg_phase`).
+  (:func:`cloud_density`, :func:`march_clouds`, :func:`hg_phase`) over a baked
+  seamless detail volume (``build_cloud_detail``).
 - **post** — host-side tonemap / bloom / godrays / vignette.
 - **shading** — small map-independent helpers (:func:`apply_fog`,
   :func:`sun_disk`, :func:`sky_gradient`).
