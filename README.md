@@ -1,21 +1,48 @@
-# warp-solar-system-shaders
+# Warp Shaders
 
-Raymarched GPU scenes written with [**NVIDIA Warp**](https://github.com/NVIDIA/warp)
-(`warp-lang`). Shader-style per-pixel kernels — SDF raymarching, value noise,
-fBm — written in Python `@wp.kernel` / `@wp.func` form, running on CUDA when a
-GPU is present and transparently falling back to CPU otherwise.
+**A hyper-realistic procedural rendering engine for [NVIDIA Warp](https://github.com/NVIDIA/warp)** (`warp-lang`).
 
-It's a **multi-scene gallery**: each shader is one self-contained module in
+Per-pixel `@wp.kernel` shaders — SDF raymarching, procedural noise, PBR,
+physically based atmosphere, and volumetrics — written in Python, JIT-compiled
+to **CUDA when a GPU is present and to CPU otherwise**, driven by **one quality
+knob** (`--quality low|medium|high|ultra`) so the same scene renders on a laptop
+CPU and scales to a high-end GPU. Every technique cites a primary source in-code
+and in [`docs/research/`](docs/research/).
+
+```python
+import warp as wp
+import warp_shaders as ws
+
+wp.init()
+ws.set_active("high")                                          # quality tier
+img = ws.render("earth_v2", width=1280, height=720, time=0.0)  # (H, W, 3) float
+
+# ...or call the engine directly from your own kernel:
+ws.procedural   # noise (value/Perlin/simplex/Worley/fbm/ridged/...) + SDF library
+ws.engine       # uniforms, PBR, Material, atmosphere (+LUT), volumetrics, post
+ws.textures     # portable 2D/3D/equirect sampling over wp.array
+ws.lod          # quality tiers (low/medium/high/ultra)
+```
+
+> **📖 Documentation** — the engine has a full manual:
+> **[Home](docs/index.md)** ·
+> **[Quickstart](docs/quickstart.md)** ·
+> **[Concepts](docs/concepts.md)** ·
+> **[Writing a scene](docs/guides/writing-a-scene.md)** ·
+> **[API reference](docs/api/index.md)** ·
+> **[Gallery](docs/gallery.md)**.
+> Build the browsable site with `pip install -r docs/requirements.txt && mkdocs serve`.
+
+It's also a **multi-scene gallery**: each shader is one self-contained module in
 `warp_shaders/scenes/`, auto-discovered by a registry. Adding a scene is adding
 a file — no central list to edit.
 
 ## Hyper-realistic engine
 
-On top of the scene gallery there's a reusable, **tiered, research-grounded
-rendering engine** — a procedural toolkit + a render engine with one quality
-knob (`--quality low|medium|high|ultra`) so the same scene runs on CPU here and
-scales to a high-end GPU. Every technique cites a primary source in-code and in
-[`docs/research/`](docs/research/); see [`docs/engine.md`](docs/engine.md) for the API.
+A reusable, **tiered, research-grounded rendering engine** — a procedural
+toolkit + a render engine with one quality knob so the same scene runs on CPU
+here and scales to a high-end GPU. See the [API reference](docs/api/index.md)
+for every public symbol.
 
 | noise toolkit | PBR raymarch | atmosphere |
 |---|---|---|
