@@ -12,7 +12,10 @@ import numpy as np
 import warp as wp
 
 from ..engine import post
-from ..engine.atmosphere import build_transmittance_lut, sample_counts, sky_radiance_lut
+from ..engine.atmosphere import (
+    build_multiscatter_lut, build_transmittance_lut, sample_counts,
+    sky_radiance_lut,
+)
 from ..engine.uniforms import Camera, camera_ray_dir, make_camera
 from ..lod import active_tier
 from ..scene import Scene
@@ -24,25 +27,28 @@ _lut_cache = {}
 @wp.kernel
 def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
                   view_samples: int, lut: wp.array2d(dtype=wp.vec3),
-                  width: int, height: int):
+                  ms_lut: wp.array2d(dtype=wp.vec3), width: int, height: int):
     i, j = wp.tid()
     u = (2.0 * (float(j) + 0.5) / float(width)) - 1.0
     v = (2.0 * (float(height - 1 - i) + 0.5) / float(height)) - 1.0
     rd = camera_ray_dir(cam, u, v)
-    img[i, j] = sky_radiance_lut(cam.eye, rd, sun, view_samples, lut)
+    img[i, j] = sky_radiance_lut(cam.eye, rd, sun, view_samples, lut, ms_lut)
 
 
-def _lut(device, size):
+def _luts(device, size):
+    """Transmittance + multiple-scattering LUTs (baked once, cached; same device)."""
     key = (device, size)
     if key not in _lut_cache:
-        _lut_cache[key] = build_transmittance_lut(size=size, device=device)
+        tr = build_transmittance_lut(size=size, device=device)
+        ms = build_multiscatter_lut(tr, size=size, device=device)
+        _lut_cache[key] = (tr, ms)
     return _lut_cache[key]
 
 
 def _render(width, height, time, mouse, device):
     tier = active_tier()
     vs, ls = sample_counts(tier.name)
-    lut = _lut(device, tier.lut_size)
+    lut, ms_lut = _luts(device, tier.lut_size)
 
     az = 0.3 + float(mouse[0]) * 0.01 + time * 0.03
     pitch = 0.22
@@ -59,7 +65,7 @@ def _render(width, height, time, mouse, device):
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(render_kernel, dim=(height, width),
-              inputs=[img, cam, sun, int(vs), lut, int(width), int(height)],
+              inputs=[img, cam, sun, int(vs), lut, ms_lut, int(width), int(height)],
               device=device)
     wp.synchronize_device(device)
     hdr = img.numpy()

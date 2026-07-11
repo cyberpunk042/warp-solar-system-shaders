@@ -128,31 +128,46 @@ ground shadowing), in analytic and LUT-accelerated forms.
 | `atmosphere` | `(ro, rd, sun, view_samples: int, light_samples: int) -> vec3` — in-scattered radiance along a view ray; `ro` in planet-centred metres |
 | `sky_radiance` | `(ro, rd, sun, view_samples, light_samples) -> vec3` — `atmosphere` plus the sun disk |
 
-### LUT-accelerated
+### LUT-accelerated (single + multiple scattering)
+
+Two precomputed 2D LUTs, both indexed `[altitude, sun-zenith mu]`: a
+**transmittance** LUT (removes the per-view-sample sun light-march) and a
+**Hillaire 2020 multiple-scattering** LUT (adds the isotropic multi-scatter that
+brightens twilight / horizon / shadowed sky without touching the single-scatter
+term). The multiscatter LUT consumes the transmittance LUT and is baked once on
+the same device.
 
 | Function | Where | Signature |
 |---|---|---|
 | `build_transmittance_lut` | host | `(size=64, device="cpu", steps=32) -> wp.array2d(vec3)` — bake the transmittance table once |
-| `transmittance_lut` | device | `(lut, h: float, mu: float) -> vec3` — sample the table |
-| `atmosphere_lut` | device | `(ro, rd, sun, view_samples: int, lut) -> vec3` — sky in-scatter using the LUT for the sun path (no inner loop) |
-| `sky_radiance_lut` | device | `(ro, rd, sun, view_samples, lut) -> vec3` — `atmosphere_lut` plus the sun disk |
+| `transmittance_lut` | device | `(lut, h: float, mu: float) -> vec3` — sample the transmittance table |
+| `build_multiscatter_lut` | host | `(tr_lut, size=32, device="cpu", dir_samples=32, steps=32) -> wp.array2d(vec3)` — bake the multiple-scattering table (needs `tr_lut`) |
+| `multiscatter_lut` | device | `(ms_lut, h: float, mu: float) -> vec3` — sample the multiscatter table |
+| `atmosphere_lut` | device | `(ro, rd, sun, view_samples: int, lut, ms_lut) -> vec3` — single + multiple scattering via the LUTs (no inner loop) |
+| `sky_radiance_lut` | device | `(ro, rd, sun, view_samples, lut, ms_lut) -> vec3` — `atmosphere_lut` plus the sun disk |
 | `sample_counts` | host | `(tier_name: str) -> (view_samples, light_samples)` — per-tier sample budget |
 
-Prefer the LUT path in tier-scaled scenes: build the LUT once on the host at
-`active_tier().lut_size`, then pass it into the kernel.
+Prefer the LUT path in tier-scaled scenes: build **both** LUTs once on the host
+at `active_tier().lut_size` (`tr = build_transmittance_lut(...)` then
+`ms = build_multiscatter_lut(tr, ...)`), cache them, and pass both into the
+kernel. See `scenes/sky.py` for the canonical wiring.
 
 ---
 
 ## Volumetrics — `engine.volumetric`
 
 Cloud density and light-marching (Schneider density, Henyey–Greenstein phase,
-Beer–Lambert extinction). All **device**.
+Beer–Lambert extinction). The high-frequency edge erosion is read from a
+**baked, seamless 3D detail volume** (`build_cloud_detail`) with trilinear
+`sample3d` — much cheaper than recomputing Worley/fBm per march step (~45 %
+faster on the `clouds` scene) and seamless via `value_tiled3`.
 
-| Function | Signature |
-|---|---|
-| `hg_phase` | `(cos_theta: float, g: float) -> float` — Henyey–Greenstein phase |
-| `cloud_density` | `(p: vec3, time: float, coverage: float, base_y: float, top_y: float) -> float` — density in `[0, 1]` inside the slab `[base_y, top_y]` |
-| `march_clouds` | `(ro, rd, sun, time, coverage, base_y, top_y, steps: int, light_steps: int, sun_col, amb) -> vec4` — raymarch a horizontal cloud slab; returns `(scattered_rgb, transmittance)` |
+| Function | Where | Signature |
+|---|---|---|
+| `build_cloud_detail` | host | `(size=96, device="cpu") -> wp.array3d(float)` — bake the seamless detail volume once |
+| `hg_phase` | device | `(cos_theta: float, g: float) -> float` — Henyey–Greenstein phase |
+| `cloud_density` | device | `(p: vec3, time, coverage, base_y, top_y, vol) -> float` — density in `[0, 1]` inside the slab; `vol` from `build_cloud_detail` |
+| `march_clouds` | device | `(ro, rd, sun, time, coverage, base_y, top_y, steps: int, light_steps: int, sun_col, amb, vol) -> vec4` — raymarch a horizontal cloud slab; returns `(scattered_rgb, transmittance)` |
 
 `steps`/`light_steps` come from the tier (`volumetric_steps`), so cloud detail
 scales with quality.
