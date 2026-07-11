@@ -47,6 +47,7 @@ nav:
       - life (L-Systems): api/life.md
       - super-earth: api/superearth.md
       - cosmos (solar system): api/cosmos.md
+      - blast (nuclear): api/blast.md
   - Gallery: gallery.md
   - Research notes:
       - Foundations: research/00-foundations.md
@@ -64,6 +65,7 @@ nav:
       - Galaxy collisions: research/12-galaxy-collisions.md
       - 3D fractals: research/13-3d-fractals.md
       - KIFS fractals: research/14-kifs-fractals.md
+      - Nuclear fireball: research/15-nuclear-fireball.md
 
 markdown_extensions:
   - admonition
