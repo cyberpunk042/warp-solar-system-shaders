@@ -124,6 +124,45 @@ def test_turtle_leaf_and_bounds():
     assert hi[1] - lo[1] >= 1.99                      # spans the 2-unit stem
 
 
+# --- environmental response (tropism, ABOP §2.3.4) ---------------------------
+
+
+def test_gravitropism_bends_down():
+    # a stem set off a little from vertical sags under gravity T=(0,-1,0): its
+    # tip ends up lower than the same stem grown straight (a perfectly vertical
+    # stem is a degenerate equilibrium, so we tilt it first with &(20))
+    word = parse("&(20)" + "F" * 12)
+    straight = interpret(word, TurtleConfig(step=1.0))
+    sag = interpret(word, TurtleConfig(step=1.0, tropism=(0, -1, 0),
+                                       tropism_e=0.1))
+    tip_straight = straight.segments[-1].p1
+    tip_sag = sag.segments[-1].p1
+    assert tip_straight[1] > tip_sag[1] + 1.0          # sagged tip is lower
+    hd = lambda p: float((p[0] ** 2 + p[2] ** 2) ** 0.5)
+    assert hd(tip_sag) > hd(tip_straight)              # and reaches further out
+    # in the gentle regime a stronger susceptibility sags more
+    sag2 = interpret(word, TurtleConfig(step=1.0, tropism=(0, -1, 0),
+                                        tropism_e=0.2))
+    assert sag2.segments[-1].p1[1] < tip_sag[1]
+
+
+def test_phototropism_bends_toward_light():
+    # a light off to the +X side pulls the growing tip toward it
+    word = parse("F" * 12)
+    dark = interpret(word, TurtleConfig(step=1.0))
+    lit = interpret(word, TurtleConfig(step=1.0, light=(20.0, 6.0, 0.0),
+                                       light_e=0.15))
+    assert lit.segments[-1].p1[0] > dark.segments[-1].p1[0] + 1.0
+
+
+def test_tropism_off_is_straight():
+    # tropism vector present but susceptibility 0 -> identical to no tropism
+    word = parse("F" * 6)
+    a = interpret(word, TurtleConfig(step=1.0))
+    b = interpret(word, TurtleConfig(step=1.0, tropism=(0, -1, 0), tropism_e=0.0))
+    np.testing.assert_allclose(a.segments[-1].p1, b.segments[-1].p1, atol=1e-6)
+
+
 # --- mesh tessellation -------------------------------------------------------
 from warp_shaders.life.mesh import build_mesh
 
@@ -173,6 +212,9 @@ if __name__ == "__main__":
     test_turtle_straight(); print("  turtle straight stem: OK")
     test_turtle_branch(); print("  turtle branch: OK")
     test_turtle_leaf_and_bounds(); print("  turtle leaf + bounds: OK")
+    test_gravitropism_bends_down(); print("  gravitropism (sag): OK")
+    test_phototropism_bends_toward_light(); print("  phototropism (toward light): OK")
+    test_tropism_off_is_straight(); print("  tropism off == straight: OK")
     test_mesh_single_tube(); print("  mesh single tube: OK")
     test_mesh_plant_counts(); print("  mesh plant counts: OK")
     test_plant_specs_grow(); print("  plant grammars grow (grass/herb/tree): OK")
