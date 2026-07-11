@@ -22,6 +22,7 @@ ws.procedural   # noise (value/Perlin/simplex/Worley/fbm/ridged/...) + SDF libra
 ws.engine       # uniforms, PBR, Material, atmosphere (+LUT), volumetrics, post
 ws.textures     # portable 2D/3D/equirect sampling over wp.array
 ws.lod          # quality tiers (low/medium/high/ultra)
+ws.life         # L-Systems -> grown plants (grass/herb/tree), ray-cast as real geometry
 ```
 
 > **📖 Documentation** — the engine has a full manual:
@@ -107,6 +108,31 @@ continents, drifting clouds, a day/night terminator with night-side city lights,
 over a starfield — fully procedural, no texture asset. Shading lives in
 [`warp_shaders/earthgfx.py`](warp_shaders/earthgfx.py), shared with the Earth
 blast simulation below.
+
+## Life — L-Systems that grow
+
+`warp_shaders.life` grows plants from **L-System grammars** (Prusinkiewicz &
+Lindenmayer, *The Algorithmic Beauty of Plants*) — all four classes (D0L,
+stochastic, context-sensitive, parametric) — interprets them with a 3D turtle,
+tessellates to a triangle mesh, and **ray-casts real geometry** through the Warp
+engine (`wp.Mesh` BVH + `wp.mesh_query_ray`, GGX PBR, cast shadow, sky, post).
+Generation advances with `time`, so they grow.
+
+| grass | herb | tree |
+|---|---|---|
+| ![grass](docs/life/grass.png) | ![herb](docs/life/herb.png) | ![tree](docs/life/tree.png) |
+
+```bash
+python render.py --scene tree --frames 8 --fps 1 --gif out/tree.gif  # watch it grow
+python render.py --scene grass --time 9 -o grass.png
+python -m tests.test_lsystem                                         # grammar tests
+```
+
+![tree growing](docs/life/tree_grow.gif)
+
+The roadmap runs downward (DNA -> protein -> cell) and then adds a **mind** —
+a decision layer that overrides default growth (toward light, closing in rain),
+built on the context-sensitive class. See [docs/research/04-lsystems.md](docs/research/04-lsystems.md).
 
 ## The atom, from the bottom up
 
