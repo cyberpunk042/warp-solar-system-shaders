@@ -42,7 +42,7 @@ __version__ = "0.1.0"
 from . import cosmos, engine, life, lod, procedural, superearth, textures
 
 # --- scene registry (host) ---
-from .scene import Scene, get_scene, list_scenes, render
+from .scene import Scene, get_scene, list_scenes, render, render_image
 
 # --- quality tiers (host) ---
 from .lod import (
@@ -63,7 +63,7 @@ __all__ = [
     "engine", "procedural", "textures", "lod", "post", "life",
     "superearth", "cosmos",
     # scenes
-    "Scene", "get_scene", "list_scenes", "render",
+    "Scene", "get_scene", "list_scenes", "render", "render_image",
     # quality tiers
     "QualityTier", "get_tier", "auto_tier", "set_active", "active_tier",
     # uniforms + material

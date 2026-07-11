@@ -78,6 +78,10 @@ def test_render_roundtrip():
     assert isinstance(img, np.ndarray)
     assert img.shape[0] == 36 and img.shape[1] == 64
     assert np.all(np.isfinite(img))
+    # render_image: render + a named post look in one call
+    graded = ws.render_image("pbr_demo", look="cinematic", width=64, height=36, time=0.0)
+    assert graded.shape == img.shape and np.all(np.isfinite(graded))
+    assert graded.min() >= 0.0 and graded.max() <= 1.0
 
 
 def test_atmosphere_luts():

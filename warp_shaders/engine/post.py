@@ -165,3 +165,43 @@ def sharpen(frame, amount=0.5, radius=2):
     c = np.asarray(frame, np.float32)
     blur = _box_blur(c, radius)
     return np.clip(c + (c - blur) * amount, 0.0, 1.0)
+
+
+# --------------------------------------------------------------------------- #
+# named looks — one-call display-range grades built from the ops above         #
+# --------------------------------------------------------------------------- #
+
+LOOKS = {
+    "clean": {},
+    "cinematic": {"ca": 0.003, "sharpen": 0.30, "vignette": 0.35},
+    "film": {"ca": 0.004, "sharpen": 0.25, "vignette": 0.40, "grain": 0.030},
+    "dreamy": {"glow": 0.38, "ca": 0.005, "vignette": 0.45, "grain": 0.015},
+    "crisp": {"sharpen": 0.6, "vignette": 0.2},
+}
+
+
+def looks():
+    """Names of the built-in looks."""
+    return list(LOOKS)
+
+
+def apply_look(frame, look="clean", seed=0):
+    """Apply a named look (or a params dict) to a display-range [0,1] frame —
+    a one-call grade composed from glow / chromatic_aberration / sharpen /
+    vignette / film_grain. See `LOOKS` for the presets."""
+    p = LOOKS.get(look, {}) if isinstance(look, str) else dict(look)
+    out = np.clip(np.asarray(frame, np.float32), 0.0, 1.0)
+    if p.get("glow", 0.0) > 0.0:
+        r = max(3, int(min(out.shape[0], out.shape[1]) * 0.02))
+        b = _box_blur(out, r)
+        g = p["glow"]
+        out = np.clip(out * (1.0 - g) + np.maximum(out, b) * g, 0.0, 1.0)
+    if p.get("ca", 0.0) > 0.0:
+        out = chromatic_aberration(out, p["ca"])
+    if p.get("sharpen", 0.0) > 0.0:
+        out = sharpen(out, p["sharpen"])
+    if p.get("vignette", 0.0) > 0.0:
+        out = vignette(out, p["vignette"])
+    if p.get("grain", 0.0) > 0.0:
+        out = film_grain(out, p["grain"], seed)
+    return out
