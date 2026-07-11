@@ -18,6 +18,8 @@ from .turtle import Geometry, Leaf, Segment, TurtleConfig, interpret
 from .mesh import Mesh, build_mesh, merge_meshes
 from .plants import PlantSpec, get_spec, grow_mesh, grow_mesh_env
 from .molecular import build_helix, build_protein
+from .mind import Mind
+from .collapse import collapse_blend, pick_index, superpose
 
 __all__ = [
     "LSystem", "Rule", "Module", "parse", "word_to_str",
@@ -25,4 +27,5 @@ __all__ = [
     "build_mesh", "merge_meshes", "Mesh",
     "PlantSpec", "get_spec", "grow_mesh", "grow_mesh_env",
     "build_helix", "build_protein",
+    "Mind", "superpose", "collapse_blend", "pick_index",
 ]
