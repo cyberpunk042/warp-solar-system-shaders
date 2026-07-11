@@ -174,18 +174,54 @@ scales with quality.
 
 ---
 
-## Post — `engine.post`
+## Colour — `engine.color`
 
-Host-side (NumPy) tonemap, bloom, godrays, and vignette. Operate on the HDR
-`(H, W, 3)` array you pull back with `img.numpy()`, in this order:
-bloom/godrays → tonemap → vignette.
+Blackbody temperature, sRGB transfer, luminance — device `@wp.func`s + host
+`*_np` twins. Consolidates the temperature-colour code across the star shaders,
+particle ramp and lava.
 
 | Function | Signature |
 |---|---|
+| `kelvin_to_rgb` | `(kelvin) -> vec3` — blackbody colour on the Planckian locus (Tanner-Helland fit), peak-normalised |
+| `blackbody` | `(t) -> vec3` — artistic 0..1 heat ramp (red → white → blue) |
+| `luminance` | `(c) -> float` — Rec.709 relative luminance |
+| `linear_to_srgb` / `srgb_to_linear` | `(c) -> vec3` — gamma transfer |
+| host | `kelvin_to_rgb_np`, `linear_to_srgb_np`, `srgb_to_linear_np`, `luminance_np` |
+
+## Intersection — `engine.intersect`
+
+The shared analytic ray tests (miss on a sphere/box returns `(1e30, -1e30)`).
+
+| Function | Signature |
+|---|---|
+| `ray_sphere` / `ray_sphere_o` | `(ro, rd, [center,] radius) -> vec2` — (t_near, t_far) |
+| `sphere_t` | `(ro, rd, center, radius) -> float` — nearest positive t, or -1 |
+| `ray_plane` / `ray_disk` | `(ro, rd, p0/center, n[, radius]) -> float` — t, or -1 |
+| `ray_box` | `(ro, rd, bmin, bmax) -> vec2` — AABB slab (t_near, t_far) |
+
+## Sky — `engine.sky`
+
+| Function | Signature |
+|---|---|
+| `starfield` | `(rd) -> vec3` — two star-size layers + colour temperature across the sky |
+| `milky_way` | `(rd, axis, intensity) -> vec3` — fBm galactic-plane glow band |
+
+## Post — `engine.post`
+
+Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with
+`img.numpy()`. Recommended order: `exposure/auto_exposure` → `bloom/godrays` →
+`tonemap` → `chromatic_aberration` → `sharpen` → `vignette` → `film_grain`.
+
+| Function | Signature |
+|---|---|
+| `exposure` / `auto_exposure` | `(hdr, ev=0.0)` / `(hdr, key=0.18, max_gain=8.0)` — photographic stops / geometric-mean-luminance auto key (before tonemap) |
 | `tonemap` | `(frame, mode="aces", exposure=1.0, gamma=2.2) -> ndarray` — `mode` ∈ `aces` / `agx` / `reinhard`; maps HDR → `[0, 1]` |
 | `bloom` | `(hdr, threshold=1.0, strength=0.6, radius=6, passes=3) -> ndarray` — bright-pass + blur bleed |
 | `godrays` | `(hdr, cx, cy, samples=28, density=0.9, decay=0.95, weight=0.6, ...) -> ndarray` — radial light scattering from screen point `(cx, cy)` |
+| `chromatic_aberration` | `(frame, amount=0.004) -> ndarray` — radial red-out / blue-in lens dispersion |
+| `sharpen` | `(frame, amount=0.5, radius=2) -> ndarray` — unsharp mask |
 | `vignette` | `(frame, amount=0.35) -> ndarray` — darken toward the corners |
+| `film_grain` | `(frame, amount=0.04, seed=0) -> ndarray` — deterministic filmic grain |
 
 > **Sources.** PBR: Cook–Torrance GGX (Karis/UE4). Atmosphere:
 > Nishita/O'Neil single-scatter with a Bruneton/Hillaire transmittance LUT.

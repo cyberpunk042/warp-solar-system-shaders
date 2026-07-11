@@ -25,8 +25,13 @@ Device functions (``@wp.func``) are meant to be *called inside your own
 plain Python.
 """
 
-from . import atmosphere, pbr, post, volumetric
+from . import atmosphere, color, intersect, pbr, post, volumetric
+from .color import (blackbody, kelvin_to_rgb, linear_to_srgb, luminance,
+                    srgb_to_linear)
+from .intersect import (ray_box, ray_disk, ray_plane, ray_sphere, ray_sphere_o,
+                        sphere_t)
 from .material import Material, make_mat, make_material, shade_material
+from .sky import milky_way, starfield
 from .pbr import (
     distribution_ggx, fresnel_schlick, geometry_schlick_ggx, geometry_smith,
     shade_pbr,
@@ -39,7 +44,11 @@ from .uniforms import (
 
 __all__ = [
     # subsystem namespaces
-    "atmosphere", "pbr", "post", "volumetric",
+    "atmosphere", "color", "intersect", "pbr", "post", "volumetric",
+    # colour science (device)
+    "kelvin_to_rgb", "blackbody", "luminance", "linear_to_srgb", "srgb_to_linear",
+    # ray-primitive intersection (device)
+    "ray_sphere", "ray_sphere_o", "sphere_t", "ray_plane", "ray_disk", "ray_box",
     # uniforms
     "Camera", "Light", "Frame", "Quality", "camera_ray_dir",
     "lens_offset", "focus_point",
@@ -51,4 +60,6 @@ __all__ = [
     "geometry_schlick_ggx", "geometry_smith",
     # reusable shading helpers
     "apply_fog", "sun_disk", "sky_gradient",
+    # sky backgrounds (device)
+    "starfield", "milky_way",
 ]
