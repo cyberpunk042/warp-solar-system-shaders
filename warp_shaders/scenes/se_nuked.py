@@ -28,7 +28,7 @@ def _frames(device):
         # a green living world (no clouds, so the strikes read clearly + render fast)
         cfg = make_config(seed=1.0, mountain=0.6, sea_level=0.0, has_ocean=1,
                           has_rivers=1, snow=1.0, has_atmo=1, atmo=1.0, veg=0.9,
-                          cloud=0.0)
+                          cloud=0.0, spin=0.0)
         bcfg = BombConfig(n=40, delay=0.3, interval=0.28, parallel=4,
                           formula="clustered", yield_scale=1.0, seed=2)
         _CACHE[key] = run(cfg, bcfg, _CW, _CH, _FRAMES, _DT, device, _DIST, _FOV,

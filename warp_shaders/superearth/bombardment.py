@@ -41,8 +41,24 @@ def _rand_dir(rng):
     return v / (np.linalg.norm(v) + 1e-9)
 
 
-def sites(n: int, formula: str, seed: int) -> np.ndarray:
-    """`n` unit vectors on the globe following a distribution formula."""
+def _cap_dir(rng, axis, min_cos):
+    """A random unit vector within an angular cap around `axis` (dot >= min_cos)."""
+    axis = np.asarray(axis, np.float32)
+    axis = axis / (np.linalg.norm(axis) + 1e-9)
+    for _ in range(64):
+        v = _rand_dir(rng)
+        if float(v @ axis) >= min_cos:
+            return v.astype(np.float32)
+    return axis
+
+
+def sites(n: int, formula: str, seed: int, front=None) -> np.ndarray:
+    """`n` unit vectors on the globe following a distribution formula.
+
+    When ``front`` (a unit direction toward the camera) is given, strikes are
+    biased onto the visible hemisphere so the bombardment clearly lands on the
+    face we see rather than drifting onto the limb.
+    """
     rng = np.random.default_rng(seed)
     p = np.zeros((n, 3), np.float32)
     g = 2.399963
@@ -66,11 +82,22 @@ def sites(n: int, formula: str, seed: int) -> np.ndarray:
             p[k] = (r * math.cos(th), y, r * math.sin(th))
     else:  # clustered — a few strike zones (like real arsenals)
         nc = max(2, n // 6)
-        centers = [_rand_dir(rng) for _ in range(nc)]
+        if front is not None:
+            centers = [_cap_dir(rng, front, 0.45) for _ in range(nc)]
+        else:
+            centers = [_rand_dir(rng) for _ in range(nc)]
         for k in range(n):
             c = centers[int(rng.integers(nc))]
             d = c + rng.normal(scale=0.22, size=3)
             p[k] = d / (np.linalg.norm(d) + 1e-9)
+        return p
+    # point formulas: fold any back-facing strike onto the visible cap
+    if front is not None:
+        f = np.asarray(front, np.float32)
+        f = f / (np.linalg.norm(f) + 1e-9)
+        for k in range(n):
+            if float(p[k] @ f) < 0.2:
+                p[k] = _cap_dir(rng, f, 0.3)
     return p
 
 
@@ -83,13 +110,17 @@ def _fire_frames(bcfg: BombConfig, dt: float):
 def _spawn_blast(ps, site, count, rng):
     base = np.asarray(site, np.float32)
     for _ in range(count):
-        d = base + rng.normal(scale=0.5, size=3).astype(np.float32)
+        # bias ejecta radially outward from the impact so the fireball plumes
+        # up off the surface instead of streaking sideways across the limb
+        d = 1.4 * base + rng.normal(scale=0.4, size=3).astype(np.float32)
         d /= np.linalg.norm(d) + 1e-9
-        speed = rng.uniform(0.15, 0.75)
+        speed = rng.uniform(0.1, 0.5)
+        # spawn hot but not pure-white: the blackbody ramp reads orange->white
+        # across 0.55..0.9, giving a fireball with colour instead of a flat disc
         ps.spawn(pos=(base * 1.01).tolist(),
                  vel=(d * speed).tolist(),
-                 temp=float(rng.uniform(0.75, 1.0)),
-                 life=float(rng.uniform(0.5, 1.6)), kind=2)
+                 temp=float(rng.uniform(0.55, 0.9)),
+                 life=float(rng.uniform(0.4, 1.2)), kind=2)
 
 
 def _splat(width, height, ps, eye, fov, scars):
@@ -112,8 +143,8 @@ def _splat(width, height, ps, eye, fov, scars):
         py = height * 0.5 - (cy / cz) * f
         return px, py, cz
 
-    # shock-ring scars on the surface (drawn as bright expanding rings)
-    for (c, radius, glow) in scars:
+    # shock-ring scars on the surface (smooth expanding rings, age-coloured)
+    for (c, radius, glow, rcol) in scars:
         cn = c / (np.linalg.norm(c) + 1e-9)
         if float(cn @ eye_hat) < 0.15:            # on the far side -> hidden
             continue
@@ -123,7 +154,8 @@ def _splat(width, height, ps, eye, fov, scars):
             t1 = np.cross(cn, np.array([1, 0, 0], np.float32))
         t1 /= np.linalg.norm(t1) + 1e-9
         t2 = np.cross(cn, t1)
-        m = 48
+        # dense enough that the projected circle reads as a continuous line
+        m = max(64, int(220 * max(radius, 0.05)))
         ang = np.linspace(0, 2 * math.pi, m, dtype=np.float32)
         ring = (math.cos(radius) * cn[None, :]
                 + math.sin(radius) * (np.cos(ang)[:, None] * t1[None, :]
@@ -133,13 +165,17 @@ def _splat(width, height, ps, eye, fov, scars):
         if len(rp) == 0:
             continue
         px, py, cz = project(rp)
-        col = np.array([1.0, 0.5, 0.15], np.float32) * glow
-        for xx, yy in zip(np.round(px).astype(int), np.round(py).astype(int)):
-            for dy in range(-1, 2):
-                for dx in range(-1, 2):
-                    x, y = xx + dx, yy + dy
-                    if 0 <= x < width and 0 <= y < height:
-                        frame[y, x] += col
+        col = (rcol * glow).astype(np.float32)
+        pxi = np.round(px).astype(np.int64)
+        pyi = np.round(py).astype(np.int64)
+        for dy in range(-1, 2):
+            for dx in range(-1, 2):
+                w = 1.0 if (dx == 0 and dy == 0) else 0.5
+                xx = pxi + dx
+                yy = pyi + dy
+                ok = (xx >= 0) & (xx < width) & (yy >= 0) & (yy < height)
+                if ok.any():
+                    np.add.at(frame, (yy[ok], xx[ok]), col * w)
 
     # particles
     mask = ps.alive_mask()
@@ -157,7 +193,7 @@ def _splat(width, height, ps, eye, fov, scars):
             col = np.stack([np.interp(t, _STOPS, _RAMP_R),
                             np.interp(t, _STOPS, _RAMP_G),
                             np.interp(t, _STOPS, _RAMP_B)], 1).astype(np.float32)
-            bright = (0.4 + 1.6 * t).astype(np.float32)
+            bright = (0.25 + 0.85 * t).astype(np.float32)
             contrib = col * bright[:, None]
             pxi = np.round(px).astype(np.int64)
             pyi = np.round(py).astype(np.int64)
@@ -181,12 +217,21 @@ def _eye_for(dist):
                      dist * math.cos(el) * math.cos(az)], np.float32)
 
 
+def _roty(v, a):
+    """Rotate `v` about +Y by `a` — matches render_kernel's ray rotation."""
+    ca, sa = math.cos(a), math.sin(a)
+    return np.array([ca * v[0] - sa * v[2], v[1], sa * v[0] + ca * v[2]],
+                    np.float32)
+
+
 def run(planet_cfg, bcfg: BombConfig, width, height, frames, dt, device,
         dist, fov, moons=None, quality="low"):
     """Render the whole bombardment; returns a list of `frames` composited images."""
-    eye = _eye_for(dist)
+    base_eye = _eye_for(dist)
+    front = base_eye / (np.linalg.norm(base_eye) + 1e-9)
+    spin = float(getattr(planet_cfg, "spin", 0.0))
     rng = np.random.default_rng(bcfg.seed)
-    st = sites(bcfg.n, bcfg.formula, bcfg.seed)
+    st = sites(bcfg.n, bcfg.formula, bcfg.seed, front=front)
     ff = _fire_frames(bcfg, dt)
     ps = ParticleSystem(int(bcfg.n * 260 * bcfg.yield_scale) + 800, device)
     scar_state = [dict(active=False, t0=0) for _ in range(bcfg.n)]
@@ -200,6 +245,8 @@ def run(planet_cfg, bcfg: BombConfig, width, height, frames, dt, device,
                 cap_y=0.0, ring_a=1.0)
         # active scars: expanding, fading rings
         scars = []
+        white_hot = np.array([1.0, 0.95, 0.85], np.float32)
+        ember = np.array([1.0, 0.42, 0.10], np.float32)
         for i in range(bcfg.n):
             if scar_state[i]["active"]:
                 age = (fidx - scar_state[i]["t0"]) * dt
@@ -208,13 +255,17 @@ def run(planet_cfg, bcfg: BombConfig, width, height, frames, dt, device,
                 if glow <= 0.02 or radius > 1.2:
                     scar_state[i]["active"] = False
                 else:
-                    scars.append((st[i].astype(np.float32), radius, glow))
+                    warm = min(1.0, age * 1.4)     # young ring hot-white -> orange
+                    rcol = white_hot * (1.0 - warm) + ember * warm
+                    scars.append((st[i].astype(np.float32), radius, glow, rcol))
         globe = render_planet(planet_cfg, width, height, time=fidx * dt,
                               device=device, quality=quality, moons=moons,
                               dist=dist, fov=fov, relief=False)
+        # match the kernel's per-frame planet spin (rays rotate by -time*spin)
+        eye = _roty(base_eye, -fidx * dt * spin)
         parts = _splat(width, height, ps, eye, fov, scars)
         comp = globe + parts
-        comp = post.bloom(comp, threshold=1.0, strength=0.6,
+        comp = post.bloom(comp, threshold=1.35, strength=0.35,
                           radius=max(3, int(min(width, height) * 0.02)), passes=3)
         out.append(np.clip(comp, 0.0, 1.0))
     return out
