@@ -12,8 +12,11 @@ warp_shaders/
   procedural/           # building blocks
     hash.py             hash11/21/22/31/33            (McGuire)
     noise.py            value3, noised3 (value + analytic gradient), perlin3,
-                        worley3 / worley3_f2, fbm3, fbm_perlin3, ridged3, billow3,
-                        domain_warp3, curl3           (IQ, Gustavson, Worley, Bridson)
+                        simplex3, value_tiled3 (seamless), worley3 / worley3_f2,
+                        fbm3, fbm_perlin3, ridged3, billow3, domain_warp3, curl3
+                                                      (IQ, Gustavson, Worley, Bridson)
+  textures.py           sample2d / sample_equirect (bilinear over wp.array2d),
+                        to_texture, load_equirect (PIL) — portable maps + LUTs
     sdf.py              sd_sphere/box/round_box/torus/cylinder/capsule/plane/ellipsoid,
                         op_union/intersect/subtract/smooth_*/round/onion   (IQ)
   engine/
