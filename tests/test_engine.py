@@ -11,6 +11,7 @@ import warp as wp
 from warp_shaders.engine import color as C
 from warp_shaders.engine import intersect as I
 from warp_shaders.engine import post as P
+from warp_shaders.engine import sky as S
 
 wp.init()
 
@@ -24,6 +25,15 @@ def _color_kernel(out: wp.array(dtype=wp.vec3)):
     out[4] = C.linear_to_srgb(wp.vec3(0.5, 0.5, 0.5))
     lum = C.luminance(wp.vec3(1.0, 1.0, 1.0))
     out[5] = wp.vec3(lum, lum, lum)
+
+
+@wp.kernel
+def _sky_kernel(out: wp.array2d(dtype=wp.vec3), n: int):
+    i = wp.tid()
+    a = float(i) / float(n) * 6.2831853
+    rd = wp.vec3(wp.cos(a), 0.15 * wp.sin(a * 3.0), wp.sin(a))
+    out[i, 0] = S.starfield(rd)
+    out[i, 1] = S.milky_way(rd, wp.vec3(0.0, 1.0, 0.0), 0.3)
 
 
 @wp.kernel
@@ -81,6 +91,17 @@ def test_intersect_device():
     assert abs(a[3][0] - 4.0) < 1e-4 and abs(a[3][1] - 6.0) < 1e-4   # ray_box
 
 
+def test_sky_device():
+    n = 256
+    o = wp.zeros((n, 2), dtype=wp.vec3, device="cpu")
+    wp.launch(_sky_kernel, dim=n, inputs=[o, n], device="cpu")
+    wp.synchronize_device("cpu")
+    a = o.numpy()
+    assert np.all(np.isfinite(a)) and a.min() >= 0.0
+    assert a[:, 0].max() > 0.0          # stars emit (sparse; brightness verified visually)
+    assert a[:, 1].max() > 0.0          # milky-way band emits somewhere
+
+
 def test_post_ops():
     rng = np.random.default_rng(0)
     hdr = (rng.random((32, 48, 3)).astype(np.float32) * 3.0)   # HDR-ish
@@ -111,6 +132,8 @@ if __name__ == "__main__":
     print("  colour device (kelvin/blackbody/srgb/luminance): OK")
     test_intersect_device()
     print("  intersect device (sphere/plane/disk/box): OK")
+    test_sky_device()
+    print("  sky device (starfield + milky way): OK")
     test_post_ops()
     print("  post ops (exposure/auto/CA/grain/sharpen): OK")
     print("ALL PASSED")
