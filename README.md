@@ -210,6 +210,24 @@ waves before what to us seems like a collapse in the world."*
 Rendered once and cached (fixed camera), then only the cheap per-frame blend
 re-runs. See [docs/research/07-wave-and-collapse.md](docs/research/07-wave-and-collapse.md).
 
+## Life — an ecosystem over the seasons
+
+Life at the **population scale**: a patch of plants that live over **years** —
+born, growing, blooming, senescing, dying, with new seedlings filling the gaps.
+The meadow **recolours with the seasons** (green summer → gold autumn → sparse
+winter → fresh spring) and the plants **compete for light** — a plant shaded by
+taller neighbours grows less and **leans toward the open sky** (the tropism layer,
+now driven by its neighbours). Deterministic from a seed, grown through the usual
+L-System pipeline and merged into one ray-cast mesh.
+
+| summer | autumn | winter |
+|---|---|---|
+| ![summer](docs/life/ecosystem.png) | ![autumn](docs/life/ecosystem_autumn.png) | ![winter](docs/life/ecosystem_winter.png) |
+
+![ecosystem over the years](docs/life/ecosystem.gif)
+
+See [docs/research/08-ecosystem.md](docs/research/08-ecosystem.md).
+
 ## The atom, from the bottom up
 
 A second, composable strand: build an atom out of its constituents. These scenes

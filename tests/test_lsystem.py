@@ -361,6 +361,44 @@ def test_pick_index():
     assert _collapse.pick_index([0.5, 0.2, 0.2, 0.7]) == 3
 
 
+# --- ecosystem (seasons, competition, turnover) ------------------------------
+from warp_shaders.life import ecosystem as _eco
+
+
+def test_season_cycle():
+    # phase wraps each year; palette greens in summer, warms in autumn
+    assert abs(_eco.season_phase(0.35) - 0.35) < 1e-6
+    assert abs(_eco.season_phase(2.35) - 0.35) < 1e-6      # wraps
+    np.testing.assert_allclose(_eco.season_palette(0.2), _eco.season_palette(0.4))
+    summer = _eco.season_palette(0.3)[1]                    # a green
+    autumn = _eco.season_palette(0.65)[1]                   # turned toward gold
+    assert autumn[0] > summer[0] and autumn[2] < summer[2]  # redder, less blue-green
+    assert _eco.vigor(0.3) > _eco.vigor(0.85)               # summer fuller than winter
+
+
+def test_ecosystem_deterministic():
+    a = _eco.Ecosystem(seed=3)
+    b = _eco.Ecosystem(seed=3)
+    assert len(a.plants) == len(b.plants)
+    assert [(p.x, p.species, p.birth) for p in a.plants] == \
+           [(p.x, p.species, p.birth) for p in b.plants]
+
+
+def test_ecosystem_competition_and_turnover():
+    e = _eco.Ecosystem(seed=7)
+    st = e.standing(0.4)
+    assert len(st) > 3
+    assert all(0.2 <= s.light <= 1.0 and s.gen >= 1 for s in st)
+    # some plants are shaded (light < 1) and those lean toward the open sky
+    shaded = [s for s in st if s.light < 0.95]
+    assert shaded, "expected some shaded plants under competition"
+    assert any(s.lean is not None for s in shaded)
+    # turnover: the establishment cohort thins out by later years
+    early = len(e.standing(0.5))
+    late = len(e.standing(3.6))
+    assert early > late
+
+
 if __name__ == "__main__":
     print("L-System + turtle tests:")
     test_parse_roundtrip(); print("  parse round-trip: OK")
@@ -393,4 +431,7 @@ if __name__ == "__main__":
     test_superpose(); print("  collapse: superpose (mean + weighted): OK")
     test_collapse_blend_endpoints(); print("  collapse: blend endpoints + sweep: OK")
     test_pick_index(); print("  collapse: pick_index (argmax): OK")
+    test_season_cycle(); print("  ecosystem: season cycle (palette + vigor): OK")
+    test_ecosystem_deterministic(); print("  ecosystem: deterministic from seed: OK")
+    test_ecosystem_competition_and_turnover(); print("  ecosystem: competition + turnover: OK")
     print("ALL PASSED")

@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (65 scenes).
+`python render.py --list` for the full, current list (66 scenes).
 
 ## Engine showcase
 
@@ -102,6 +102,21 @@ first, reaching *backward* into its own history), with the Conway mind biasing
 
 ![wave collapsing to one plant](life/wavecollapse.png)
 ![wave collapse animating](life/wavecollapse.gif)
+
+### Ecosystem — a living meadow over the seasons
+
+Life at the population scale: a patch of plants that live over **years** — born,
+growing, blooming, senescing, dying, reseeding — **recolouring with the seasons**
+and **competing for light** (a shaded plant grows less and leans toward the open
+sky). See [Research 08](research/08-ecosystem.md).
+
+| summer | autumn | winter |
+|---|---|---|
+| ![summer meadow](life/ecosystem.png) | ![autumn meadow](life/ecosystem_autumn.png) | ![winter meadow](life/ecosystem_winter.png) |
+
+A few years, seasons cycling and the meadow turning over:
+
+![ecosystem over the years](life/ecosystem.gif)
 
 ## Cosmos & bodies
 
