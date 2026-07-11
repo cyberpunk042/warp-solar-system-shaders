@@ -12,6 +12,7 @@ import warp as wp
 
 from ..engine import post
 from ..engine.pbr import shade_pbr
+from ..engine.shading import apply_fog
 from ..engine.uniforms import Camera, camera_ray_dir, make_camera
 from ..lod import active_tier
 from ..procedural.noise import fbm_perlin3, ridged3
@@ -122,8 +123,7 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
     col = direct + amb
 
     # aerial perspective: fade to sky with distance
-    fog = 1.0 - wp.exp(-t * 0.006)
-    col = col * (1.0 - fog) + _sky(rd, sun) * fog
+    col = apply_fog(col, t, _sky(rd, sun), 0.006)
     img[i, j] = col
 
 
