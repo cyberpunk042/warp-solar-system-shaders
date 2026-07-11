@@ -13,6 +13,8 @@ from warp_shaders.procedural.noise import (
     value_tiled3, worley3,
 )
 from warp_shaders.procedural.sdf import op_smooth_union, sd_box, sd_sphere
+from warp_shaders.engine.volumetric import build_cloud_detail
+from warp_shaders.textures import sample3d
 
 wp.init()
 _DEV = "cpu"
@@ -61,6 +63,14 @@ def _sdf(pts: wp.array(dtype=wp.vec3), out: wp.array(dtype=float)):
     a = sd_sphere(p, 1.0)
     b = sd_box(p - wp.vec3(2.0, 0.0, 0.0), wp.vec3(0.5, 0.5, 0.5))
     out[i] = op_smooth_union(a, b, 0.3)
+
+
+@wp.kernel
+def _sample_vol(vol: wp.array3d(dtype=float), uvw: wp.array(dtype=wp.vec3),
+                out: wp.array(dtype=float)):
+    i = wp.tid()
+    q = uvw[i]
+    out[i] = sample3d(vol, q[0], q[1], q[2], 1)
 
 
 def _sample_scalar(pts, which):
@@ -149,12 +159,36 @@ def test_tileable():
     print(f"  value_tiled3 periodicity: OK (max diff {err:.6f})")
 
 
+def test_cloud_detail_volume():
+    # the baked cloud-erosion volume is finite, in range, and wrap-samples cleanly
+    vol = build_cloud_detail(size=48, device=_DEV)
+    a = vol.numpy()
+    assert a.shape == (48, 48, 48), f'volume shape {a.shape}'
+    assert np.isfinite(a).all(), 'cloud detail volume non-finite'
+    assert a.min() >= -0.05 and a.max() <= 1.05, \
+        f'volume range [{a.min():.3f},{a.max():.3f}] outside [0,1]'
+    # sampling one full tile over (u -> u+1) with wrap must return the same value
+    rng = np.random.default_rng(4)
+    uvw = rng.random((1024, 3)).astype(np.float32)
+    d0 = wp.array(uvw, dtype=wp.vec3, device=_DEV)
+    o0 = wp.zeros(1024, dtype=float, device=_DEV)
+    wp.launch(_sample_vol, dim=1024, inputs=[vol, d0, o0], device=_DEV)
+    d1 = wp.array(uvw + np.array([1.0, 0.0, 0.0], np.float32), dtype=wp.vec3, device=_DEV)
+    o1 = wp.zeros(1024, dtype=float, device=_DEV)
+    wp.launch(_sample_vol, dim=1024, inputs=[vol, d1, o1], device=_DEV)
+    wp.synchronize_device(_DEV)
+    err = float(np.abs(o0.numpy() - o1.numpy()).max())
+    assert err < 1e-4, f'cloud detail volume not wrap-seamless: max diff {err:.5f}'
+    print(f'  cloud detail volume finite+seamless: OK (tile diff {err:.6f})')
+
+
 def main():
     print("procedural toolkit tests:")
     test_noise_finite_and_ranged()
     test_analytic_gradient()
     test_sdf()
     test_tileable()
+    test_cloud_detail_volume()
     print("ALL PASSED")
 
 
