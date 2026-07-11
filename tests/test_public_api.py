@@ -69,6 +69,18 @@ def test_render_roundtrip():
     assert np.all(np.isfinite(img))
 
 
+def test_atmosphere_luts():
+    # transmittance + Hillaire multiple-scattering LUTs bake finite and coherent
+    atmo = ws.engine.atmosphere
+    tr = atmo.build_transmittance_lut(size=32, device="cpu")
+    ms = atmo.build_multiscatter_lut(tr, size=32, device="cpu")
+    trn, msn = tr.numpy(), ms.numpy()
+    assert trn.shape == (32, 32, 3) and msn.shape == (32, 32, 3)
+    assert np.all(np.isfinite(trn)) and np.all(np.isfinite(msn))
+    assert np.all(msn >= 0.0)                        # multiscatter is non-negative
+    assert atmo.multiscatter_lut and atmo.atmosphere_lut
+
+
 if __name__ == "__main__":
     test_top_level_symbols()
     print("  top-level symbols:", len(ws.__all__), "OK")
@@ -78,6 +90,8 @@ if __name__ == "__main__":
     print("  quality tiers low..ultra: OK")
     test_host_builders()
     print("  host builders (camera/material/light): OK")
+    test_atmosphere_luts()
+    print("  atmosphere transmittance + multiscatter LUTs: OK")
     test_render_roundtrip()
     print("  render('pbr_demo') roundtrip: OK")
     print("ALL PASSED")

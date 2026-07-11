@@ -9,11 +9,13 @@ Everything a scene needs to turn a ray into a pixel:
   :func:`shade_material`.
 - **pbr** — GGX Cook-Torrance building blocks (:func:`shade_pbr`,
   :func:`fresnel_schlick`, :func:`distribution_ggx`, ...).
-- **atmosphere** — physically based single-scatter sky
-  (:func:`atmosphere`, :func:`sky_radiance`) + a precomputed transmittance
-  LUT (``build_transmittance_lut``, :func:`atmosphere_lut`).
+- **atmosphere** — physically based sky: single-scatter
+  (:func:`atmosphere`, :func:`sky_radiance`) + precomputed transmittance and
+  Hillaire multiple-scattering LUTs (``build_transmittance_lut`` /
+  ``build_multiscatter_lut``, :func:`atmosphere_lut`).
 - **volumetric** — cloud density + light-marching
-  (:func:`cloud_density`, :func:`march_clouds`, :func:`hg_phase`).
+  (:func:`cloud_density`, :func:`march_clouds`, :func:`hg_phase`) over a baked
+  seamless detail volume (``build_cloud_detail``).
 - **post** — host-side tonemap / bloom / godrays / vignette.
 - **shading** — small map-independent helpers (:func:`apply_fog`,
   :func:`sun_disk`, :func:`sky_gradient`).

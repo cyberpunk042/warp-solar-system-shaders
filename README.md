@@ -55,24 +55,28 @@ for every public symbol.
 | ![gas giant](docs/engine/gas_giant.png) | ![alien](docs/engine/alien.png) | ![galaxy](docs/engine/galaxy.png) |
 | **aurora** | **lava planet** | **desert dunes** |
 | ![aurora](docs/engine/aurora.png) | ![lava planet](docs/engine/lava_planet.png) | ![dunes](docs/engine/dunes.png) |
-| **glacier** | **depth of field** | |
-| ![glacier](docs/engine/glacier.png) | ![depth of field](docs/engine/dof_showcase.png) | |
+| **glacier** | **depth of field** | **slot canyon** |
+| ![glacier](docs/engine/glacier.png) | ![depth of field](docs/engine/dof_showcase.png) | ![canyon](docs/engine/canyon.png) |
+| **underwater reef** | | |
+| ![reef](docs/engine/reef.png) | | |
 
 - **Procedural toolkit** (`warp_shaders/procedural/`) — value/Perlin/Worley/fbm/
   ridged/billow/domain-warp/curl noise **with analytic derivatives**, plus an SDF
   primitive+operator library. Sources: IQ, Gustavson, McGuire, Bridson.
 - **Render engine** (`warp_shaders/engine/`) — `@wp.struct` uniforms (camera/light/
   frame/quality), an adaptive sphere-tracing raymarcher, **GGX Cook-Torrance PBR**,
-  **physically based atmospheric scattering** (Nishita/O'Neil Rayleigh+Mie), a
-  **volumetric cloud** raymarcher (Schneider density, Henyey-Greenstein, Beer-Lambert,
-  sun light-march), a **thin-lens depth-of-field** camera (aperture + focus plane),
-  and a host **post** pipeline (ACES/AgX tonemap, bloom, vignette).
+  **physically based atmospheric scattering** (Nishita/O'Neil Rayleigh+Mie **plus
+  Hillaire multiple scattering**), a **volumetric cloud** raymarcher (Schneider
+  density, Henyey-Greenstein, Beer-Lambert, sun light-march) over a **baked seamless
+  3D detail volume**, a **thin-lens depth-of-field** camera, and a host **post**
+  pipeline (ACES/AgX tonemap, bloom, **god-rays**, vignette).
 - **LOD tiers** (`warp_shaders/lod.py`) — one knob scales raymarch/shadow/AO/atmosphere/
   cloud sample counts, octaves, LUT sizes; auto-detected per device.
 - **Textures & LUTs** (`warp_shaders/textures.py`) — portable bilinear sampling over
   `wp.array2d` (CPU+CUDA): equirectangular planet maps (bake once, or drop in a NASA
-  **Blue Marble** JPG via `load_equirect`) and a precomputed **atmosphere transmittance
-  LUT** that removes the sky's inner light-march at high/ultra.
+  **Blue Marble** JPG via `load_equirect`), precomputed **atmosphere transmittance +
+  multiple-scattering LUTs**, and baked **3D noise volumes** (`sample3d`) for cheap
+  cloud detail and emissive nebulae.
 
 ```bash
 python render.py --scene earth_v2 --quality high -o earth.png   # the flagship

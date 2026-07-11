@@ -11,12 +11,19 @@ import warp as wp
 
 from ..engine import post
 from ..engine.uniforms import Camera, camera_ray_dir, make_camera
-from ..engine.volumetric import march_clouds
+from ..engine.volumetric import build_cloud_detail, march_clouds
 from ..lod import active_tier
 from ..scene import Scene
 
 _BASE = 60.0
 _TOP = 165.0
+_vol_cache = {}
+
+
+def _detail(device):
+    if device not in _vol_cache:
+        _vol_cache[device] = build_cloud_detail(size=96, device=device)
+    return _vol_cache[device]
 
 
 def _cloud_samples(tier_name):
@@ -36,7 +43,7 @@ def _skybg(rd: wp.vec3, sun: wp.vec3) -> wp.vec3:
 @wp.kernel
 def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
                   time: float, coverage: float, steps: int, light_steps: int,
-                  width: int, height: int):
+                  vol: wp.array3d(dtype=float), width: int, height: int):
     i, j = wp.tid()
     u = (2.0 * (float(j) + 0.5) / float(width)) - 1.0
     v = (2.0 * (float(height - 1 - i) + 0.5) / float(height)) - 1.0
@@ -48,7 +55,7 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
         sun_col = wp.vec3(1.0, 0.95, 0.85)
         amb = wp.vec3(0.40, 0.52, 0.72) * 0.32
         c = march_clouds(cam.eye, rd, sun, time, coverage, _BASE, _TOP,
-                         steps, light_steps, sun_col, amb)
+                         steps, light_steps, sun_col, amb, vol)
         col = sky * c[3] + wp.vec3(c[0], c[1], c[2])
     img[i, j] = col
 
@@ -67,10 +74,11 @@ def _render(width, height, time, mouse, device):
     el = 0.55 + float(mouse[1]) * 0.004
     sun = wp.vec3(math.sin(az * 0.6) * math.cos(el), math.sin(el), math.cos(az * 0.6) * math.cos(el))
 
+    vol = _detail(device)
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(render_kernel, dim=(height, width),
               inputs=[img, cam, sun, float(time), 0.58, int(steps), int(lsteps),
-                      int(width), int(height)], device=device)
+                      vol, int(width), int(height)], device=device)
     wp.synchronize_device(device)
     hdr = img.numpy()
 
