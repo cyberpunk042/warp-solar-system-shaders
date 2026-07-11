@@ -15,12 +15,14 @@ layer to come.
 
 from .lsystem import LSystem, Module, Rule, parse, word_to_str
 from .turtle import Geometry, Leaf, Segment, TurtleConfig, interpret
-from .mesh import Mesh, build_mesh
-from .plants import PlantSpec, get_spec, grow_mesh
+from .mesh import Mesh, build_mesh, merge_meshes
+from .plants import PlantSpec, get_spec, grow_mesh, grow_mesh_env
+from .molecular import build_helix, build_protein
 
 __all__ = [
     "LSystem", "Rule", "Module", "parse", "word_to_str",
     "interpret", "TurtleConfig", "Geometry", "Segment", "Leaf",
-    "build_mesh", "Mesh",
-    "PlantSpec", "get_spec", "grow_mesh",
+    "build_mesh", "merge_meshes", "Mesh",
+    "PlantSpec", "get_spec", "grow_mesh", "grow_mesh_env",
+    "build_helix", "build_protein",
 ]

@@ -124,6 +124,45 @@ def test_turtle_leaf_and_bounds():
     assert hi[1] - lo[1] >= 1.99                      # spans the 2-unit stem
 
 
+# --- environmental response (tropism, ABOP §2.3.4) ---------------------------
+
+
+def test_gravitropism_bends_down():
+    # a stem set off a little from vertical sags under gravity T=(0,-1,0): its
+    # tip ends up lower than the same stem grown straight (a perfectly vertical
+    # stem is a degenerate equilibrium, so we tilt it first with &(20))
+    word = parse("&(20)" + "F" * 12)
+    straight = interpret(word, TurtleConfig(step=1.0))
+    sag = interpret(word, TurtleConfig(step=1.0, tropism=(0, -1, 0),
+                                       tropism_e=0.1))
+    tip_straight = straight.segments[-1].p1
+    tip_sag = sag.segments[-1].p1
+    assert tip_straight[1] > tip_sag[1] + 1.0          # sagged tip is lower
+    hd = lambda p: float((p[0] ** 2 + p[2] ** 2) ** 0.5)
+    assert hd(tip_sag) > hd(tip_straight)              # and reaches further out
+    # in the gentle regime a stronger susceptibility sags more
+    sag2 = interpret(word, TurtleConfig(step=1.0, tropism=(0, -1, 0),
+                                        tropism_e=0.2))
+    assert sag2.segments[-1].p1[1] < tip_sag[1]
+
+
+def test_phototropism_bends_toward_light():
+    # a light off to the +X side pulls the growing tip toward it
+    word = parse("F" * 12)
+    dark = interpret(word, TurtleConfig(step=1.0))
+    lit = interpret(word, TurtleConfig(step=1.0, light=(20.0, 6.0, 0.0),
+                                       light_e=0.15))
+    assert lit.segments[-1].p1[0] > dark.segments[-1].p1[0] + 1.0
+
+
+def test_tropism_off_is_straight():
+    # tropism vector present but susceptibility 0 -> identical to no tropism
+    word = parse("F" * 6)
+    a = interpret(word, TurtleConfig(step=1.0))
+    b = interpret(word, TurtleConfig(step=1.0, tropism=(0, -1, 0), tropism_e=0.0))
+    np.testing.assert_allclose(a.segments[-1].p1, b.segments[-1].p1, atol=1e-6)
+
+
 # --- mesh tessellation -------------------------------------------------------
 from warp_shaders.life.mesh import build_mesh
 
@@ -149,7 +188,9 @@ from warp_shaders.life import plants as _plants
 
 
 def test_plant_specs_grow():
-    for name, gens in [("grass", 9), ("herb", 6), ("tree", 7)]:
+    for name, gens in [("grass", 9), ("herb", 6), ("tree", 7),
+                       ("fern", 6), ("sapling", 7), ("weeper", 6),
+                       ("flower", 6), ("bush", 5)]:
         spec = _plants.get_spec(name)
         mesh, (lo, hi) = _plants.grow_mesh(spec, gens)
         assert mesh.n_tris > 0, f"{name}: empty mesh"
@@ -157,6 +198,133 @@ def test_plant_specs_grow():
     # get_spec memoizes (same object -> mesh cache stays warm)
     assert _plants.get_spec("tree") is _plants.get_spec("tree")
 
+
+def test_grow_mesh_env_responds():
+    from dataclasses import replace
+    spec = _plants.get_spec("sapling")
+    # a phototropic sapling leans toward the light; the tip x follows it
+    left = replace(spec.cfg, light=(-15.0, 6.0, 0.0), light_e=0.14)
+    right = replace(spec.cfg, light=(15.0, 6.0, 0.0), light_e=0.14)
+    _, (loL, hiL) = _plants.grow_mesh_env(spec, spec.gens, left)
+    _, (loR, hiR) = _plants.grow_mesh_env(spec, spec.gens, right)
+    assert loL[0] < loR[0] and hiL[0] < hiR[0]        # whole plant shifts left
+    # folding the leaves shrinks the silhouette vs the open plant
+    openc = replace(spec.cfg, leaf_fold=0.0)
+    shut = replace(spec.cfg, leaf_fold=1.0)
+    mo, _ = _plants.grow_mesh_env(spec, spec.gens, openc)
+    ms, _ = _plants.grow_mesh_env(spec, spec.gens, shut)
+    assert mo.n_tris == ms.n_tris                      # same leaves, folded not gone
+
+
+
+# --- molecular scales (DNA / protein) ----------------------------------------
+from warp_shaders.life import molecular as _mol
+
+
+def test_build_helix():
+    mesh, (lo, hi) = _mol.build_helix(bp=12, seed=1)
+    assert mesh.n_tris > 0
+    n = mesh.verts.shape[0]
+    assert mesh.normals.shape == (n, 3) and mesh.colors.shape == (n, 3)
+    assert np.isfinite(mesh.verts).all() and np.isfinite(mesh.normals).all()
+    assert int(mesh.indices.max()) < n
+    assert float(hi[1] - lo[1]) > 0.5                  # helix has height
+    # more base pairs -> taller helix + more geometry
+    big, (blo, bhi) = _mol.build_helix(bp=24, seed=1)
+    assert big.n_tris > mesh.n_tris
+    assert float(bhi[1] - blo[1]) > float(hi[1] - lo[1])
+
+
+def test_build_protein_folds():
+    ext, (elo, ehi) = _mol.build_protein(n=40, fold=0.0)
+    fld, (flo, fhi) = _mol.build_protein(n=40, fold=1.0)
+    assert ext.n_tris > 0 and fld.n_tris == ext.n_tris  # same chain, reshaped
+    # extended is longer end-to-end than the compact fold
+    ext_span = float(ehi[1] - elo[1])
+    fld_diag = float(np.linalg.norm(np.asarray(fhi) - np.asarray(flo)))
+    assert ext_span > fld_diag
+    n = fld.verts.shape[0]
+    assert fld.colors.shape == (n, 3) and np.isfinite(fld.verts).all()
+
+
+def test_merge_meshes():
+    from warp_shaders.life.mesh import merge_meshes
+    a = _plants.grow_mesh(_plants.get_spec("grass"), 8)[0]
+    b = _plants.grow_mesh(_plants.get_spec("bush"), 5)[0]
+    m = merge_meshes([a, b], offsets=[(0, 0, 0), (5, 0, 0)])
+    assert m.n_tris == a.n_tris + b.n_tris
+    assert m.verts.shape[0] == a.verts.shape[0] + b.verts.shape[0]
+    assert int(m.indices.max()) < m.verts.shape[0]     # indices re-based, in range
+    # the offset moved the second plant +5 in x
+    assert float(m.verts[:, 0].max()) > float(a.verts[:, 0].max()) + 3.0
+    # empties are skipped, not fatal
+    z = merge_meshes([None])
+    assert z.n_tris == 0
+
+
+def test_cell_divides():
+    from warp_shaders.life.cell import render_cell
+    one = render_cell(64, 64, 0.0, (0.0, 0.0), 0.0, "cpu")
+    two = render_cell(64, 64, 0.0, (0.0, 0.0), 1.0, "cpu")
+    assert one.shape == (64, 64, 3) and np.isfinite(one).all()
+    assert float(np.abs(one - two).max()) > 0.0        # division changes the image
+
+
+# --- the mind (Conway's Life) -------------------------------------------------
+from warp_shaders.life.mind import Mind
+
+
+def _mind_with(cells, size=6):
+    m = Mind(size=size, seed=0, stimulus_every=0)   # no stimulus for pure Conway
+    m.grid[:] = 0
+    for (r, c) in cells:
+        m.grid[r, c] = 1
+    return m
+
+
+def test_conway_blinker_period_2():
+    # a horizontal blinker becomes vertical, then horizontal again (period 2)
+    horiz = [(2, 1), (2, 2), (2, 3)]
+    m = _mind_with(horiz)
+    m.step()
+    vert = {(1, 2), (2, 2), (3, 2)}
+    assert set(map(tuple, np.argwhere(m.grid))) == vert
+    m.step()
+    assert set(map(tuple, np.argwhere(m.grid))) == set(horiz)
+
+
+def test_conway_block_still_life():
+    block = [(1, 1), (1, 2), (2, 1), (2, 2)]
+    m = _mind_with(block)
+    before = m.grid.copy()
+    for _ in range(5):
+        m.step()
+    assert np.array_equal(m.grid, before)              # block never changes
+
+
+def test_mind_deterministic_and_bounded():
+    a = Mind(size=40, seed=11)
+    b = Mind(size=40, seed=11)
+    for _ in range(20):
+        a.step(); b.step()
+    assert np.array_equal(a.grid, b.grid)              # same seed -> same run
+    d = a.decision()
+    assert 0.0 <= d <= 1.0
+    # decision is monotonic in live-fraction: a denser grid drives higher
+    lo = _mind_with([(2, 2)], size=20); lo.stimulus_every = 0
+    hi = Mind(size=20, seed=1, density=0.5, stimulus_every=0)
+    assert hi.decision() >= lo.decision()
+
+
+def test_mind_per_branch_decisions():
+    # k independent band-drives, each bounded; a left-heavy grid drives its
+    # left bands higher than its (empty) right bands
+    m = Mind(size=20, seed=0, stimulus_every=0)
+    m.grid[:] = 0
+    m.grid[:, :10] = 1                                  # fill the left half
+    ds = m.decisions(4)
+    assert len(ds) == 4 and all(0.0 <= d <= 1.0 for d in ds)
+    assert ds[0] >= ds[-1] and ds[0] > 0.5 and ds[-1] < 0.5
 
 
 if __name__ == "__main__":
@@ -173,7 +341,19 @@ if __name__ == "__main__":
     test_turtle_straight(); print("  turtle straight stem: OK")
     test_turtle_branch(); print("  turtle branch: OK")
     test_turtle_leaf_and_bounds(); print("  turtle leaf + bounds: OK")
+    test_gravitropism_bends_down(); print("  gravitropism (sag): OK")
+    test_phototropism_bends_toward_light(); print("  phototropism (toward light): OK")
+    test_tropism_off_is_straight(); print("  tropism off == straight: OK")
     test_mesh_single_tube(); print("  mesh single tube: OK")
     test_mesh_plant_counts(); print("  mesh plant counts: OK")
-    test_plant_specs_grow(); print("  plant grammars grow (grass/herb/tree): OK")
+    test_plant_specs_grow(); print("  plant grammars grow (grass/herb/tree/fern/sapling/weeper): OK")
+    test_grow_mesh_env_responds(); print("  grow_mesh_env responds to light + fold: OK")
+    test_merge_meshes(); print("  merge_meshes (re-based, offset): OK")
+    test_build_helix(); print("  DNA helix builds (colored, scales with bp): OK")
+    test_build_protein_folds(); print("  protein folds (extended > compact): OK")
+    test_cell_divides(); print("  cell division changes the render: OK")
+    test_conway_blinker_period_2(); print("  mind: Conway blinker period-2: OK")
+    test_conway_block_still_life(); print("  mind: Conway block still-life: OK")
+    test_mind_deterministic_and_bounded(); print("  mind: deterministic + bounded decision: OK")
+    test_mind_per_branch_decisions(); print("  mind: per-branch band decisions: OK")
     print("ALL PASSED")

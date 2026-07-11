@@ -54,6 +54,18 @@ class TurtleConfig:
     radius: float = 0.08       # starting branch radius
     leaf_size: float = 0.5     # leaf blade length
     palette: np.ndarray = field(default_factory=lambda: _PALETTE.copy())
+    # --- environmental response (ABOP §2.3.4 — the "obvious rules") ----------
+    # A tropism bends the heading H toward a direction T after every drawn
+    # segment, by an angle proportional to |H×T|·e about the axis H×T. This is
+    # the substrate a future "mind" layer steers; here it is pure physics.
+    tropism: Tuple[float, float, float] = None   # fixed direction, e.g. gravity
+    tropism_e: float = 0.0                        # susceptibility (0 = off)
+    light: Tuple[float, float, float] = None      # phototropism target point;
+    #   when set, T is recomputed each step as normalize(light - pos)
+    light_e: float = 0.0                          # phototropism susceptibility
+    # nyctinasty / rain response: fold leaves shut. 0 = open, 1 = fully folded
+    # (the leaf pitches down toward -U and shrinks). A future "mind" flips this.
+    leaf_fold: float = 0.0
 
 
 @dataclass
@@ -98,6 +110,29 @@ def _rot(v: Vec3, axis: Vec3, deg: float) -> Vec3:
     return v * c + np.cross(axis, v) * s + axis * (axis @ v) * (1.0 - c)
 
 
+def _bend_toward(H, L, U, T, e):
+    """Bend the H/L/U frame toward unit direction `T` (ABOP §2.3.4).
+
+    Rotates the whole frame about axis H×T by angle e·|H×T| (radians, in the
+    small-angle regime), i.e. proportional to how perpendicular H is to T. When
+    H already points along T (|H×T|≈0) there is no torque. Returns the frame
+    unchanged when `e` is zero or `T` is degenerate.
+    """
+    if e == 0.0:
+        return H, L, U
+    tn = float(np.linalg.norm(T))
+    if tn < 1e-8:
+        return H, L, U
+    Tu = T / tn
+    cross = np.cross(H, Tu)
+    m = float(np.linalg.norm(cross))
+    if m < 1e-8:                       # already aligned (or anti-aligned)
+        return H, L, U
+    axis = cross / m
+    deg = math.degrees(e * m)         # torque ∝ |H×T|·e
+    return _rot(H, axis, deg), _rot(L, axis, deg), _rot(U, axis, deg)
+
+
 class _State:
     __slots__ = ("pos", "H", "L", "U", "r", "color")
 
@@ -119,6 +154,9 @@ def interpret(word: Sequence[Module], cfg: TurtleConfig = None) -> Geometry:
     color = cfg.palette[0].copy()
     stack: List[_State] = []
 
+    grav = None if cfg.tropism is None else np.array(cfg.tropism, np.float32)
+    light = None if cfg.light is None else np.array(cfg.light, np.float32)
+
     for m in word:
         sym = m.sym
         a = m.params[0] if m.params else None
@@ -127,6 +165,11 @@ def interpret(word: Sequence[Module], cfg: TurtleConfig = None) -> Geometry:
             p1 = pos + H * length
             geo.segments.append(Segment(pos.copy(), p1.copy(), r, r, color.copy()))
             pos = p1
+            # environmental response: bend the frame after the segment is laid
+            if grav is not None and cfg.tropism_e != 0.0:
+                H, L, U = _bend_toward(H, L, U, grav, cfg.tropism_e)
+            if light is not None and cfg.light_e != 0.0:
+                H, L, U = _bend_toward(H, L, U, light - pos, cfg.light_e)
         elif sym == "f":
             pos = pos + H * (a if a is not None else cfg.step)
         elif sym == "+":
@@ -157,6 +200,11 @@ def interpret(word: Sequence[Module], cfg: TurtleConfig = None) -> Geometry:
             color = cfg.palette[idx % len(cfg.palette)].copy()
         elif sym == "L":
             size = a if a is not None else cfg.leaf_size
-            geo.leaves.append(Leaf(pos.copy(), H.copy(), U.copy(), size, color.copy()))
+            lh, lu = H.copy(), U.copy()
+            if cfg.leaf_fold > 0.0:                 # fold shut (rain / night)
+                f = min(max(cfg.leaf_fold, 0.0), 1.0)
+                size *= (1.0 - 0.55 * f)            # shrink the exposed blade
+                lh = _rot(lh, L, -70.0 * f)         # pitch the blade downward
+            geo.leaves.append(Leaf(pos.copy(), lh, lu, size, color.copy()))
         # any other symbol: structural, no geometry
     return geo

@@ -51,6 +51,8 @@ nav:
       - Atmosphere scattering: research/02-atmosphere-scattering.md
       - Volumetrics & god-rays: research/03-volumetrics-and-godrays.md
       - L-Systems (growing life): research/04-lsystems.md
+      - Molecular to cell: research/05-molecular-to-cell.md
+      - The mind: research/06-the-mind.md
 
 markdown_extensions:
   - admonition

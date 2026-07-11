@@ -29,6 +29,34 @@ class Mesh:
         return len(self.indices) // 3
 
 
+def merge_meshes(meshes, offsets=None) -> "Mesh":
+    """Concatenate several :class:`Mesh` into one (indices re-based).
+
+    `offsets` (optional) is a list of ``(x, y, z)`` translations applied to each
+    mesh's vertices — for placing many plants on a ground patch before uploading
+    them as a single ``wp.Mesh``.
+    """
+    meshes = [m for m in meshes if m is not None and m.n_tris > 0]
+    if not meshes:
+        z = np.zeros((0, 3), np.float32)
+        return Mesh(z, np.zeros(0, np.int32), z, z)
+    verts, normals, colors, indices = [], [], [], []
+    base = 0
+    for k, m in enumerate(meshes):
+        v = m.verts
+        if offsets is not None:
+            v = v + np.asarray(offsets[k], np.float32)
+        verts.append(v)
+        normals.append(m.normals)
+        colors.append(m.colors)
+        indices.append(m.indices.astype(np.int32) + base)
+        base += m.verts.shape[0]
+    return Mesh(np.concatenate(verts).astype(np.float32),
+               np.concatenate(indices).astype(np.int32),
+               np.concatenate(normals).astype(np.float32),
+               np.concatenate(colors).astype(np.float32))
+
+
 def _norm(v):
     n = np.linalg.norm(v)
     return v / n if n > 1e-12 else v
