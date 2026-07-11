@@ -31,8 +31,8 @@ from .pbr import (
 )
 from .shading import apply_fog, sky_gradient, sun_disk
 from .uniforms import (
-    Camera, Frame, Light, Quality, camera_ray_dir, make_camera, make_frame,
-    make_light, make_quality,
+    Camera, Frame, Light, Quality, camera_ray_dir, focus_point, lens_offset,
+    make_camera, make_frame, make_light, make_quality,
 )
 
 __all__ = [
@@ -40,6 +40,7 @@ __all__ = [
     "atmosphere", "pbr", "post", "volumetric",
     # uniforms
     "Camera", "Light", "Frame", "Quality", "camera_ray_dir",
+    "lens_offset", "focus_point",
     "make_camera", "make_light", "make_frame", "make_quality",
     # material
     "Material", "make_mat", "make_material", "shade_material",
