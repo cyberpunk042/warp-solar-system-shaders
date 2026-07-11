@@ -82,6 +82,11 @@ def test_render_roundtrip():
     graded = ws.render_image("pbr_demo", look="cinematic", width=64, height=36, time=0.0)
     assert graded.shape == img.shape and np.all(np.isfinite(graded))
     assert graded.min() >= 0.0 and graded.max() <= 1.0
+    # the reflection/refraction bounce scene renders (mirror + glass + gold)
+    assert "reflections" in names
+    refl = ws.render("reflections", width=80, height=54, time=0.0)
+    assert refl.shape[:2] == (54, 80) and np.all(np.isfinite(refl))
+    assert refl.max() > 0.5                              # bright mirror highlights
 
 
 def test_hdr_io(tmp_path=None):
