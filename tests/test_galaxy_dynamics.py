@@ -6,7 +6,8 @@ Run: `python -m tests.test_galaxy_dynamics` (or under pytest).
 import numpy as np
 
 from warp_shaders.cosmos.galaxy_dynamics import (Collision, EncounterConfig,
-                                                 GalaxyConfig, simulate)
+                                                 GalaxyConfig, render_collision,
+                                                 simulate)
 
 
 def _encounter(n=600, seed=3):
@@ -58,6 +59,14 @@ def test_particles_are_massless():
     assert np.allclose(a.core_pos, b.core_pos, atol=1e-6)
 
 
+def test_render_smoke():
+    c = simulate(_encounter(n=500), frames=12, substeps=6, dt=0.06)
+    img = render_collision(c, 6, 160, 110)
+    assert img.shape == (110, 160, 3) and np.all(np.isfinite(img))
+    assert img.min() >= 0.0 and img.max() <= 1.0
+    assert img.max() > 0.5                               # the cores/disks are bright
+
+
 if __name__ == "__main__":
     test_isolated_disk_stays_bound()
     print("  isolated disk stays bound: OK")
@@ -69,4 +78,6 @@ if __name__ == "__main__":
     print("  deterministic from seed: OK")
     test_particles_are_massless()
     print("  test particles are massless (cores independent of N): OK")
+    test_render_smoke()
+    print("  render_collision smoke (shape/range/bright): OK")
     print("ALL PASSED")
