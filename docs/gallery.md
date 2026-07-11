@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (56 scenes).
+`python render.py --list` for the full, current list (59 scenes).
 
 ## Engine showcase
 
@@ -18,6 +18,23 @@ volumetrics + post) and honours `--quality low..ultra`.
 | **aurora**<br>volumetric light curtains over a night landscape<br>![aurora](engine/aurora.png) | **lava planet**<br>molten sea, cooled-crust rafts, basalt islands<br>![lava_planet](engine/lava_planet.png) | **desert dunes**<br>wind ripples, long low-sun shadows, aerial haze<br>![dunes](engine/dunes.png) |
 | **glacier**<br>blue ice + snow, subsurface glow, cold low sun<br>![glacier](engine/glacier.png) | **depth of field**<br>thin-lens focus pull, near/far bokeh<br>![dof_showcase](engine/dof_showcase.png) | **slot canyon**<br>layered sandstone + volumetric god-rays<br>![canyon](engine/canyon.png) |
 | **underwater reef**<br>rippling caustics, blue-green depth, god-rays<br>![reef](engine/reef.png) | | |
+
+## Life — molecule to cell
+
+The bottom of the "show life" ladder (`warp_shaders.life.molecular` /
+`.cell`) — DNA and proteins as solid ray-traced meshes, the cell as a soft glow
+volume. Each **animates**: the helix assembles, the chain folds, the cell
+divides. See [Research 05](research/05-molecular-to-cell.md).
+
+| | | |
+|---|---|---|
+| **DNA**<br>double helix, colour-coded base pairs (B-DNA)<br>![dna](life/dna.png) | **protein**<br>backbone folding extended→compact, N→C colour<br>![protein](life/protein.png) | **cell**<br>membrane + nucleus + organelles, dividing<br>![cell](life/cell.png) |
+
+Assembling, folding, dividing:
+
+![dna assembling](life/dna_assemble.gif)
+![protein folding](life/protein_fold.gif)
+![cell dividing](life/cell_divide.gif)
 
 ## Life — grown from L-Systems
 

@@ -109,6 +109,27 @@ over a starfield — fully procedural, no texture asset. Shading lives in
 [`warp_shaders/earthgfx.py`](warp_shaders/earthgfx.py), shared with the Earth
 blast simulation below.
 
+## Life — from molecule to plant
+
+The engine shows life across scales. At the **bottom of the ladder**
+(`warp_shaders.life.molecular` / `.cell`), the sub-plant scales the arc names —
+**DNA → protein → cell** — each animated: a **DNA double helix** assembles
+base-pair by base-pair (B-DNA geometry, colour-coded A/T/G/C), a **protein**
+backbone folds from an extended chain into a compact α-helix/β-strand, and a
+**cell** divides — membrane pinching, nucleus and organelles partitioning into
+two (mitosis). DNA and protein are solid ray-traced meshes; the cell is a soft
+glow volume, bridging the atom strand's look into tangible life.
+
+| DNA | protein | cell (dividing) |
+|---|---|---|
+| ![dna](docs/life/dna.png) | ![protein](docs/life/protein.png) | ![cell](docs/life/cell.png) |
+
+![dna assembling](docs/life/dna_assemble.gif)
+![protein folding](docs/life/protein_fold.gif)
+![cell dividing](docs/life/cell_divide.gif)
+
+See [docs/research/05-molecular-to-cell.md](docs/research/05-molecular-to-cell.md).
+
 ## Life — L-Systems that grow
 
 `warp_shaders.life` grows plants from **L-System grammars** (Prusinkiewicz &

@@ -73,3 +73,24 @@ grow these with `time`.
 an **environment-modified** `TurtleConfig` every call (uncached), so a moving
 light or rising rain re-shapes the same structure per frame — the mechanism
 behind the `phototropism` / `weeping` / `rain_fold` scenes.
+
+## Molecular — `life.molecular`
+
+The bottom of the "show life" ladder — DNA and proteins as solid ray-traced
+meshes (they render through `render_plant(..., ground=False)`). See
+[Research 05](../research/05-molecular-to-cell.md).
+
+| Symbol | Kind | Purpose |
+|---|---|---|
+| `build_helix(bp, radius, rise, bp_per_turn, seed) -> (Mesh, bounds)` | fn | a **DNA double helix** — two backbone rails + colour-coded A/T/G/C base-pair rungs (B-DNA geometry: ~10.5 bp/turn, 3.4 Å rise) |
+| `build_protein(n, fold) -> (Mesh, bounds)` | fn | a **polypeptide backbone** interpolating extended (`fold=0`) → compact α-helix/β-strand fold (`fold=1`), coloured N→C |
+
+## Cell — `life.cell`
+
+`render_cell(width, height, time, mouse, divide, device) -> (H, W, 3)` — a
+**cell** in the glow-impostor style (metaball membrane + cytoplasm + nucleus +
+Fibonacci-packed organelles). As `divide` goes 0→1 the membrane pinches and the
+contents partition into two daughters — **mitosis**. Drives the `cell` scene.
+
+`render_plant` gained `ground: bool = True`; pass `ground=False` to render a
+floating molecule/cell on pure sky with no shadow-catching soil plane.
