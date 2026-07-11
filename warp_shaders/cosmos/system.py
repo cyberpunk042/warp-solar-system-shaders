@@ -101,6 +101,8 @@ def _stars_kernel(img: wp.array2d(dtype=wp.vec3), depth: wp.array2d(dtype=float)
 
     best_t = float(1.0e30)
     for k in range(nstars):
+        if kinds[k] == BLACK_HOLE:                        # drawn by the lensing pass
+            continue
         c = centers[k]
         R = radii[k]
         oc = ro - c
@@ -124,6 +126,8 @@ def _stars_kernel(img: wp.array2d(dtype=wp.vec3), depth: wp.array2d(dtype=float)
 
     # additive glows (corona + pulsar beams) from every star
     for k in range(nstars):
+        if kinds[k] == BLACK_HOLE:
+            continue
         c = centers[k]
         R = radii[k]
         cfg = StarConfig()
@@ -319,6 +323,14 @@ def render_system(sys: SystemConfig, width: int, height: int, time: float = 0.0,
                              sun_az=saz, sun_el=sel, dist=_BB_DIST, fov=_BB_FOV,
                              relief=False)
         _composite_billboard(scene, zbuf, pbuf, px, py, z, S)
+
+    # black holes lens the whole composited scene (far -> near)
+    from .lensing import apply_black_hole
+    bhs = [(k, s) for k, s in enumerate(sys.stars) if s.cfg.kind == BLACK_HOLE]
+    bhs.sort(key=lambda a: -float((star_pos[a[0]] - eye) @ fwd))
+    for k, s in bhs:
+        scene = apply_black_hole(scene, cam, star_pos[k], s.cfg.radius,
+                                 s.cfg.spin, time, device=device)
 
     hdr = post.bloom(scene, threshold=1.5, strength=0.4,
                      radius=max(3, int(min(width, height) * 0.02)), passes=4)

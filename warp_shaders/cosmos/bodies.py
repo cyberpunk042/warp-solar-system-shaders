@@ -183,6 +183,8 @@ def pulsar_beams(ro: wp.vec3, rd: wp.vec3, axis: wp.vec3, cfg: StarConfig,
 @wp.func
 def shade_body(dir: wp.vec3, rd: wp.vec3, cfg: StarConfig, time: float) -> wp.vec3:
     """Emissive surface colour of body `cfg` at surface direction `dir`."""
+    if cfg.kind == BLACK_HOLE:
+        return wp.vec3(0.0, 0.0, 0.0)      # drawn by the lensing pass, not here
     if cfg.kind == NEUTRON:
         return _shade_neutron(dir, rd, cfg, time)
     if cfg.kind == WHITE_DWARF:
@@ -194,7 +196,7 @@ def shade_body(dir: wp.vec3, rd: wp.vec3, cfg: StarConfig, time: float) -> wp.ve
 def body_corona(d_over_r: float, cfg: StarConfig, time: float) -> wp.vec3:
     """Corona / glow halo for a ray whose closest approach is `d_over_r`×radius
     from the centre (>1 = outside the disk). Returns additive HDR colour."""
-    if d_over_r < 1.0:
+    if d_over_r < 1.0 or cfg.kind == BLACK_HOLE:
         return wp.vec3(0.0, 0.0, 0.0)
     base = _temp_color(cfg.temp)
     if cfg.kind == NEUTRON:
