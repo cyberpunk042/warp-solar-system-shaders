@@ -11,14 +11,16 @@ globe, an ocean world, a volcanic hell — same kernel, different config.
 from ..lod import active_tier
 from ..scene import Scene
 from ..superearth import presets
+from ..superearth.moons import moonset
 from ..superearth.planet import render_planet
 
 
-def _scene(cfg_name, **kw):
+def _scene(cfg_name, moons=None, **kw):
     def _render(width, height, time, mouse, device):
         cfg = presets.get(cfg_name)
+        ms = moonset(moons) if moons else []
         return render_planet(cfg, width, height, time, mouse, device,
-                             quality=active_tier().name, **kw)
+                             quality=active_tier().name, moons=ms, **kw)
     return _render
 
 
@@ -39,4 +41,8 @@ SCENES = [
                       "bioluminescence + city lights."),
     Scene(name="se_arid", renderer=_scene("arid"),
           description="super-earth preset: arid desert continents (life off)."),
+    Scene(name="se_moons", renderer=_scene("earthlike", moons="many",
+                                           dist=6.5, fov=52.0),
+          description="super-earth with a system of four moons (rocky / icy / "
+                      "lava / desert), configurable in number, type and size."),
 ]

@@ -392,22 +392,47 @@ def _march_clouds(ro: wp.vec3, rd: wp.vec3, sun: wp.vec3, time: float,
 # kernel                                                                        #
 # --------------------------------------------------------------------------- #
 
+@wp.func
+def _moon_shade(n: wp.vec3, sun: wp.vec3, mtype: int, center: wp.vec3) -> wp.vec3:
+    s = center * 7.13
+    tex = fbm3(n * 7.0 + s, 4)
+    crater = worley3(n * 10.0 + s)
+    base = wp.vec3(0.34, 0.32, 0.30)                    # rocky
+    if mtype == 1:
+        base = wp.vec3(0.74, 0.82, 0.92)                # icy
+    if mtype == 2:
+        base = wp.vec3(0.16, 0.06, 0.04)                # lava moon
+    if mtype == 3:
+        base = wp.vec3(0.56, 0.43, 0.26)                # desert
+    albedo = wp.cw_mul(base, wp.vec3(0.7 + 0.5 * tex, 0.7 + 0.5 * tex,
+                                     0.7 + 0.5 * tex)) * (0.6 + 0.4 * crater)
+    ndl = wp.max(wp.dot(n, sun), 0.0)
+    col = albedo * (0.04 + 1.15 * ndl)
+    if mtype == 2:
+        hot = wp.smoothstep(0.5, 0.7, fbm3(n * 5.0 + s, 4))
+        col = col + wp.vec3(1.0, 0.30, 0.05) * (hot * 1.3)
+    return col
+
+
 @wp.kernel
 def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
                   cfg: PlanetConfig, time: float, steps: int, csteps: int,
+                  moon_pos: wp.array(dtype=wp.vec3), moon_rad: wp.array(dtype=float),
+                  moon_type: wp.array(dtype=wp.int32), moon_n: int,
                   width: int, height: int):
     i, j = wp.tid()
     u = (2.0 * (float(j) + 0.5) / float(width)) - 1.0
     vv = (2.0 * (float(height - 1 - i) + 0.5) / float(height)) - 1.0
-    ro = cam.eye
-    rd = camera_ray_dir(cam, u, vv)
+    ro0 = cam.eye
+    rd0 = camera_ray_dir(cam, u, vv)
 
-    # spin the planet by rotating the ray about Y (cheap "planet turns")
+    # spin the planet by rotating the ray about Y (cheap "planet turns");
+    # keep the unrotated ro0/rd0 for moons, which live in world space
     a = -time * cfg.spin
     ca = wp.cos(a)
     sa = wp.sin(a)
-    ro = wp.vec3(ca * ro[0] - sa * ro[2], ro[1], sa * ro[0] + ca * ro[2])
-    rd = wp.vec3(ca * rd[0] - sa * rd[2], rd[1], sa * rd[0] + ca * rd[2])
+    ro = wp.vec3(ca * ro0[0] - sa * ro0[2], ro0[1], sa * ro0[0] + ca * ro0[2])
+    rd = wp.vec3(ca * rd0[0] - sa * rd0[2], rd0[1], sa * rd0[0] + ca * rd0[2])
     sr = wp.vec3(ca * sun[0] - sa * sun[2], sun[1], sa * sun[0] + ca * sun[2])
 
     col = stars(rd)
@@ -457,6 +482,24 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
         cl = _march_clouds(ro, rd, sr, time, surf_t, cov, csteps)
         col = col * cl[3] + wp.vec3(cl[0], cl[1], cl[2])
 
+    # moons (world space, unrotated): nearest sphere in front of the scene wins
+    scene_t = surf_t
+    if surf_t < 0.0:
+        scene_t = 1.0e30
+    for k in range(moon_n):
+        c = moon_pos[k]
+        mo = ro0 - c
+        b = wp.dot(mo, rd0)
+        cc = wp.dot(mo, mo) - moon_rad[k] * moon_rad[k]
+        disc = b * b - cc
+        if disc > 0.0:
+            tnear = -b - wp.sqrt(disc)
+            if tnear > 0.0 and tnear < scene_t:
+                scene_t = tnear
+                pm = ro0 + rd0 * tnear
+                nm = wp.normalize(pm - c)
+                col = _moon_shade(nm, sun, moon_type[k], c)
+
     img[i, j] = col
 
 
@@ -494,21 +537,29 @@ def _cloud_steps_for(quality: str) -> int:
 def render_planet(cfg: PlanetConfig, width: int, height: int, time: float = 0.0,
                   mouse=(0.0, 0.0), device: str = "cpu", quality: str = "medium",
                   sun_az: float = 1.1, sun_el: float = 0.35,
-                  dist: float = 3.4) -> np.ndarray:
-    """Render `cfg` to an ``(H, W, 3)`` image."""
+                  dist: float = 3.4, fov: float = 42.0, moons=None) -> np.ndarray:
+    """Render `cfg` (and any orbiting `moons`) to an ``(H, W, 3)`` image."""
+    from .moons import moon_state
+    moons = moons or []
     az = 0.6 + float(mouse[0]) * 0.01
     el = 0.28 + float(mouse[1]) * 0.003
     eye = (dist * math.cos(el) * math.sin(az), dist * math.sin(el),
            dist * math.cos(el) * math.cos(az))
-    cam = make_camera(eye, (0.0, 0.0, 0.0), fov_deg=42.0, aspect=width / height)
+    cam = make_camera(eye, (0.0, 0.0, 0.0), fov_deg=fov, aspect=width / height)
     sun = wp.vec3(math.cos(sun_el) * math.sin(sun_az), math.sin(sun_el),
                   math.cos(sun_el) * math.cos(sun_az))
     steps = _steps_for(quality)
     csteps = _cloud_steps_for(quality)
 
+    mpos, mrad, mtyp = moon_state(moons, time)
+    d_mpos = wp.array(mpos, dtype=wp.vec3, device=device)
+    d_mrad = wp.array(mrad, dtype=float, device=device)
+    d_mtyp = wp.array(mtyp, dtype=wp.int32, device=device)
+
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(render_kernel, dim=(height, width),
               inputs=[img, cam, sun, cfg, float(time), int(steps), int(csteps),
+                      d_mpos, d_mrad, d_mtyp, int(len(moons)),
                       int(width), int(height)], device=device)
     wp.synchronize_device(device)
     hdr = img.numpy()
