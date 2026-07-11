@@ -14,5 +14,9 @@ layer to come.
 """
 
 from .lsystem import LSystem, Module, Rule, parse, word_to_str
+from .turtle import Geometry, Leaf, Segment, TurtleConfig, interpret
 
-__all__ = ["LSystem", "Rule", "Module", "parse", "word_to_str"]
+__all__ = [
+    "LSystem", "Rule", "Module", "parse", "word_to_str",
+    "interpret", "TurtleConfig", "Geometry", "Segment", "Leaf",
+]
