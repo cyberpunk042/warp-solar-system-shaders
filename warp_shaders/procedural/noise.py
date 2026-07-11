@@ -238,6 +238,145 @@ def domain_warp3(p: wp.vec3, octaves: int, amount: float) -> float:
 
 
 @wp.func
+def _floor4(v: wp.vec4) -> wp.vec4:
+    return wp.vec4(wp.floor(v[0]), wp.floor(v[1]), wp.floor(v[2]), wp.floor(v[3]))
+
+
+@wp.func
+def _stepf(edge: float, x: float) -> float:
+    if x >= edge:
+        return 1.0
+    return 0.0
+
+
+@wp.func
+def _mod289_3(x: wp.vec3) -> wp.vec3:
+    return x - wp.vec3(wp.floor(x[0] / 289.0), wp.floor(x[1] / 289.0), wp.floor(x[2] / 289.0)) * 289.0
+
+
+@wp.func
+def _mod289_4(x: wp.vec4) -> wp.vec4:
+    return x - _floor4(x * (1.0 / 289.0)) * 289.0
+
+
+@wp.func
+def _permute(x: wp.vec4) -> wp.vec4:
+    return _mod289_4(wp.cw_mul(x * 34.0 + wp.vec4(1.0, 1.0, 1.0, 1.0), x))
+
+
+@wp.func
+def _taylor_inv_sqrt(r: wp.vec4) -> wp.vec4:
+    return wp.vec4(1.79284291400159, 1.79284291400159, 1.79284291400159, 1.79284291400159) - r * 0.85373472095314
+
+
+@wp.func
+def simplex3(v: wp.vec3) -> float:
+    """Perlin simplex noise (Gustavson/Ashima port), ~[-1,1]. Fewer directional
+    artifacts than value/Perlin noise."""
+    cx = 0.166666666667
+    cy = 0.333333333333
+    i = wp.vec3(wp.floor(v[0] + wp.dot(v, wp.vec3(cy, cy, cy))),
+                wp.floor(v[1] + wp.dot(v, wp.vec3(cy, cy, cy))),
+                wp.floor(v[2] + wp.dot(v, wp.vec3(cy, cy, cy))))
+    x0 = v - i + wp.vec3(wp.dot(i, wp.vec3(cx, cx, cx)), wp.dot(i, wp.vec3(cx, cx, cx)),
+                         wp.dot(i, wp.vec3(cx, cx, cx)))
+
+    g = wp.vec3(_stepf(x0[1], x0[0]), _stepf(x0[2], x0[1]), _stepf(x0[0], x0[2]))
+    l = wp.vec3(1.0, 1.0, 1.0) - g
+    lzxy = wp.vec3(l[2], l[0], l[1])
+    i1 = wp.vec3(wp.min(g[0], lzxy[0]), wp.min(g[1], lzxy[1]), wp.min(g[2], lzxy[2]))
+    i2 = wp.vec3(wp.max(g[0], lzxy[0]), wp.max(g[1], lzxy[1]), wp.max(g[2], lzxy[2]))
+
+    x1 = x0 - i1 + wp.vec3(cx, cx, cx)
+    x2 = x0 - i2 + wp.vec3(cy, cy, cy)
+    x3 = x0 - wp.vec3(0.5, 0.5, 0.5)
+
+    i = _mod289_3(i)
+    p = _permute(_permute(_permute(
+        wp.vec4(i[2] + 0.0, i[2] + i1[2], i[2] + i2[2], i[2] + 1.0))
+        + wp.vec4(i[1] + 0.0, i[1] + i1[1], i[1] + i2[1], i[1] + 1.0))
+        + wp.vec4(i[0] + 0.0, i[0] + i1[0], i[0] + i2[0], i[0] + 1.0))
+
+    ns_x = 0.285714285714
+    ns_y = -0.928571428571
+    ns_z = 0.142857142857
+    j = p - 49.0 * _floor4(p * (ns_z * ns_z))
+    x_ = _floor4(j * ns_z)
+    y_ = _floor4(j - 7.0 * x_)
+    xx = x_ * ns_x + wp.vec4(ns_y, ns_y, ns_y, ns_y)
+    yy = y_ * ns_x + wp.vec4(ns_y, ns_y, ns_y, ns_y)
+    h = wp.vec4(1.0, 1.0, 1.0, 1.0) - wp.vec4(wp.abs(xx[0]), wp.abs(xx[1]), wp.abs(xx[2]), wp.abs(xx[3])) \
+        - wp.vec4(wp.abs(yy[0]), wp.abs(yy[1]), wp.abs(yy[2]), wp.abs(yy[3]))
+
+    b0 = wp.vec4(xx[0], xx[1], yy[0], yy[1])
+    b1 = wp.vec4(xx[2], xx[3], yy[2], yy[3])
+    s0 = _floor4(b0) * 2.0 + wp.vec4(1.0, 1.0, 1.0, 1.0)
+    s1 = _floor4(b1) * 2.0 + wp.vec4(1.0, 1.0, 1.0, 1.0)
+    # sh = -step(h, 0): -1 where h < 0, else 0
+    sh0 = float(0.0)
+    if h[0] < 0.0:
+        sh0 = -1.0
+    sh1 = float(0.0)
+    if h[1] < 0.0:
+        sh1 = -1.0
+    sh2 = float(0.0)
+    if h[2] < 0.0:
+        sh2 = -1.0
+    sh3 = float(0.0)
+    if h[3] < 0.0:
+        sh3 = -1.0
+
+    a0 = wp.vec4(b0[0] + s0[0] * sh0, b0[2] + s0[2] * sh0, b0[1] + s0[1] * sh1, b0[3] + s0[3] * sh1)
+    a1 = wp.vec4(b1[0] + s1[0] * sh2, b1[2] + s1[2] * sh2, b1[1] + s1[1] * sh3, b1[3] + s1[3] * sh3)
+
+    p0 = wp.vec3(a0[0], a0[1], h[0])
+    p1 = wp.vec3(a0[2], a0[3], h[1])
+    p2 = wp.vec3(a1[0], a1[1], h[2])
+    p3 = wp.vec3(a1[2], a1[3], h[3])
+
+    norm = _taylor_inv_sqrt(wp.vec4(wp.dot(p0, p0), wp.dot(p1, p1), wp.dot(p2, p2), wp.dot(p3, p3)))
+    p0 = p0 * norm[0]
+    p1 = p1 * norm[1]
+    p2 = p2 * norm[2]
+    p3 = p3 * norm[3]
+
+    m = wp.vec4(wp.max(0.6 - wp.dot(x0, x0), 0.0), wp.max(0.6 - wp.dot(x1, x1), 0.0),
+                wp.max(0.6 - wp.dot(x2, x2), 0.0), wp.max(0.6 - wp.dot(x3, x3), 0.0))
+    m = wp.cw_mul(m, m)
+    m = wp.cw_mul(m, m)
+    return 42.0 * wp.dot(m, wp.vec4(wp.dot(p0, x0), wp.dot(p1, x1), wp.dot(p2, x2), wp.dot(p3, x3)))
+
+
+@wp.func
+def _modp(x: float, m: float) -> float:
+    return x - wp.floor(x / m) * m
+
+
+@wp.func
+def value_tiled3(p: wp.vec3, period: float) -> float:
+    """Value noise that tiles seamlessly with the given integer period."""
+    i = wp.vec3(wp.floor(p[0]), wp.floor(p[1]), wp.floor(p[2]))
+    f = p - i
+    u = wp.vec3(_quintic(f[0]), _quintic(f[1]), _quintic(f[2]))
+
+    m = period
+    a = hash31(wp.vec3(_modp(i[0], m), _modp(i[1], m), _modp(i[2], m)))
+    b = hash31(wp.vec3(_modp(i[0] + 1.0, m), _modp(i[1], m), _modp(i[2], m)))
+    c = hash31(wp.vec3(_modp(i[0], m), _modp(i[1] + 1.0, m), _modp(i[2], m)))
+    d = hash31(wp.vec3(_modp(i[0] + 1.0, m), _modp(i[1] + 1.0, m), _modp(i[2], m)))
+    e = hash31(wp.vec3(_modp(i[0], m), _modp(i[1], m), _modp(i[2] + 1.0, m)))
+    g = hash31(wp.vec3(_modp(i[0] + 1.0, m), _modp(i[1], m), _modp(i[2] + 1.0, m)))
+    hh = hash31(wp.vec3(_modp(i[0], m), _modp(i[1] + 1.0, m), _modp(i[2] + 1.0, m)))
+    k = hash31(wp.vec3(_modp(i[0] + 1.0, m), _modp(i[1] + 1.0, m), _modp(i[2] + 1.0, m)))
+
+    ab = wp.lerp(a, b, u[0])
+    cd = wp.lerp(c, d, u[0])
+    eg = wp.lerp(e, g, u[0])
+    hk = wp.lerp(hh, k, u[0])
+    return wp.lerp(wp.lerp(ab, cd, u[1]), wp.lerp(eg, hk, u[1]), u[2])
+
+
+@wp.func
 def curl3(p: wp.vec3) -> wp.vec3:
     """Divergence-free flow field = curl of a noise potential (Bridson 2007)."""
     e = float(0.1)
