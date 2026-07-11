@@ -63,6 +63,8 @@ def main() -> None:
     ap.add_argument("--quality", default="auto",
                     choices=["auto", "low", "medium", "high", "ultra"],
                     help="LOD tier for engine/LOD-aware scenes (auto = by device)")
+    ap.add_argument("--ss", type=int, default=1,
+                    help="supersampling factor for anti-aliasing (render NxN, downsample)")
     args = ap.parse_args()
 
     wp.init()
@@ -77,10 +79,21 @@ def main() -> None:
     device = pick_device(args.device)
     from warp_shaders.lod import set_active
     tier = set_active(args.quality, device)
-    print(f"scene: {scene.name}  |  device: {device}  |  quality: {tier.name}")
+    ss = max(1, int(args.ss))
+    aa = f"  |  {ss}x AA" if ss > 1 else ""
+    print(f"scene: {scene.name}  |  device: {device}  |  quality: {tier.name}{aa}")
+
+    def render_frame(t):
+        # Supersample: render at ss x resolution, box-average down (universal AA).
+        fr = scene.render(args.width * ss, args.height * ss, t, tuple(args.mouse), device)
+        if ss > 1:
+            h2 = (fr.shape[0] // ss) * ss
+            w2 = (fr.shape[1] // ss) * ss
+            fr = fr[:h2, :w2].reshape(h2 // ss, ss, w2 // ss, ss, 3).mean(axis=(1, 3))
+        return fr
 
     if args.frames <= 1:
-        frame = scene.render(args.width, args.height, args.time, tuple(args.mouse), device)
+        frame = render_frame(args.time)
         save_png(args.out, frame)
         print(f"wrote {args.out}  ({args.width}x{args.height}, t={args.time})")
         return
@@ -92,7 +105,7 @@ def main() -> None:
     gif_frames = []
     for k in range(args.frames):
         t = k * dt
-        frame = scene.render(args.width, args.height, t, tuple(args.mouse), device)
+        frame = render_frame(t)
         u8 = to_uint8(frame)
         if args.out_dir:
             save_png(os.path.join(args.out_dir, f"frame_{k:04d}.png"), frame)

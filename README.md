@@ -22,6 +22,8 @@ scales to a high-end GPU. Every technique cites a primary source in-code and in
 | ![noise](docs/engine/noise_gallery.png) | ![pbr](docs/engine/pbr_demo.png) | ![sky](docs/engine/sky.png) |
 | **volumetric clouds** | **Earth v2 (flagship)** | **baked-map Earth** |
 | ![clouds](docs/engine/clouds.png) | ![earth](docs/engine/earth_v2.png) | ![earth map](docs/engine/earth_map.png) |
+| **terrain** | **ocean** | **volumetric nebula** |
+| ![terrain](docs/engine/terrain.png) | ![ocean](docs/engine/ocean.png) | ![nebula](docs/engine/nebula.png) |
 
 - **Procedural toolkit** (`warp_shaders/procedural/`) — value/Perlin/Worley/fbm/
   ridged/billow/domain-warp/curl noise **with analytic derivatives**, plus an SDF
