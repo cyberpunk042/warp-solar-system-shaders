@@ -192,10 +192,23 @@ operator's *"close piece of itself"* — the decision is per-part, not global.
 ![per-branch mind](docs/life/mind_branches.png)
 
 The mind steers the plant through the same per-frame seam the obvious rules use
-(`grow_mesh_env`), so it commands the very reflexes the plant already has. The
-operator's wave-collapse / "backward in time" framing is the horizon. See
+(`grow_mesh_env`), so it commands the very reflexes the plant already has. See
 [docs/research/06-the-mind.md](docs/research/06-the-mind.md) and
 [04-lsystems.md](docs/research/04-lsystems.md).
+
+## Life — wave and collapse
+
+The summit of the strand. Several *possible* plant futures begin **superposed** —
+a faint overlapping ghost cloud of what the plant might become — and **collapse**
+to a single realised plant, the front sweeping tip→base so the form crystallises
+future-first, reaching *backward* into its own history. The Conway mind biases
+*which* future resolves. An explicit metaphor for the operator's *"how things are
+waves before what to us seems like a collapse in the world."*
+
+![wave collapsing to one plant](docs/life/wavecollapse.png)
+
+Rendered once and cached (fixed camera), then only the cheap per-frame blend
+re-runs. See [docs/research/07-wave-and-collapse.md](docs/research/07-wave-and-collapse.md).
 
 ## The atom, from the bottom up
 
