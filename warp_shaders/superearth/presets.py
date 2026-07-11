@@ -16,9 +16,16 @@ def barren():
 
 
 def earthlike():
-    """Oceans, continents, mountains, snow caps, an atmosphere."""
+    """A living earth-like world: oceans, green continents, snow caps, air."""
     return make_config(seed=1.0, mountain=0.6, sea_level=0.0, has_ocean=1,
-                       snow=1.0, has_atmo=1, atmo=1.0, veg=0.0, cloud=0.0)
+                       has_rivers=1, snow=1.0, has_atmo=1, atmo=1.0, veg=0.9,
+                       cloud=0.0)
+
+
+def arid():
+    """The same world with the life turned off — bare desert continents."""
+    return make_config(seed=1.0, mountain=0.6, sea_level=0.0, has_ocean=1,
+                       snow=0.6, has_atmo=1, atmo=1.0, veg=0.0)
 
 
 def ocean_world():
@@ -43,6 +50,7 @@ def riverlands():
 _REGISTRY = {
     "barren": barren,
     "earthlike": earthlike,
+    "arid": arid,
     "ocean_world": ocean_world,
     "volcanic": volcanic,
     "riverlands": riverlands,

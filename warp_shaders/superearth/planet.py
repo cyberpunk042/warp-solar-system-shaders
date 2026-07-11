@@ -235,6 +235,17 @@ def _shade(dir: wp.vec3, n: wp.vec3, rd: wp.vec3, sun: wp.vec3,
             + peak * wp.smoothstep(0.55, 0.95, h)
         rock = rock * (0.74 + 0.28 * tex)                # surface mottling
         rock = rock * (1.0 - 0.55 * cfg.lava)            # dark basalt on molten worlds
+        # vegetation: grass/forest in temperate, moist, lowland bands
+        if cfg.veg > 0.0:
+            s4 = s + wp.vec3(31.0, 13.0, 7.0)
+            moist = wp.clamp(fbm3(dir * 5.0 + s4, 4) * 1.5 - 0.25, 0.0, 1.0)
+            temperate = 1.0 - wp.smoothstep(0.55, 0.85, lat)
+            lowland = 1.0 - wp.smoothstep(0.45, 0.85, h)
+            veg_m = cfg.veg * moist * temperate * lowland
+            grass = wp.vec3(0.24, 0.40, 0.13)
+            forest = wp.vec3(0.09, 0.24, 0.07)
+            green = grass * (1.0 - moist) + forest * moist
+            rock = rock * (1.0 - veg_m * 0.9) + green * (veg_m * 0.9)
         # snow only near the poles or on the very highest peaks (kept separate
         # so raising the land doesn't flood the mid-latitudes with snow)
         polar = wp.smoothstep(0.82, 0.99, lat)
