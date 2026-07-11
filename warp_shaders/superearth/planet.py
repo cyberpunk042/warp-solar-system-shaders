@@ -261,6 +261,29 @@ def _shade(dir: wp.vec3, n: wp.vec3, rd: wp.vec3, sun: wp.vec3,
         emit = _lava_emission(dir, time, cfg)
         col = col * (1.0 - lava_i) + emit * lava_i
 
+    # a living world: bioluminescent veins + patches that pulse on the night side
+    if cfg.alive > 0.0:
+        night = 1.0 - day
+        s5 = s + wp.vec3(3.0, 29.0, 19.0)
+        ed = worley3_f2(dir * 15.0 + s5)
+        veins = wp.smoothstep(0.09, 0.0, ed[1] - ed[0])
+        patch = wp.smoothstep(0.58, 0.74, fbm3(dir * 6.0 + s5, 4))
+        # broad "biomes" — life clusters in regions rather than blanketing the globe
+        biome = wp.smoothstep(0.40, 0.66, fbm3(dir * 2.6 + s5, 3))
+        living = wp.clamp(veins * (0.25 + 0.9 * patch) + patch * 0.4, 0.0, 1.0)
+        living = living * (0.15 + 0.85 * biome)
+        if is_water > 0.5:
+            living = living * 0.4                       # dimmer over water
+        pulse = 0.55 + 0.45 * wp.sin(time * 1.6 + fbm3(dir * 3.0, 2) * 6.28)
+        bio = wp.vec3(0.18, 1.0, 0.62)
+        col = col + bio * (living * night * cfg.alive * pulse * 1.3)
+
+    # night-side city lights (a civilised world)
+    if cfg.city > 0.0 and is_water < 0.5:
+        night = 1.0 - day
+        lights = wp.smoothstep(0.62, 0.74, fbm3(dir * 11.0 + s, 3))
+        col = col + wp.vec3(1.0, 0.74, 0.36) * (lights * night * cfg.city * 1.5)
+
     return col
 
 

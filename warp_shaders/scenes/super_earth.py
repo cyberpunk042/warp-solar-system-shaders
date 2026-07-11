@@ -14,11 +14,11 @@ from ..superearth import presets
 from ..superearth.planet import render_planet
 
 
-def _scene(cfg_name):
+def _scene(cfg_name, **kw):
     def _render(width, height, time, mouse, device):
         cfg = presets.get(cfg_name)
         return render_planet(cfg, width, height, time, mouse, device,
-                             quality=active_tier().name)
+                             quality=active_tier().name, **kw)
     return _render
 
 
@@ -34,4 +34,9 @@ SCENES = [
           description="super-earth preset: young volcanic world."),
     Scene(name="se_rivers", renderer=_scene("riverlands"),
           description="super-earth preset: continents laced with rivers + lakes."),
+    Scene(name="se_living", renderer=_scene("living", sun_az=3.9, sun_el=0.2),
+          description="super-earth preset: a living world — night side aglow with "
+                      "bioluminescence + city lights."),
+    Scene(name="se_arid", renderer=_scene("arid"),
+          description="super-earth preset: arid desert continents (life off)."),
 ]

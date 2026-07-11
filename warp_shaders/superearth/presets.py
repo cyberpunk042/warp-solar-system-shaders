@@ -41,6 +41,13 @@ def volcanic():
                        lava=1.0)
 
 
+def living():
+    """An alive world — vegetation by day, bioluminescent veins + cities by night."""
+    return make_config(seed=1.0, mountain=0.6, sea_level=0.0, has_ocean=1,
+                       has_rivers=1, snow=0.9, has_atmo=1, atmo=1.1, veg=0.9,
+                       alive=1.0, city=0.6)
+
+
 def riverlands():
     """A continental world laced with rivers and dotted with lakes."""
     return make_config(seed=8.0, mountain=0.7, sea_level=-0.15, has_ocean=1,
@@ -54,6 +61,7 @@ _REGISTRY = {
     "ocean_world": ocean_world,
     "volcanic": volcanic,
     "riverlands": riverlands,
+    "living": living,
 }
 
 
