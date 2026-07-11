@@ -64,6 +64,15 @@ Increasing complexity, the start of the DNA → cell → grass → plant → tre
   threshold.
 - **fern** — the canonical bracketed frond `X → F-[[X]+X]+F[+FX]-X` (ABOP fig
   1.24) with a per-step roll, so it unfurls into a 3D **fiddlehead** spiral.
+- **flower** — a parametric apex `A(n)` that elongates a leafy stem while `n>0`
+  and, at maturity, emits a **bloom** inline (a whorl of six bright petals) — the
+  parametric "become-a-flower-at-the-top" pattern.
+- **bush** — a stochastic, densely-branching low **shrub** (three weighted
+  successors, many short internodes) — wide and leafy rather than tall.
+
+Several plants placed together and **merged into one mesh**
+(`life/mesh.merge_meshes`) make a **meadow** — a habitat that sways as one under
+a shared wind (the tropism layer), the first scene with more than one organism.
 
 Growth is simply deriving to a higher generation: advancing `time` grows the
 plant one generation, so it rises into frame from a sprout.
