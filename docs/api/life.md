@@ -35,6 +35,19 @@ img = render_plant(mesh, 640, 640, eye=(4, 2, 6), target=(0, 1.5, 0))
 emitting `Segment`s (tapered branches) and `Leaf`s. Commands: `F f + - & ^ \ / |
 [ ] ! ' L` (each with an optional parametric argument).
 
+**Environmental response (ABOP §2.3.4).** `TurtleConfig` also carries a *tropism*
+layer applied after each drawn segment — the "obvious rules" before any mind:
+
+| Field | Effect |
+|---|---|
+| `tropism`, `tropism_e` | bend H toward a fixed direction (e.g. gravity `(0,-1,0)`) with susceptibility `e` — **gravitropism / sag** |
+| `light`, `light_e` | bend H toward `normalize(light - pos)` recomputed each step — **phototropism** (tracks a moving light) |
+| `leaf_fold` (0..1) | pitch leaves down + shrink them — **nyctinasty** (fold shut in rain / at night) |
+
+The bend is `angle = e·|H×T|` about axis `H×T`, so it vanishes when aligned and is
+strongest when perpendicular. There is no decision here — a future mind layer sets
+these fields to *steer* the plant.
+
 ## Mesh — `life.mesh`
 
 `build_mesh(geo, sides=6) -> Mesh` tessellates the geometry into one indexed
@@ -51,6 +64,12 @@ the post pipeline.
 
 ## Plants — `life.plants`
 
-`get_spec(name)` → a memoized `PlantSpec` for `"grass"`, `"herb"`, or `"tree"`;
-`grow_mesh(spec, gen) -> (Mesh, (lo, hi))` derives + tessellates to a generation
-(cached). The `grass` / `herb` / `tree` **scenes** grow these with `time`.
+`get_spec(name)` → a memoized `PlantSpec` for `"grass"`, `"herb"`, `"tree"`,
+`"sapling"`, or `"weeper"`; `grow_mesh(spec, gen) -> (Mesh, (lo, hi))` derives +
+tessellates to a generation (cached). The `grass` / `herb` / `tree` **scenes**
+grow these with `time`.
+
+`grow_mesh_env(spec, gen, cfg) -> (Mesh, (lo, hi))` interprets a cached word with
+an **environment-modified** `TurtleConfig` every call (uncached), so a moving
+light or rising rain re-shapes the same structure per frame — the mechanism
+behind the `phototropism` / `weeping` / `rain_fold` scenes.

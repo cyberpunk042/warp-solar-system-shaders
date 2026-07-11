@@ -130,9 +130,31 @@ python -m tests.test_lsystem                                         # grammar t
 
 ![tree growing](docs/life/tree_grow.gif)
 
+**Environmental response — the "obvious rules" (ABOP §2.3.4).** Before any mind,
+the plant obeys physics: a **tropism** bends the turtle's heading toward a
+direction each step. So a sapling bends to **follow a light** (phototropism), a
+weeper's shoots **sag under gravity** (gravitropism), and leaves **fold shut in
+the rain** (nyctinasty) — all emergent from the same grammar plus an environment
+signal, no decisions yet.
+
+| phototropism | weeping | rain-fold |
+|---|---|---|
+| ![phototropism](docs/life/phototropism.png) | ![weeping](docs/life/weeping.png) | ![rain-fold](docs/life/rain_fold.png) |
+
+| following the light | closing in the rain |
+|---|---|
+| ![light tracking](docs/life/photo_track.gif) | ![rain fold](docs/life/rain_fold.gif) |
+
+```bash
+python render.py --scene phototropism --frames 24 --fps 12 --gif out/photo.gif
+python render.py --scene rain_fold --time 5 -o rain.png
+```
+
 The roadmap runs downward (DNA -> protein -> cell) and then adds a **mind** —
-a decision layer that overrides default growth (toward light, closing in rain),
-built on the context-sensitive class. See [docs/research/04-lsystems.md](docs/research/04-lsystems.md).
+a decision layer that *chooses* when to follow the light or close up, overriding
+default growth and built on the context-sensitive class. The tropism layer above
+is exactly the mechanism it steers. See
+[docs/research/04-lsystems.md](docs/research/04-lsystems.md).
 
 ## The atom, from the bottom up
 
