@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (87 scenes).
+`python render.py --list` for the full, current list (88 scenes).
 
 ## Engine showcase
 
@@ -210,3 +210,18 @@ merge, collapse to a black hole (supernova), which swallows the planet:
 
 ![solar system orbiting](cosmos/solar_system.gif)
 ![collapsing system](cosmos/ss_collapse.gif)
+
+### Cinematics — camera paths + the reel
+
+`ss_flyby` sweeps a **keyframed Catmull-Rom camera** around the trinary system
+(orbit + elevation ease + push-in, looping). Author moves with
+[`engine.camera_path`](api/engine.md#shots--enginecamera_path), render sequences
+to **MP4 / WebP / GIF** (`render.py --video`, [`engine.video`](api/engine.md#video--enginevideo)),
+and stitch scenes into a showcase with [`reel.py`](guides/cinematics.md).
+
+![cinematic fly-by of the trinary system](cosmos/ss_flyby.gif)
+
+```bash
+python render.py --scene ss_flyby --frames 144 --fps 24 --video out/flyby.mp4
+python reel.py -o out/showcase.mp4 --width 960 --height 540 --fps 24
+```

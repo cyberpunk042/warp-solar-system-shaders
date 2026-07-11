@@ -75,6 +75,11 @@ for every public symbol.
   a host **post** pipeline (ACES/AgX tonemap, bloom, **god-rays**, chromatic
   aberration, sharpen, grain, vignette) with one-call **named looks** (cinematic /
   film / dreamy / crisp). Frames save to PNG or true **HDR** (`.hdr` RGBE / `.npy`).
+- **Cinematics** — **keyframed camera paths** (Catmull-Rom eye + eased target/FOV;
+  `engine.camera_path`), **video export** (H.264 **MP4** / WebP / GIF via
+  `engine.video`, `render.py --video`), and a **showcase reel** (`reel.py`) that
+  stitches scenes with crossfades + Ken-Burns. See the
+  [cinematics guide](docs/guides/cinematics.md).
 - **LOD tiers** (`warp_shaders/lod.py`) — one knob scales raymarch/shadow/AO/atmosphere/
   cloud sample counts, octaves, LUT sizes; auto-detected per device.
 - **Textures & LUTs** (`warp_shaders/textures.py`) — portable bilinear sampling over
