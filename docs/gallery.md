@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (88 scenes).
+`python render.py --list` for the full, current list (91 scenes).
 
 ## Engine showcase
 
@@ -224,4 +224,26 @@ and stitch scenes into a showcase with [`reel.py`](guides/cinematics.md).
 ```bash
 python render.py --scene ss_flyby --frames 144 --fps 24 --video out/flyby.mp4
 python reel.py -o out/showcase.mp4 --width 960 --height 540 --fps 24
+```
+
+## The stellar life-cycle — one star, birth to remnant
+
+One star evolving on a normalized timeline (`cosmos.stellar_evolution`): a
+protostar condenses in a dusty **cradle**, settles onto the **main sequence**,
+swells into a **red giant**, and ends — for a Sun-like star as a **planetary
+nebula + white dwarf**, for a massive star as a **supernova + neutron star or
+black hole**. Each frame carries a live **H-R diagram** inset tracing the star's
+path across temperature/luminosity. See [Research 11](research/11-stellar-evolution.md).
+
+![a Sun-like star's whole life, with the H-R diagram inset](cosmos/stellar_lifecycle.gif)
+
+The **mass fork** — same code, three initial masses, three endings:
+
+| | | |
+|---|---|---|
+| **stellar_lifecycle** (1 M☉)<br>→ planetary nebula → white dwarf | **stellar_massive** (14 M☉)<br>→ supernova → neutron star | **stellar_collapse** (30 M☉)<br>→ supernova → black hole |
+
+```bash
+python render.py --scene stellar_lifecycle --frames 120 --fps 6 --video out/life.mp4
+python render.py --scene stellar_massive --time 14 -o supergiant.png
 ```
