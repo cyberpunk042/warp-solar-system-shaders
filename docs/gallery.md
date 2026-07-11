@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (54 scenes).
+`python render.py --list` for the full, current list (56 scenes).
 
 ## Engine showcase
 
@@ -28,10 +28,12 @@ a mesh and **ray-cast** through the Warp engine. Generation advances with
 | | | |
 |---|---|---|
 | **grass**<br>tuft of arching blades<br>![grass](life/grass.png) | **herb**<br>stochastic leafy plant, golden-angle leaves<br>![herb](life/herb.png) | **tree**<br>parametric tapering tree + leafy canopy<br>![tree](life/tree.png) |
+| **fern**<br>bracketed frond unfurling into a fiddlehead (ABOP fig 1.24)<br>![fern](life/fern.png) | | |
 
-Growth (`--frames 8 --fps 1`), sprout → tree:
+Growth (`--frames 8 --fps 1`), sprout → tree, and the fern unfurling:
 
 ![tree growing](life/tree_grow.gif)
+![fern unfurling](life/fern_grow.gif)
 
 ### Environmental response (the "obvious rules", ABOP §2.3.4)
 
@@ -41,11 +43,14 @@ heading toward a direction each step, so the same grammar reacts to its world.
 | | | |
 |---|---|---|
 | **phototropism**<br>sapling bends to follow a moving light<br>![phototropism](life/phototropism.png) | **weeping**<br>shoots sag under gravity into a fountain<br>![weeping](life/weeping.png) | **rain-fold**<br>leaves fold shut as rain sets in<br>![rain-fold](life/rain_fold.png) |
+| **wind**<br>tuft swaying as a gust pulses (time-varying tropism)<br>![wind](life/wind.png) | | |
 
-Following the light (`phototropism`) and closing in the rain (`rain_fold`):
+Following the light (`phototropism`), closing in the rain (`rain_fold`), and
+swaying in a gust (`wind`):
 
 ![light tracking](life/photo_track.gif)
 ![rain fold](life/rain_fold.gif)
+![wind sway](life/wind.gif)
 
 ## Cosmos & bodies
 

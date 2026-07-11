@@ -115,8 +115,24 @@ def weeper(seed: int = 2) -> PlantSpec:
     return PlantSpec(ls, cfg, gens=6, sides=5)
 
 
+# --- bracketed fern (the iconic ABOP §1.6 fig-1.24 plant, in 3D) -------------
+
+def fern(seed: int = 4) -> PlantSpec:
+    # the classic bracketed grammar X -> F+[[X]-X]-F[-FX]+X, F -> FF, with a
+    # periodic roll so successive fronds spiral out of plane (3D), leaves at tips
+    # the canonical bracketed frond X -> F-[[X]+X]+F[+FX]-X (ABOP fig 1.24f),
+    # F left constant so the frond stays lacy instead of compounding a leggy
+    # base; leaves tucked at the sub-frond tips, a gentle roll for 3D depth
+    rules = {
+        "X": "F-[[X]+X'(1)L]+F[+FX'(1)L]-/(35)X",
+    }
+    ls = LSystem("'(2)X", rules, seed=seed)
+    cfg = TurtleConfig(step=0.26, angle=22.5, radius=0.03, leaf_size=0.5)
+    return PlantSpec(ls, cfg, gens=6, sides=4)
+
+
 _REGISTRY = {"tree": tree, "herb": herb, "grass": grass,
-             "sapling": sapling, "weeper": weeper}
+             "sapling": sapling, "weeper": weeper, "fern": fern}
 _spec_cache: dict = {}
 _mesh_cache: dict = {}
 _word_cache: dict = {}

@@ -84,6 +84,20 @@ def _rain_fold(width, height, time, mouse, device):
                         device=device, fov=42.0, exposure=ex, ground_y=gy)
 
 
+def _wind(width, height, time, mouse, device):
+    # a gust as a time-varying horizontal tropism: the whole tuft leans downwind
+    # and springs back as the gust pulses (still no decision — pure forcing)
+    spec = _plants.get_spec("grass")
+    gust = 0.05 + 0.05 * math.sin(time * 1.6) + 0.02 * math.sin(time * 4.3)
+    wx, wz = math.cos(0.5), math.sin(0.5)
+    cfg = replace(spec.cfg, tropism=(wx, -0.15, wz), tropism_e=max(gust, 0.0))
+    mesh, (lo, hi) = _plants.grow_mesh_env(spec, spec.gens, cfg)
+    eye, target, size, gy = _frame_cam(lo, hi, time, mouse, extra=1.7)
+    return render_plant(mesh, width, height, eye, target,
+                        sun_dir=(0.5, 0.8, 0.42), device=device,
+                        fov=44.0, exposure=1.05, ground_y=gy)
+
+
 SCENES = [
     Scene(name="phototropism", renderer=_phototropism,
           description="Sapling bending to follow a light arcing overhead "
@@ -94,4 +108,7 @@ SCENES = [
     Scene(name="rain_fold", renderer=_rain_fold,
           description="Leaves folding shut as rain sets in (nyctinasty). "
                       "--time 0..6."),
+    Scene(name="wind", renderer=_wind,
+          description="Grass tuft swaying as a gust pulses (time-varying "
+                      "tropism). --frames 48 --fps 16 for the sway."),
 ]

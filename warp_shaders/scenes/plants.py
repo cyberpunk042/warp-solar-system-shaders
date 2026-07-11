@@ -47,4 +47,6 @@ SCENES = [
           description="L-System leafy herb growing (Warp mesh ray-cast). --time 0..6."),
     Scene(name="tree", renderer=_grow_scene("tree"),
           description="L-System tree growing: tapering trunk + leafy canopy. --time 0..7."),
+    Scene(name="fern", renderer=_grow_scene("fern"),
+          description="L-System bracketed fern unfurling (ABOP fig 1.24, 3D). --time 0..5."),
 ]

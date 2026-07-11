@@ -62,6 +62,8 @@ Increasing complexity, the start of the DNA → cell → grass → plant → tre
 - **tree** — a parametric ternary 3D tree: a tapering woody trunk that splits
   three ways per level, twigs leafing out once their width drops below a
   threshold.
+- **fern** — the canonical bracketed frond `X → F-[[X]+X]+F[+FX]-X` (ABOP fig
+  1.24) with a per-step roll, so it unfurls into a 3D **fiddlehead** spiral.
 
 Growth is simply deriving to a higher generation: advancing `time` grows the
 plant one generation, so it rises into frame from a sprout.
@@ -88,6 +90,9 @@ Three responses fall straight out of that one mechanism:
 - **Nyctinasty (rain / night fold)** — not a heading tropism but a leaf response:
   a `leaf_fold ∈ [0,1]` signal pitches each leaf blade down and shrinks it, so the
   plant **closes up in the rain** and reopens when it passes.
+- **Wind** — the same tropism with a *time-varying* horizontal `T` whose strength
+  pulses (`sin` gusts): the tuft **sways** downwind and springs back. Nothing new
+  in the mechanism — just an environment signal that changes each frame.
 
 `TurtleConfig` carries these as data (`tropism` + `tropism_e`, `light` + `light_e`,
 `leaf_fold`); the `phototropism` / `weeping` / `rain_fold` scenes drive them from

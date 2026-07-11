@@ -188,13 +188,31 @@ from warp_shaders.life import plants as _plants
 
 
 def test_plant_specs_grow():
-    for name, gens in [("grass", 9), ("herb", 6), ("tree", 7)]:
+    for name, gens in [("grass", 9), ("herb", 6), ("tree", 7),
+                       ("fern", 6), ("sapling", 7), ("weeper", 6)]:
         spec = _plants.get_spec(name)
         mesh, (lo, hi) = _plants.grow_mesh(spec, gens)
         assert mesh.n_tris > 0, f"{name}: empty mesh"
         assert float(hi[1] - lo[1]) > 0.5, f"{name}: no height"
     # get_spec memoizes (same object -> mesh cache stays warm)
     assert _plants.get_spec("tree") is _plants.get_spec("tree")
+
+
+def test_grow_mesh_env_responds():
+    from dataclasses import replace
+    spec = _plants.get_spec("sapling")
+    # a phototropic sapling leans toward the light; the tip x follows it
+    left = replace(spec.cfg, light=(-15.0, 6.0, 0.0), light_e=0.14)
+    right = replace(spec.cfg, light=(15.0, 6.0, 0.0), light_e=0.14)
+    _, (loL, hiL) = _plants.grow_mesh_env(spec, spec.gens, left)
+    _, (loR, hiR) = _plants.grow_mesh_env(spec, spec.gens, right)
+    assert loL[0] < loR[0] and hiL[0] < hiR[0]        # whole plant shifts left
+    # folding the leaves shrinks the silhouette vs the open plant
+    openc = replace(spec.cfg, leaf_fold=0.0)
+    shut = replace(spec.cfg, leaf_fold=1.0)
+    mo, _ = _plants.grow_mesh_env(spec, spec.gens, openc)
+    ms, _ = _plants.grow_mesh_env(spec, spec.gens, shut)
+    assert mo.n_tris == ms.n_tris                      # same leaves, folded not gone
 
 
 
@@ -217,5 +235,6 @@ if __name__ == "__main__":
     test_tropism_off_is_straight(); print("  tropism off == straight: OK")
     test_mesh_single_tube(); print("  mesh single tube: OK")
     test_mesh_plant_counts(); print("  mesh plant counts: OK")
-    test_plant_specs_grow(); print("  plant grammars grow (grass/herb/tree): OK")
+    test_plant_specs_grow(); print("  plant grammars grow (grass/herb/tree/fern/sapling/weeper): OK")
+    test_grow_mesh_env_responds(); print("  grow_mesh_env responds to light + fold: OK")
     print("ALL PASSED")
