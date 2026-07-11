@@ -18,6 +18,7 @@ import warp as wp
 
 from ..earthgfx import stars
 from ..engine import post
+from ..engine.intersect import ray_sphere_o as _rs
 from ..engine.pbr import shade_pbr
 from ..engine.uniforms import Camera, camera_ray_dir, make_camera
 from ..procedural.noise import domain_warp3, fbm3, ridged3, worley3, worley3_f2
@@ -117,15 +118,6 @@ def _surface_r(dir: wp.vec3, cfg: PlanetConfig) -> float:
 # shading                                                                      #
 # --------------------------------------------------------------------------- #
 
-@wp.func
-def _rs(ro: wp.vec3, rd: wp.vec3, radius: float) -> wp.vec2:
-    b = wp.dot(ro, rd)
-    c = wp.dot(ro, ro) - radius * radius
-    disc = b * b - c
-    if disc < 0.0:
-        return wp.vec2(1.0e30, -1.0e30)
-    s = wp.sqrt(disc)
-    return wp.vec2(-b - s, -b + s)
 
 
 @wp.func
