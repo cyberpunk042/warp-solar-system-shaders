@@ -8,6 +8,12 @@ configurable planets on chosen orbits — the project's namesake.
 
 from .bodies import (BLACK_HOLE, NEUTRON, SUN, WHITE_DWARF, StarConfig,
                      make_star, render_star)
+from .orbits import Orbit, orbit_position, remnant_type
+from .system import Nebula, Planet, Star, SystemConfig, render_system
+from . import presets
 
 __all__ = ["StarConfig", "make_star", "render_star",
-           "SUN", "NEUTRON", "WHITE_DWARF", "BLACK_HOLE"]
+           "SUN", "NEUTRON", "WHITE_DWARF", "BLACK_HOLE",
+           "Orbit", "orbit_position", "remnant_type",
+           "SystemConfig", "Star", "Planet", "Nebula", "render_system",
+           "presets"]
