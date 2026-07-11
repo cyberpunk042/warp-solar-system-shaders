@@ -65,7 +65,7 @@ the post pipeline.
 ## Plants — `life.plants`
 
 `get_spec(name)` → a memoized `PlantSpec` for `"grass"`, `"herb"`, `"tree"`,
-`"sapling"`, or `"weeper"`; `grow_mesh(spec, gen) -> (Mesh, (lo, hi))` derives +
+`"fern"`, `"sapling"`, or `"weeper"`; `grow_mesh(spec, gen) -> (Mesh, (lo, hi))` derives +
 tessellates to a generation (cached). The `grass` / `herb` / `tree` **scenes**
 grow these with `time`.
 

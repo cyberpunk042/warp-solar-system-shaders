@@ -118,9 +118,9 @@ tessellates to a triangle mesh, and **ray-casts real geometry** through the Warp
 engine (`wp.Mesh` BVH + `wp.mesh_query_ray`, GGX PBR, cast shadow, sky, post).
 Generation advances with `time`, so they grow.
 
-| grass | herb | tree |
-|---|---|---|
-| ![grass](docs/life/grass.png) | ![herb](docs/life/herb.png) | ![tree](docs/life/tree.png) |
+| grass | herb | tree | fern |
+|---|---|---|---|
+| ![grass](docs/life/grass.png) | ![herb](docs/life/herb.png) | ![tree](docs/life/tree.png) | ![fern](docs/life/fern.png) |
 
 ```bash
 python render.py --scene tree --frames 8 --fps 1 --gif out/tree.gif  # watch it grow
@@ -133,17 +133,17 @@ python -m tests.test_lsystem                                         # grammar t
 **Environmental response — the "obvious rules" (ABOP §2.3.4).** Before any mind,
 the plant obeys physics: a **tropism** bends the turtle's heading toward a
 direction each step. So a sapling bends to **follow a light** (phototropism), a
-weeper's shoots **sag under gravity** (gravitropism), and leaves **fold shut in
-the rain** (nyctinasty) — all emergent from the same grammar plus an environment
-signal, no decisions yet.
+weeper's shoots **sag under gravity** (gravitropism), leaves **fold shut in the
+rain** (nyctinasty), and a tuft **sways in a gust** (a time-varying tropism) —
+all emergent from the same grammar plus an environment signal, no decisions yet.
 
-| phototropism | weeping | rain-fold |
+| phototropism | weeping | rain-fold | wind |
+|---|---|---|---|
+| ![phototropism](docs/life/phototropism.png) | ![weeping](docs/life/weeping.png) | ![rain-fold](docs/life/rain_fold.png) | ![wind](docs/life/wind.png) |
+
+| following the light | closing in the rain | swaying in a gust |
 |---|---|---|
-| ![phototropism](docs/life/phototropism.png) | ![weeping](docs/life/weeping.png) | ![rain-fold](docs/life/rain_fold.png) |
-
-| following the light | closing in the rain |
-|---|---|
-| ![light tracking](docs/life/photo_track.gif) | ![rain fold](docs/life/rain_fold.gif) |
+| ![light tracking](docs/life/photo_track.gif) | ![rain fold](docs/life/rain_fold.gif) | ![wind sway](docs/life/wind.gif) |
 
 ```bash
 python render.py --scene phototropism --frames 24 --fps 12 --gif out/photo.gif
