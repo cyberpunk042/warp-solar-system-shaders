@@ -53,8 +53,8 @@ for every public symbol.
 | ![terrain](docs/engine/terrain.png) | ![ocean](docs/engine/ocean.png) | ![nebula](docs/engine/nebula.png) |
 | **gas giant + rings** | **alien world (twin suns)** | **spiral galaxy** |
 | ![gas giant](docs/engine/gas_giant.png) | ![alien](docs/engine/alien.png) | ![galaxy](docs/engine/galaxy.png) |
-| **aurora** | | |
-| ![aurora](docs/engine/aurora.png) | | |
+| **aurora** | **lava planet** | **desert dunes** |
+| ![aurora](docs/engine/aurora.png) | ![lava planet](docs/engine/lava_planet.png) | ![dunes](docs/engine/dunes.png) |
 
 - **Procedural toolkit** (`warp_shaders/procedural/`) — value/Perlin/Worley/fbm/
   ridged/billow/domain-warp/curl noise **with analytic derivatives**, plus an SDF
