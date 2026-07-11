@@ -473,6 +473,19 @@ python render.py --scene stellar_massive --time 14 -o supergiant.png   # 14 M_su
 python render.py --scene stellar_collapse --time 16 -o collapse.png    # 30 M_sun -> black hole
 ```
 
+And the largest set-piece — **colliding galaxies** (`cosmos.galaxy_dynamics`): a
+**Toomre restricted N-body** fly-by, two point-mass cores under mutual gravity
+each ringed by thousands of **massless test particles**. A **prograde** disk
+throws a long tidal **tail** + a **bridge** (the Antennae look); a **retrograde**
+one barely responds. Each galaxy's stars keep their colour, splatted over a
+starfield and bloomed into luminous haze.
+
+![two galaxies colliding, tidal tails unfurling](docs/cosmos/galaxy_collision.gif)
+
+```bash
+python render.py --scene galaxy_collision --frames 64 --fps 6 --video out/tails.mp4
+```
+
 ```python
 from warp_shaders.cosmos import presets, render_system
 img = render_system(presets.get("trinary"), 960, 540, time=0.0)   # or build your own
