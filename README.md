@@ -360,6 +360,10 @@ art-directed** — they come out of the physics.
 |---|---|---|
 | ![tsar bomba](docs/engine/tsar_bomba.png) | ![super tsar](docs/engine/super_tsar.png) | ![super tsar space](docs/engine/super_tsar_space.png) |
 
+The full sequence — thermal flash → fireball → shock front flattening the forest → mushroom climb:
+
+![tsar bomba sequence](docs/engine/tsar_bomba.gif)
+
 ```python
 import warp_shaders as ws
 print(ws.blast.TSAR.summary())

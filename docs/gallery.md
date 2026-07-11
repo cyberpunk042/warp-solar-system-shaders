@@ -44,6 +44,11 @@ mushroom rise all come from the yield. See
 |---|---|---|
 | **Tsar Bomba** (50 Mt)<br>physically-sized fireball, shock ring flattening the forest, mushroom cloud<br>![tsar_bomba](engine/tsar_bomba.png) | **Super Tsar** (500 Mt)<br>10× yield — ~2.5× fireball, ~2.15× wider blast zone<br>![super_tsar](engine/super_tsar.png) | **Super Tsar in space**<br>vacuum burst over a planet — no blast/mushroom, a ballistic plasma shell<br>![super_tsar_space](engine/super_tsar_space.png) |
 
+The full sequence — thermal **flash** → fireball → **shock front** flattening the
+forest → **mushroom** climb (`--frames`):
+
+![tsar bomba sequence](engine/tsar_bomba.gif)
+
 ## Life — molecule to cell
 
 The bottom of the "show life" ladder (`warp_shaders.life.molecular` /

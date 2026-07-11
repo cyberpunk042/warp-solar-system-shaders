@@ -107,19 +107,24 @@ def _fireball_density(p: wp.vec3, burst: wp.vec3, r_fb: float, t: float) -> floa
 
 @wp.func
 def _cloud_density(p: wp.vec3, burst: wp.vec3, cap_y: float, cap_r: float,
-                   stem_r: float, t: float) -> float:
+                   stem_r: float, r_fb: float, t: float) -> float:
     # rising cap (flattened sphere) + stem column to the ground
     cap_c = wp.vec3(burst[0], cap_y, burst[2])
     pc = wp.vec3(p[0] - cap_c[0], (p[1] - cap_c[1]) * 1.7, p[2] - cap_c[2])
     cap = wp.smoothstep(cap_r, cap_r * 0.6, wp.length(pc))
-    # stem: vertical column from ground to the cap
+    # stem: vertical column from ground to the cap (flares out near the cap)
     rr = wp.length(wp.vec2(p[0] - burst[0], p[2] - burst[2]))
-    stem = wp.smoothstep(stem_r, stem_r * 0.4, rr) * wp.smoothstep(cap_y, 0.0, p[1]) \
+    flare = stem_r * (1.0 + 1.2 * wp.clamp(p[1] / (cap_y + 1.0), 0.0, 1.0))
+    stem = wp.smoothstep(flare, flare * 0.4, rr) * wp.smoothstep(cap_y, 0.0, p[1]) \
         * wp.smoothstep(-0.5, 1.5, p[1])
-    dens = wp.max(cap, stem * 0.8)
-    # billowing cauliflower: high-contrast fbm carves the cloud into lobes
-    turb = 0.30 + 1.15 * fbm_perlin3(p * 0.5 + wp.vec3(0.0, -t * 0.2, t * 0.1), 5)
-    return wp.clamp(dens * turb, 0.0, 1.0)
+    dens = wp.max(cap, stem * 0.85)
+    # billowing cauliflower: two oct bands of fbm carve the cloud into lobes
+    turb = 0.28 + 0.95 * fbm_perlin3(p * 0.5 + wp.vec3(0.0, -t * 0.2, t * 0.1), 5) \
+        + 0.35 * fbm_perlin3(p * 1.5 + wp.vec3(t * 0.1, 0.0, 0.0), 3)
+    dens = dens * turb
+    # carve a hollow where the incandescent fireball sits (so the core shows)
+    dens = dens * wp.smoothstep(r_fb * 0.5, r_fb * 1.15, wp.length(p - burst))
+    return wp.clamp(dens, 0.0, 1.0)
 
 
 @wp.func
@@ -230,14 +235,20 @@ def render_ground_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.ve
             a = wp.clamp(fd * 2.6 * dt, 0.0, 1.0)
             acc = acc + emis * (a * trans)
             trans = trans * (1.0 - a)
-        # smoke cloud (sky-lit crown, orange fireball underlight, dark core)
-        cd = _cloud_density(p, burst, cap_y, cap_r, stem_r, t)
+        # smoke cloud: dust-laden brown stem -> white condensation crown, dark
+        # underside, orange fireball underlight
+        cd = _cloud_density(p, burst, cap_y, cap_r, stem_r, r_fb, t)
         if cd > 0.001:
             dist_fb = wp.length(p - burst)
             under = wp.exp(-dist_fb / (2.5 * r_fb + 1.0e-3))      # fireball underlight
-            topl = wp.clamp((p[1] - burst[1]) / (cap_r * 2.0) + 0.55, 0.0, 1.0)
-            smoke = wp.vec3(0.40, 0.38, 0.37) * topl + wp.vec3(0.05, 0.05, 0.06) * (1.0 - topl)
-            smoke = smoke + fb_glow * (under * 2.4)               # incandescent base
+            hn = wp.clamp(p[1] / (cap_y + cap_r + 1.0e-3), 0.0, 1.0)
+            dust = wp.vec3(0.24, 0.17, 0.11)                      # brown dust (stem)
+            crown = wp.vec3(0.66, 0.67, 0.70)                     # condensation (cap)
+            mixf = wp.smoothstep(0.32, 0.78, hn)
+            body = dust + (crown - dust) * mixf
+            topl = wp.clamp((p[1] - burst[1]) / (cap_r * 1.6) + 0.5, 0.0, 1.0)
+            body = body * (0.32 + 0.68 * topl)                   # dark underside
+            smoke = body + fb_glow * (under * 2.2)               # incandescent base
             a = wp.clamp(cd * 1.7 * dt, 0.0, 1.0)
             acc = acc + smoke * (a * trans)
             trans = trans * (1.0 - a)
