@@ -424,10 +424,19 @@ python render.py --scene super_tsar_space  --quality high -o out/space.png
   **ballistic plasma shell** expanding over the planet against the stars, with a
   faint **Starfish-Prime** aurora at its footprint. The contrast with the
   atmospheric burst is the point.
+- **`nuke_city`** — the model **re-aimed at a city**: the
+  [buildings](#buildings--architecture-as-signed-distance-fields) SDF kit stands a
+  dusk downtown of towers and blocks that **collapse to rubble** as the
+  overpressure front sweeps out to the 5 psi `destruction_radius`, lit windows
+  extinguishing block by block as the wave passes, under a mushroom towering over
+  the flattened skyline. Damage rings sized by `blast.physics`; see
+  [`docs/research/18-nuke-the-city.md`](docs/research/18-nuke-the-city.md).
+
+  ![nuke the city](docs/engine/nuke_city.png)
 
 The scaling laws are unit-tested against the measured Tsar anchors
-(`tests/test_blast.py`), and the model is built to be re-aimed at other subjects
-(buildings, cities) later. Physics + citations:
+(`tests/test_blast.py`), the collapse model against its overpressure grade
+(`tests/test_nuke_city.py`). Physics + citations:
 [`docs/research/15-nuclear-fireball.md`](docs/research/15-nuclear-fireball.md).
 
 ## Buildings — architecture as signed distance fields
@@ -436,8 +445,9 @@ The scaling laws are unit-tested against the measured Tsar anchors
 houses and blocks — and a whole **city** or **suburb** grown from one function by
 per-lot **domain repetition** + hashed variation (each cell hashes to a different
 building; streets are the gaps). Built as clean solids so they sphere-trace like
-any SDF — and so they can later become **blast targets** (they drop straight into
-`blast.render`'s per-cell instancing, so a nuke can be tested on a city).
+any SDF — and so they become **blast targets**: the
+[`nuke_city`](#tsar-bomba--a-physically-sized-nuclear-detonation) scene stands
+this city under the detonation and collapses it as the overpressure front sweeps.
 
 | city (night, glowing windows) | suburb (pitched-roof houses) |
 |---|---|
