@@ -501,13 +501,18 @@ def render_blast_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec
             lit = win * wp.step(lh - 0.5) * standing
             wc = wp.vec3(1.0, 0.80, 0.46) + wp.vec3(0.0, 0.06, 0.22) * (lh - 0.5)
             col = col + wc * (lit * 1.9)
-            # collapsed buildings SMOULDER — patchy fires broken up by noise so the
-            # rubble reads as scattered burning debris, not a uniform glowing top
+            # collapsed buildings SMOULDER — multi-scale patchy fires: coarse plumes
+            # broken by fine cracks so the rubble reads as chaotic burning debris,
+            # not a uniform glowing top, and temperature-graded (hot core -> cool edge)
             fh = hash21(wp.vec2(idx * 5.3 - fl * 2.0, idz * 3.7 + fl))
-            turb = wp.clamp(0.35 + 0.75 * fbm_perlin3(p * 0.55, 3), 0.0, 1.0)
-            ember = collapse * wp.smoothstep(0.32, 0.95, fh) * turb
-            fire = wp.vec3(1.0, 0.30, 0.06) + wp.vec3(0.0, 0.36, 0.0) * fh   # deep orange->amber
-            col = col + fire * (ember * 2.7)
+            coarse = wp.clamp(0.35 + 0.8 * fbm_perlin3(p * 0.5, 3), 0.0, 1.0)
+            fine = wp.clamp(0.25 + 0.85 * fbm_perlin3(p * 2.3, 2), 0.0, 1.0)   # cracks
+            ember = collapse * wp.smoothstep(0.30, 0.95, fh) * coarse * fine
+            hot = wp.vec3(1.0, 0.80, 0.42)
+            cool = wp.vec3(0.90, 0.18, 0.04)
+            fire = cool + (hot - cool) * wp.smoothstep(0.16, 0.7, ember)
+            flick = 0.7 + 0.5 * fbm_perlin3(p * 0.9 + wp.vec3(0.0, 0.0, t * 1.7), 2)
+            col = col + fire * (ember * 3.6 * wp.clamp(flick, 0.4, 1.4))
         else:
             n = _gnormal(p[0], p[2])
             street = wp.vec3(0.07, 0.07, 0.08)                # dark asphalt/lawn
@@ -525,11 +530,15 @@ def render_blast_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec
             fbdir = wp.normalize(burst - p)
             col = col + wp.cw_mul(albedo, fb_glow) * (wp.max(wp.dot(n, fbdir), 0.0)
                                                       * fb_bright * 0.8 / (1.0 + 0.015 * d_gz * d_gz))
-            # the burnt ground smoulders — a patchy field of embers in the scar
+            # the burnt ground smoulders — a multi-scale patchy field of embers
             gh = hash21(wp.vec2(wp.floor(p[0] * 0.7), wp.floor(p[2] * 0.7)))
-            gturb = wp.clamp(0.3 + 0.8 * fbm_perlin3(p * 0.4, 3), 0.0, 1.0)
-            gember = scorch * wp.smoothstep(0.55, 0.95, gh) * gturb
-            col = col + wp.vec3(1.0, 0.26, 0.05) * (gember * 1.4)
+            gcoarse = wp.clamp(0.3 + 0.85 * fbm_perlin3(p * 0.38, 3), 0.0, 1.0)
+            gfine = wp.clamp(0.2 + 0.9 * fbm_perlin3(p * 1.9, 2), 0.0, 1.0)
+            gember = scorch * wp.smoothstep(0.55, 0.95, gh) * gcoarse * gfine
+            ghot = wp.vec3(1.0, 0.62, 0.22)
+            gcool = wp.vec3(0.8, 0.12, 0.02)
+            gfire = gcool + (ghot - gcool) * wp.smoothstep(0.2, 0.7, gember)
+            col = col + gfire * (gember * 1.7)
     else:
         col = _sky(rd, sun, fb_glow)
 
@@ -544,6 +553,15 @@ def render_blast_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec
         cbl = wp.smoothstep(0.0, 0.5, ringv)
         ring_col = glow_c + (core_c - glow_c) * cbl
         col = col + ring_col * (ringv * 0.7)
+
+    # --- aerial perspective: warm dust haze thickens with distance so the far
+    # skyline recedes into a dusty pall (and is tinted by the fireball near GZ) ---
+    if hit == 1:
+        # subtle — only the far skyline (large t_hit) recedes; the near burning
+        # crater stays clear. Gate out the foreground so fires are not washed.
+        haze = wp.smoothstep(70.0, 230.0, t_hit) * 0.55
+        haze_col = wp.vec3(0.13, 0.11, 0.12) + fb_glow * 0.2
+        col = col * (1.0 - haze) + haze_col * haze
 
     # --- volumetric fireball + mushroom (front-to-back to the opaque hit) ---
     t_end = wp.min(t_hit, 560.0)
