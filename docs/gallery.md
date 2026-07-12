@@ -50,9 +50,10 @@ forest → **mushroom** climb (`--frames`):
 ![tsar bomba sequence](engine/tsar_bomba.gif)
 
 **The nuke, tested on a city** (`nuke_city`) — the [buildings](#buildings) SDF kit
-meets the blast: a dusk downtown whose towers **collapse to rubble** as the
-overpressure front sweeps out to the 5 psi ring, lit windows extinguishing as each
-block comes down, under a mushroom that towers over the flattened skyline. See
+meets the blast: a dusk downtown whose towers **collapse into a burning field of
+rubble** as the overpressure front sweeps out to the 5 psi ring. Everything inside
+is a scorched crater of glowing embers; the surviving skyline (lit windows still
+on) rings the far perimeter; the mushroom climbs from the centre. See
 [Research 18](research/18-nuke-the-city.md).
 
 ![nuke_city](engine/nuke_city.png)
