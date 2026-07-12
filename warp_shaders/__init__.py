@@ -20,6 +20,7 @@ The engine is organised in layers, each importable on its own::
     ws.superearth   # the configurable procedural planet + orbital bombardment
     ws.cosmos       # the configurable solar system (stars, orbits, lensing)
     ws.blast        # nuclear-detonation physics (Tsar Bomba scaling laws)
+    ws.buildings    # SDF architecture kit (towers / houses / a whole city)
 
 Quickstart — render a built-in scene to an HDR array::
 
@@ -40,7 +41,7 @@ them inside your own ``@wp.kernel``. Symbols named ``make_*`` / ``post.*`` /
 __version__ = "0.1.0"
 
 # --- subsystem namespaces (device functions live here; import inside kernels) ---
-from . import blast, cosmos, engine, life, lod, procedural, superearth, textures
+from . import blast, buildings, cosmos, engine, life, lod, procedural, superearth, textures
 
 # --- scene registry (host) ---
 from .scene import Scene, get_scene, list_scenes, render, render_image
@@ -63,7 +64,7 @@ __all__ = [
     "__version__",
     # namespaces
     "engine", "procedural", "textures", "lod", "post", "life",
-    "superearth", "cosmos", "blast",
+    "superearth", "cosmos", "blast", "buildings",
     # scenes
     "Scene", "get_scene", "list_scenes", "render", "render_image",
     # frame output
