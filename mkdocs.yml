@@ -67,6 +67,7 @@ nav:
       - KIFS fractals: research/14-kifs-fractals.md
       - Nuclear fireball: research/15-nuclear-fireball.md
       - A living world: research/16-a-living-world.md
+      - Buildings: research/17-buildings.md
 
 markdown_extensions:
   - admonition
