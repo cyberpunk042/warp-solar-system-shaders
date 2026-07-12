@@ -61,9 +61,15 @@ cool rim), `blast_falloff(r, r_shock, width)` (Gaussian shell at the front),
 `blast.render.render_ground(width, height, time, mouse, device, yield_kt)` — the
 landscape + forest + volumetric fireball + mushroom + shock ring + tree damage,
 sized from `yield_kt`. `blast.render.render_space(...)` — the vacuum variant (no
-blast/fireball/mushroom; a ballistic plasma shell over a planet). The
-[`tsar_bomba`](../gallery.md), [`super_tsar`](../gallery.md) and
-[`super_tsar_space`](../gallery.md) scenes are thin wrappers over these.
+blast/fireball/mushroom; a ballistic plasma shell over a planet).
+`blast.render.render_city(...)` — **the nuke tested on a city**: a domain-repeated
+grid of `buildings` towers/blocks that **collapse to rubble** as the overpressure
+front sweeps out to the 5 psi `destruction_radius`, at dusk with lit windows that
+extinguish as each building comes down (see
+[Research 18](../research/18-nuke-the-city.md)). The
+[`tsar_bomba`](../gallery.md), [`super_tsar`](../gallery.md),
+[`super_tsar_space`](../gallery.md) and [`nuke_city`](../gallery.md) scenes are
+thin wrappers over these.
 
 ## Constants
 

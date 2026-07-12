@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (106 scenes).
+`python render.py --list` for the full, current list (107 scenes).
 
 ## Engine showcase
 
@@ -48,6 +48,14 @@ The full sequence — thermal **flash** → fireball → **shock front** flatten
 forest → **mushroom** climb (`--frames`):
 
 ![tsar bomba sequence](engine/tsar_bomba.gif)
+
+**The nuke, tested on a city** (`nuke_city`) — the [buildings](#buildings) SDF kit
+meets the blast: a dusk downtown whose towers **collapse to rubble** as the
+overpressure front sweeps out to the 5 psi ring, lit windows extinguishing as each
+block comes down, under a mushroom that towers over the flattened skyline. See
+[Research 18](research/18-nuke-the-city.md).
+
+![nuke_city](engine/nuke_city.png)
 
 ## Buildings
 
