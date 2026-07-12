@@ -6,7 +6,7 @@ from .physics import (
     BlastParams, SUPER_TSAR, TSAR, blast_falloff, debris_shell_radius,
     destruction_radius, fireball_radius, fireball_temp, fireball_temp_at,
     light_radius, mushroom_height, overpressure_radius, severe_radius,
-    shock_radius, smoothstep, thermal_radius,
+    shock_radius, shock_ring, smoothstep, thermal_radius,
 )
 
 __all__ = [
@@ -14,5 +14,5 @@ __all__ = [
     "fireball_radius", "thermal_radius", "overpressure_radius",
     "destruction_radius", "severe_radius", "light_radius", "shock_radius",
     "mushroom_height", "fireball_temp", "debris_shell_radius",
-    "fireball_temp_at", "smoothstep", "blast_falloff",
+    "fireball_temp_at", "smoothstep", "blast_falloff", "shock_ring",
 ]

@@ -158,6 +158,12 @@ scorch the trees** inside the damage rings — so the render is not just pretty 
 *sized to the physics*. The space scene swaps the mushroom for the ballistic
 plasma shell over a planet.
 
+The shock ring's layered look — a crisp bright leading edge trailing into a glow
+halo — is the `shock_ring` helper, adopted from the sister project
+[`the-virus-block-mc`](https://github.com/cyberpunk042/the-virus-block-mc)'s
+`shockwave_ring.glsl` (a ground-following ring: sharp core + inner glow + soft
+outer glow).
+
 ## Cross-references
 
 - [Research 00 — foundations](00-foundations.md): the raymarch + heightfield the

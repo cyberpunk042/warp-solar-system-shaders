@@ -162,3 +162,19 @@ def blast_falloff(r: float, r_shock: float, width: float) -> float:
     ring): a Gaussian in `r` around the front of the given `width`."""
     d = (r - r_shock) / (width + 1.0e-6)
     return wp.exp(-d * d)
+
+
+@wp.func
+def shock_ring(dist: float, ring_r: float, core_w: float, glow_w: float) -> float:
+    """Layered shockwave-ring intensity at horizontal `dist` from ground zero:
+    a sharp bright **core** at the front `ring_r`, an **inner glow**, and a soft
+    quadratic **outer glow**. Ported from ``the-virus-block-mc``'s
+    ``shockwave_ring.glsl`` (``ringContribution``) — gives the shock front real
+    structure (a crisp leading edge trailing into a halo) instead of a plain
+    Gaussian."""
+    dr = wp.abs(dist - ring_r)
+    core = 1.0 - smoothstep(0.0, core_w * 0.5, dr)
+    inner = 1.0 - smoothstep(0.0, glow_w * 0.5, dr)
+    tt = dr / (glow_w + 1.0e-6)
+    outer = wp.max(0.0, 1.0 - tt * tt)
+    return core * 0.9 + inner * 0.4 + outer * 0.2
