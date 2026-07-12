@@ -50,8 +50,11 @@ p.fireball, p.destruction, p.thermal, p.hiroshimas   # metres, metres, metres, �
 ## Device helpers (`@wp.func`)
 
 Call these inside your own kernel: `fireball_temp_at(core_k, r_norm)` (hot core →
-cool rim), `blast_falloff(r, r_shock, width)` (Gaussian shell at the front), and
-`smoothstep(a, b, x)`.
+cool rim), `blast_falloff(r, r_shock, width)` (Gaussian shell at the front),
+`shock_ring(dist, ring_r, core_w, glow_w)` (a layered shockwave ring — sharp core
++ inner glow + soft outer glow — ported from
+[`the-virus-block-mc`](https://github.com/cyberpunk042/the-virus-block-mc)'s
+`shockwave_ring.glsl`), and `smoothstep(a, b, x)`.
 
 ## Renderer
 
