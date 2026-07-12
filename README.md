@@ -649,6 +649,45 @@ built on the same GR photon integrator that bends light around the black hole
 |---|---|---|
 | ![wormhole](docs/engine/wormhole.png) | ![quasar](docs/engine/quasar.png) | ![tidal disruption](docs/engine/tidal_disruption.png) |
 
+And more of the universe's most **violent events**, plus new **worlds** and two
+**cross-strand** scenes where the strands meet (see
+[`docs/research/20-more-cosmos-worlds-crossstrand.md`](docs/research/20-more-cosmos-worlds-crossstrand.md)):
+
+- **`supernova`** — a core-collapse **flash** then a self-similar **expanding,
+  cooling shock shell** (reusing the stellar-evolution shell integrator).
+- **`kilonova`** — a **neutron-star merger**: inspiral, merge flash, then two-colour
+  **r-process ejecta** (blue fast polar + red slow equatorial) and a short-GRB jet.
+- **`gravitational_waves`** — a **chirping binary inspiral** whose m=2 quadrupole
+  ripples warp the starfield until the pair merges (GW150914).
+- **`ringed_planet`** — a crystalline **ice world** girdled by a bright icy **ring**
+  (Cassini gap, mutual planet/ring shadowing) with an attendant moon.
+- **`ocean_moon`** — a **global-ocean** world (sun-glinted water, ice caps, clouds,
+  atmosphere rim) under a banded **gas-giant parent**.
+- **`transit`** — an **exoplanet transit**: a dark planet crossing a limb-darkened
+  star, its thin atmosphere lit as a **backlit refracted ring**.
+- **`city_planet`** *(cross-strand)* — the **buildings-city** SDF wrapped onto a
+  sphere: an **ecumenopolis** curving to a planetary horizon, atmosphere + space above.
+- **`exomoon_life`** *(cross-strand)* — the **L-System meadow** on an exomoon, under
+  a looming **ringed gas-giant** filling the twilight sky.
+
+| supernova | kilonova | gravitational waves |
+|---|---|---|
+| ![supernova](docs/engine/supernova.png) | ![kilonova](docs/engine/kilonova.png) | ![gravitational waves](docs/engine/gravitational_waves.png) |
+
+| ringed planet | ocean moon | transit |
+|---|---|---|
+| ![ringed planet](docs/engine/ringed_planet.png) | ![ocean moon](docs/engine/ocean_moon.png) | ![transit](docs/engine/transit.png) |
+
+| city on a planet | exomoon life |
+|---|---|
+| ![city on a planet](docs/engine/city_planet.png) | ![exomoon life](docs/engine/exomoon_life.png) |
+
+```bash
+python render.py --scene supernova --frames 30 --fps 12 --gif out/supernova.gif
+python render.py --scene city_planet -o out/ecumenopolis.png
+python render.py --scene exomoon_life --frames 48 --gif out/exomoon.gif
+```
+
 ## Install
 
 ```bash

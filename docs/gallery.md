@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (111 scenes).
+`python render.py --list` for the full, current list (119 scenes).
 
 ## Engine showcase
 
@@ -243,6 +243,45 @@ the same reusable GR photon integrator that bends light around the black hole. S
 | | | |
 |---|---|---|
 | **wormhole**<br>an Ellis throat — this universe lensed into an Einstein ring, *another* universe seen through the portal<br>![wormhole](engine/wormhole.png) | **quasar**<br>a supermassive black hole firing twin relativistic synchrotron jets over a Doppler-beamed disk<br>![quasar](engine/quasar.png) | **tidal disruption**<br>a star spaghettified into a hot spiral debris stream spiralling into the hole, flaring as it feeds<br>![tidal disruption](engine/tidal_disruption.png) |
+
+The three feeding/lensing events also evolve — the quasar precesses and the star
+spaghettifies over time:
+
+![quasar precessing](cosmos/quasar.gif)
+![tidal disruption feeding](cosmos/tidal_disruption.gif)
+
+## More cosmic events
+
+More of the universe's most violent events, reusing the stellar-evolution
+expanding-shell integrator and the same starfield. See
+[Research 20](research/20-more-cosmos-worlds-crossstrand.md).
+
+| | | |
+|---|---|---|
+| **supernova**<br>a core-collapse flash then an expanding, cooling shock shell (Chevalier self-similar blast)<br>![supernova](engine/supernova.png) | **kilonova**<br>a neutron-star merger — inspiral, merge flash, blue-polar + red-equatorial r-process ejecta and a short-GRB jet<br>![kilonova](engine/kilonova.png) | **gravitational waves**<br>a chirping binary inspiral whose m=2 quadrupole ripples warp the starfield until the pair merges<br>![gravitational waves](engine/gravitational_waves.png) |
+
+The two explosive events evolve frame-by-frame — flash, then expansion:
+
+![supernova expanding](cosmos/supernova.gif)
+![kilonova r-process](cosmos/kilonova.gif)
+
+## More worlds
+
+Exotic bodies and events built on the shared ray-sphere + procedural-noise
+toolkit. See [Research 20](research/20-more-cosmos-worlds-crossstrand.md).
+
+| | | |
+|---|---|---|
+| **ringed planet**<br>a crystalline ice world girdled by a bright icy ring (Cassini gap, mutual planet/ring shadowing) + a moon<br>![ringed planet](engine/ringed_planet.png) | **ocean moon**<br>a global-ocean world — sun-glinted water, ice caps, thin clouds, atmosphere rim — under a banded gas-giant parent<br>![ocean moon](engine/ocean_moon.png) | **transit**<br>an exoplanet crossing its star — a limb-darkened disk occulted by a dark planet with a backlit atmosphere ring<br>![transit](engine/transit.png) |
+
+## Cross-strand
+
+Where the strands meet — the buildings city and the living meadow, dropped onto
+other worlds. See [Research 20](research/20-more-cosmos-worlds-crossstrand.md).
+
+| | |
+|---|---|
+| **city on a planet**<br>the buildings-city SDF wrapped onto a large sphere — an ecumenopolis curving to a planetary horizon with atmosphere and space above<br>![city on a planet](engine/city_planet.png) | **exomoon life**<br>the L-System meadow on an exomoon, under a looming ringed gas-giant parent filling the twilight sky<br>![exomoon life](engine/exomoon_life.png) |
 
 ## Elements (stylized Bohr atoms)
 
