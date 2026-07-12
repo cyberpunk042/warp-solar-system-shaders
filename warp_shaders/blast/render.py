@@ -208,12 +208,18 @@ def render_ground_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.ve
     else:
         col = _sky(rd, sun, fb_glow)
 
-    # --- condensation shock ring on the ground ---
+    # --- condensation shock ring on the ground (layered core + glow, adopted
+    # from the-virus-block-mc's shockwave_ring) ---
     if hit == 1:
         p = ro + rd * t_hit
         d_gz = wp.length(wp.vec2(p[0], p[2]) - gz)
-        ring = P.blast_falloff(d_gz, shock_r, 0.06 * dest_r + 0.4)
-        col = col + wp.vec3(0.7, 0.75, 0.8) * (ring * 0.7)
+        rw = 0.04 * dest_r + 0.3
+        ringv = P.shock_ring(d_gz, shock_r, rw, rw * 3.0)
+        core_c = wp.vec3(0.85, 0.90, 1.0)          # bright condensation core
+        glow_c = wp.vec3(0.55, 0.50, 0.42)         # warm dust glow behind it
+        cb = wp.smoothstep(0.0, 0.5, ringv)
+        ring_col = glow_c + (core_c - glow_c) * cb
+        col = col + ring_col * (ringv * 0.8)
 
     # --- volumetric fireball + mushroom (front-to-back to the opaque hit) ---
     t_end = wp.min(t_hit, 380.0)

@@ -5,8 +5,17 @@ the measured Tsar Bomba anchors and scale correctly to the Super Tsar.
 """
 
 import numpy as np
+import warp as wp
 
 from warp_shaders.blast import physics as P
+
+wp.init()
+
+
+@wp.kernel
+def _ring_kernel(ds: wp.array(dtype=wp.float32), out: wp.array(dtype=wp.float32)):
+    i = wp.tid()
+    out[i] = P.shock_ring(ds[i], 10.0, 0.6, 1.8)
 
 
 def test_tsar_anchors():
@@ -56,6 +65,20 @@ def test_fireball_temp_cools():
     assert 25000.0 < T[0] < 32000.0               # blue-white at the start
 
 
+def test_shock_ring():
+    # layered ring peaks at the front (dist == ring_r) and falls off both sides
+    ds = np.array([6.0, 8.0, 9.5, 10.0, 10.5, 12.0, 14.0], np.float32)
+    p = wp.array(ds, dtype=wp.float32, device="cpu")
+    o = wp.zeros(len(ds), dtype=wp.float32, device="cpu")
+    wp.launch(_ring_kernel, dim=len(ds), inputs=[p, o], device="cpu")
+    wp.synchronize_device("cpu")
+    r = o.numpy()
+    assert np.all(np.isfinite(r)) and np.all(r >= 0.0)
+    assert r[3] == r.max()                             # peak at the ring radius
+    assert r[3] > r[1] and r[3] > r[5]                 # brighter than either flank
+    assert r[0] < 0.05 and r[6] < 0.05                 # dark far from the front
+
+
 def test_debris_shell_linear():
     t = np.array([1.0, 2.0, 4.0])
     r = P.debris_shell_radius(t, P.SUPER_TSAR_KT)
@@ -79,6 +102,8 @@ if __name__ == "__main__":
     print("  mushroom rise monotone -> ~67 km ceiling: OK")
     test_fireball_temp_cools()
     print("  fireball blackbody cools 30000 K -> ~1500 K: OK")
+    test_shock_ring()
+    print("  layered shock ring peaks at the front (the-virus-block-mc port): OK")
     test_debris_shell_linear()
     print("  vacuum debris shell ballistic (linear in t): OK")
     print("ALL PASSED")
