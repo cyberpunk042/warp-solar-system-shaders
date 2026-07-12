@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (102 scenes).
+`python render.py --list` for the full, current list (104 scenes).
 
 ## Engine showcase
 
@@ -48,6 +48,21 @@ The full sequence — thermal **flash** → fireball → **shock front** flatten
 forest → **mushroom** climb (`--frames`):
 
 ![tsar bomba sequence](engine/tsar_bomba.gif)
+
+## A living world
+
+The three strands meet: the L-System ecosystem grown on a planet's surface, lit
+by the solar system's actual **sun(s)** (`life.render.render_world`). The plants
+are phototropic, so the living meadow follows the light. See
+[Research 16](research/16-a-living-world.md).
+
+| | |
+|---|---|
+| **living world**<br>the meadow under one sun across a day — amber dawn/dusk, long shadows, plants following the light<br>![living_world](engine/living_world.png) | **twin suns**<br>a Kepler-16 "Tatooine" binary — a warm K-dwarf + a cool companion, two coloured shadows, a double sunset<br>![twin_suns](engine/twin_suns.png) |
+
+One sun crossing the sky over a day (dawn → noon → dusk), shadows sweeping:
+
+![a day on the living world](engine/living_world.gif)
 
 ## Life — molecule to cell
 
