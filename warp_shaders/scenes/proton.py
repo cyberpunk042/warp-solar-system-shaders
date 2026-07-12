@@ -1,42 +1,23 @@
-"""Proton — three quarks (up, up, down) bound by gluon flux tubes.
+"""Proton — three quarks (u, u, d) in a confinement bag, bound by gluon flux tubes.
 
-Composes the shared ``nucleon`` primitive. Color charges red/green/blue sum to
-color-neutral; the flux tubes are the gluon field that confines the quarks.
-iMouse orbits the camera.
+High-quality volumetric render: each quark is a turbulent colour-charged plasma
+(red/green/blue → colour-neutral), bound by textured, flowing **gluon flux tubes**
+(the QCD colour string), all inside a warm confinement bag (the proton is +1).
+iMouse orbits. See ``docs/research/21-standard-model.md``.
 """
 
-import warp as wp
-
-from ..particles import camera_ray, nucleon, orbit_ro
 from ..scene import Scene
+from ..subatomic.hadron import render_nucleon
 
 
-@wp.kernel
-def render_kernel(
-    img: wp.array2d(dtype=wp.vec3),
-    width: int,
-    height: int,
-    time: float,
-    mouse: wp.vec2,
-):
-    i, j = wp.tid()
-    res = wp.vec2(float(width), float(height))
-    uvx = ((float(j) + 0.5) - 0.5 * res[0]) / res[1]
-    uvy = ((float(height - 1 - i) + 0.5) - 0.5 * res[1]) / res[1]
-    uv = wp.vec2(uvx, uvy)
-
-    ro = orbit_ro(time, mouse, res, 4.0)
-    rd = camera_ray(uv, ro, wp.vec3(0.0, 0.0, 0.0), 1.6)
-
-    col = nucleon(ro, rd, time, 1)
-    col = wp.vec3(wp.pow(wp.max(col[0], 0.0), 0.4545),
-                  wp.pow(wp.max(col[1], 0.0), 0.4545),
-                  wp.pow(wp.max(col[2], 0.0), 0.4545))
-    img[i, j] = col
+def _render(width, height, time, mouse, device):
+    return render_nucleon(width, height, time, mouse, device, is_proton=True)
 
 
 SCENE = Scene(
     name="proton",
-    kernel=render_kernel,
-    description="Proton: up+up+down quarks bound by gluon flux tubes (color-neutral). iMouse orbits.",
+    description="A proton (uud) — three colour-charged quark plasmas bound by "
+                "flowing gluon flux tubes in a warm confinement bag, ray-marched "
+                "as a volumetric field. iMouse orbits.",
+    renderer=_render,
 )

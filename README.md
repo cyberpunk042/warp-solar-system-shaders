@@ -278,38 +278,67 @@ python render.py --scene twin_suns    -o tatooine.png
 
 See [docs/research/16-a-living-world.md](docs/research/16-a-living-world.md).
 
-## The atom, from the bottom up
+## The Standard Model — the sub-atomic world, high quality & realism
 
-A second, composable strand: build an atom out of its constituents. These scenes
-are **physics-informed but stylized**, and each higher level reuses the lower
-primitives from [`warp_shaders/particles.py`](warp_shaders/particles.py).
+The bottom of the "bottom-up" ladder: every fundamental particle rendered as a
+**physically-grounded volumetric field** (`warp_shaders.subatomic`) — colour-charged
+quark plasmas bound by QCD **gluon flux tubes**, the electron's real hydrogen
+**orbital densities** |ψ_{nlm}|², charged leptons in their EM fields, the force
+bosons, and the Higgs. See
+[`docs/research/21-standard-model.md`](docs/research/21-standard-model.md) (PDG
+masses, QCD confinement, hydrogen wavefunctions).
 
-| quark | proton | neutron |
-|---|---|---|
-| ![quark](docs/quark.png) | ![proton](docs/proton.png) | ![neutron](docs/neutron.png) |
-| color charge r→g→b, gluon wisps | up+up+down, color-neutral | up+down+down, color-neutral |
+**Composites — the nucleus and the atom.** Three colour-charged quarks (red/green/
+blue → colour-neutral) in a confinement **bag**, bound by flowing gluon flux tubes;
+and the electron's actual probability cloud with real orbital shapes.
 
-| electron | atom (hydrogen) |
+| proton (uud) | neutron (udd) | atom (H 1s) | orbitals (2p/3d) |
+|---|---|---|---|
+| ![proton](docs/engine/proton.png) | ![neutron](docs/engine/neutron.png) | ![atom](docs/engine/atom.png) | ![orbitals](docs/engine/orbitals.png) |
+
+**Quarks** — all six flavours, size ∝ log(mass); **leptons** — charged (EM fields)
++ neutrinos (faint, oscillating).
+
+| up quark | top quark | electron | tau | neutrino |
+|---|---|---|---|---|
+| ![quark_up](docs/engine/quark_up.png) | ![quark_top](docs/engine/quark_top.png) | ![electron](docs/engine/electron.png) | ![tau](docs/engine/tau.png) | ![neutrino](docs/engine/neutrino_mu.png) |
+
+**Bosons + Higgs**, the **full chart**, and the **weak force** in action:
+
+| photon | gluon | W boson | Higgs |
+|---|---|---|---|
+| ![photon](docs/engine/photon.png) | ![gluon](docs/engine/gluon.png) | ![w_boson](docs/engine/w_boson.png) | ![higgs](docs/engine/higgs.png) |
+
+| the Standard Model chart | beta decay (n→p+e⁻+ν̄ₑ) |
 |---|---|
-| ![electron](docs/electron.png) | ![atom](docs/atom.png) |
-| 1s probability cloud | proton nucleus inside the 1s cloud |
+| ![standard_model](docs/engine/standard_model.png) | ![beta_decay](docs/engine/beta_decay.png) |
 
-What's modeled (stylized, not to scale):
+What's modelled (stylised, structurally faithful, not to scale):
 
-- **Quark** — a lone quark can't be isolated (confinement), so it's shown as one
-  orb whose QCD **color charge** cycles red→green→blue, with gluon wisps.
-- **Proton / neutron** — three quarks (`uud` / `udd`) whose red/green/blue color
-  charges sum to **color-neutral**, bound by **gluon flux tubes**. Same shared
-  `nucleon` primitive; down quarks render dimmer, and the confinement "bag" is
-  warm for the proton (+1) vs cool for the neutron (0).
-- **Electron** — a point lepton rendered as the hydrogen **1s orbital**
-  probability cloud (`exp(-r/a)`), volumetrically integrated with quantum sparkle.
-- **Atom** — a proton nucleus wrapped by the electron's 1s cloud. The nucleus is
-  exaggerated (a real one is ~1e-5 of the atom) so its structure stays visible.
+- **Quarks** — six flavours (u,d,c,s,t,b), each a turbulent flavour-tinted plasma
+  orb whose size tracks log(mass) (the near-massless up vs the 173-GeV top), the
+  QCD **colour charge** cycling red→green→blue on its gluon wisps.
+- **Proton / neutron** — three quarks (`uud` / `udd`), colour-neutral, bound by
+  **gluon flux tubes** (the QCD colour string) inside a confinement bag — warm for
+  the proton (+1), cool for the neutron (0).
+- **Atom / orbitals** — the electron's real hydrogen density |ψ_{nlm}|² ray-marched
+  as a volumetric cloud: the 1s sphere, the 2p dumbbell (node at the nucleus), the
+  3d z² and cloverleaf, with their true nodes and lobes.
+- **Leptons** — e/μ/τ as point charges in animated EM fields (radial filaments +
+  Coulomb ripples), generation-coloured; the three neutrinos as faint oscillating
+  shimmers.
+- **Bosons** — the photon as a travelling EM **wave packet**, the gluon as a
+  colour+anticolour **double helix**, the massive W/Z **decaying** to jets, the
+  **Higgs** over its field lattice decaying to two photons.
+- **The chart** — all 17 particles at once, family-coloured and mass-scaled; and
+  **beta decay** — a down quark flipping to up, emitting a W⁻ that decays to an
+  electron + antineutrino, live.
 
-The build is genuinely bottom-up: `atom` composes the same `nucleon` used by
-`proton`, and the same cloud integrator used by `electron`. Heavier atoms (more
-nucleons, more electron shells) extend the same primitives.
+```bash
+python render.py --scene standard_model -o sm.png
+python render.py --scene orbitals --frames 60 --gif out/orbitals.gif
+python render.py --scene beta_decay --frames 64 --gif out/beta.gif
+```
 
 ## Elements — the stylized (non-realistic) aesthetic
 

@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (119 scenes).
+`python render.py --list` for the full, current list (138 scenes).
 
 ## Engine showcase
 
@@ -228,11 +228,50 @@ an expanding shock-ring scar.
 | | | |
 |---|---|---|
 | **earth** (from space)<br>![earth](earth.png) | **planet** (lit + lens flare)<br>![planet](planet.png) | **sun** (turbulent corona)<br>![sun](sun.png) |
-| **black hole** (lensed disk)<br>![black hole](black-hole.png) | **quark**<br>![quark](quark.png) | **atom** (hydrogen)<br>![atom](atom.png) |
-| **proton**<br>![proton](proton.png) | **neutron**<br>![neutron](neutron.png) | **electron** (1s cloud)<br>![electron](electron.png) |
+| **black hole** (lensed disk)<br>![black hole](black-hole.png) | | |
 
 Also in this family: `neutron_star` (pulsar with relativistic jets) and
-`starfield` (a minimal registry demo).
+`starfield` (a minimal registry demo). The **sub-atomic** particles (proton,
+atom, quarks, …) have their own section below.
+
+## Sub-atomic — the Standard Model
+
+The bottom of the "bottom-up" ladder (`warp_shaders.subatomic`) — every
+fundamental particle rendered as a **physically-grounded volumetric field**:
+colour-charged quark plasmas bound by QCD gluon flux tubes, real hydrogen
+orbital densities |ψ_nlm|², charged leptons in their EM fields, the force
+bosons, and the Higgs. See [Research 21](research/21-standard-model.md).
+
+**Composites — the nucleus & the atom.** Three colour-charged quarks in a
+confinement bag, and the electron's real probability cloud.
+
+| | | | |
+|---|---|---|---|
+| **proton** (uud)<br>![proton](engine/proton.png) | **neutron** (udd)<br>![neutron](engine/neutron.png) | **atom** (hydrogen 1s)<br>![atom](engine/atom.png) | **orbitals** (2p / 3d …)<br>![orbitals](engine/orbitals.png) |
+
+**Quarks** — six flavours, size ∝ log(mass), colour charge cycling.
+
+| | |
+|---|---|
+| **up quark** (light, red)<br>![quark_up](engine/quark_up.png) | **top quark** (heaviest, magenta)<br>![quark_top](engine/quark_top.png) |
+
+**Leptons** — charged leptons in their EM fields; neutrinos as faint shimmers.
+
+| | | |
+|---|---|---|
+| **electron** (cyan field)<br>![electron](engine/electron.png) | **tau** (violet field)<br>![tau](engine/tau.png) | **neutrino** (faint, oscillating)<br>![neutrino](engine/neutrino_mu.png) |
+
+**Bosons + the Higgs** — the force carriers and the mass-giver.
+
+| | | | |
+|---|---|---|---|
+| **photon** (EM wave)<br>![photon](engine/photon.png) | **gluon** (colour double-helix)<br>![gluon](engine/gluon.png) | **W** (weak, decaying)<br>![w_boson](engine/w_boson.png) | **Higgs** (field + γγ)<br>![higgs](engine/higgs.png) |
+
+**Everything at once, and the weak force in action.**
+
+| | |
+|---|---|
+| **the Standard Model chart** — all 17 particles, family-coloured, mass-scaled<br>![standard_model](engine/standard_model.png) | **beta decay** — n→p+e⁻+ν̄ₑ, a down quark flips emitting a W⁻<br>![beta_decay](engine/beta_decay.png) |
 
 ## Extraordinary cosmos
 
