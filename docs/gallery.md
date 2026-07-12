@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (104 scenes).
+`python render.py --list` for the full, current list (106 scenes).
 
 ## Engine showcase
 
@@ -48,6 +48,18 @@ The full sequence — thermal **flash** → fireball → **shock front** flatten
 forest → **mushroom** climb (`--frames`):
 
 ![tsar bomba sequence](engine/tsar_bomba.gif)
+
+## Buildings
+
+Architecture as signed distance fields (`warp_shaders.buildings`) — a parametric
+kit (towers / houses / blocks) and a whole **city** or **suburb** from one
+function via per-lot domain repetition + hashed variation. Built as clean solids
+so they sphere-trace, and so they can later become **blast targets**. See
+[Research 17](research/17-buildings.md).
+
+| | |
+|---|---|
+| **city**<br>a night skyline of SDF towers — floor-band relief, glowing window grids, light-pollution haze<br>![city](engine/city.png) | **suburb**<br>a neighbourhood of pitched-roof houses — plaster walls, terracotta roofs, warm sun<br>![suburb](engine/suburb.png) |
 
 ## A living world
 
