@@ -248,6 +248,36 @@ L-System pipeline and merged into one ray-cast mesh.
 
 See [docs/research/08-ecosystem.md](docs/research/08-ecosystem.md).
 
+## A living world — life under its sun(s)
+
+The three strands of the project meet: the **engine** (terrain, sky), the
+**solar system** (the stars), and **aliveness** (the ecosystem). Instead of a
+planet as a distant billboard, you stand *on its surface* — the L-System meadow
+grown underfoot, lit by the system's actual **sun(s)** crossing the sky
+(`life.render.render_world`, which sums the light of N suns and casts one shadow
+per sun).
+
+| a living world (one sun, a day) | twin suns (a Kepler-16 binary) |
+|---|---|
+| ![living world](docs/engine/living_world.png) | ![twin suns](docs/engine/twin_suns.png) |
+
+```bash
+python render.py --scene living_world --frames 48 --fps 12 --video out/day.mp4
+python render.py --scene twin_suns    -o tatooine.png
+```
+
+- **`living_world`** — one sun **arcs across the sky** over a day: low and amber
+  at dawn and dusk (long shadows), white and high at noon. The plants are
+  **phototropic**, so the whole meadow leans and follows the light through the day.
+- **`twin_suns`** — the same meadow under a **Kepler-16-like binary** (the first
+  confirmed circumbinary "two-sun" world): a warm K-dwarf + a cooler companion,
+  each casting its **own coloured shadow**, drifting toward a **double sunset**.
+  Seasons come from **axial tilt** (insolation angle), not distance.
+
+![a day on the living world](docs/engine/living_world.gif)
+
+See [docs/research/16-a-living-world.md](docs/research/16-a-living-world.md).
+
 ## The atom, from the bottom up
 
 A second, composable strand: build an atom out of its constituents. These scenes

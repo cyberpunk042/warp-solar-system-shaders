@@ -64,6 +64,17 @@ exposure=1.05, ground_y=0.0) -> (H, W, 3)`. Uploads the mesh as a `wp.Mesh`
 normal/colour, and shades with GGX PBR + sun + sky + a shadow-catching ground +
 the post pipeline.
 
+`render_world(mesh, width, height, eye, target, suns, device="cpu", fov=46,
+exposure=1.08, ground_col=…) -> (H, W, 3)` — the **multi-sun** surface renderer
+that fuses life with the solar system. `suns` is a list of
+`(dir3, colour3, intensity)`; every shaded point sums `shade_pbr` over the suns
+and traces **one shadow ray per sun** (so each sun casts its own soft, coloured
+shadow and a point in one sun's shadow is still lit by the other). The sky is a
+day/twilight gradient whose colour tracks the primary sun's elevation, with each
+sun's disc composited in. Drives the [`living_world`](../gallery.md) (one sun, a
+day) and [`twin_suns`](../gallery.md) (a Kepler-16 binary) scenes. See
+[Research 16](../research/16-a-living-world.md).
+
 ## Plants — `life.plants`
 
 `get_spec(name)` → a memoized `PlantSpec` for `"grass"`, `"herb"`, `"tree"`,
