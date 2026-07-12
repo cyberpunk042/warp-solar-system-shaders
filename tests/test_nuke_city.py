@@ -8,7 +8,7 @@ the overpressure front, monotonically non-increasing in between.
 import numpy as np
 import warp as wp
 
-from warp_shaders.blast.render import _city_blast_de
+from warp_shaders.blast.render import _blast_de, _city_blast_de
 
 wp.init()
 
@@ -23,6 +23,13 @@ def _collapse_kernel(pts: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.float3
     i = wp.tid()
     gz = wp.vec2(0.0, 0.0)
     out[i] = _city_blast_de(pts[i], _FRONT, _DEST, _SEV, gz, _LOT, 3.0)[1]
+
+
+@wp.kernel
+def _suburb_collapse_kernel(pts: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.float32)):
+    i = wp.tid()
+    gz = wp.vec2(0.0, 0.0)
+    out[i] = _blast_de(pts[i], 1.0, _FRONT, _DEST, _SEV, gz, 8.0, 3.0)[1]
 
 
 def _collapse_at(xs):
@@ -60,9 +67,22 @@ def test_front_gates_collapse():
     assert np.all(o.numpy() < 0.05)                    # front at 0 -> nothing collapsed
 
 
+def test_suburb_collapses_too():
+    # the same collapse model drives houses (kind=1): total near GZ, zero far
+    pts = np.array([[0.0, 3.0, 0.0], [90.0, 3.0, 0.0]], np.float32)
+    p = wp.array(pts, dtype=wp.vec3, device="cpu")
+    o = wp.zeros(2, dtype=wp.float32, device="cpu")
+    wp.launch(_suburb_collapse_kernel, dim=2, inputs=[p, o], device="cpu")
+    wp.synchronize_device("cpu")
+    c = o.numpy()
+    assert c[0] > 0.9 and c[1] < 0.05
+
+
 if __name__ == "__main__":
     test_collapse_grades_with_distance()
     print("  collapse grades total->zero, non-increasing outward: OK")
     test_front_gates_collapse()
     print("  overpressure front gates collapse (front at GZ -> intact): OK")
+    test_suburb_collapses_too()
+    print("  suburb (houses) collapse via the same model (kind=1): OK")
     print("ALL PASSED")

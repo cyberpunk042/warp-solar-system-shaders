@@ -45,10 +45,17 @@ mushroom climbs above a flattened downtown — the standing physics, now with a 
 underneath it.
 
 At dusk the destroyed zone would just go dark and vanish, so the render makes it
-**read**: the collapsed buildings and the scorched ground **smoulder** — a hashed
-field of glowing embers whose intensity scales with the collapse factor. The result
-is a burning crater of rubble at the centre, ringed by the surviving skyline (its
-windows still lit), with the whole overpressure ladder legible in a single frame.
+**read**: the collapsed buildings and the scorched ground **smoulder** — a hashed,
+noise-broken field of glowing embers whose intensity scales with the collapse
+factor — and **thin smoke wisps** (sparse, turbulent, underlit orange) rise off the
+burning zone without smothering it. The result is a burning crater of rubble at the
+centre, ringed by the surviving skyline (its windows still lit), with the whole
+overpressure ladder legible in a single frame.
+
+The same collapse model runs on either scale: `nuke_city` stands a downtown of
+towers/blocks, `nuke_suburb` a neighbourhood of pitched-roof houses under a smaller
+yield (one shared `_render_blast(kind, …)`). Houses flatten and burn the same way —
+the human-scale version of the same event.
 
 ## What is reused (not reinvented)
 
