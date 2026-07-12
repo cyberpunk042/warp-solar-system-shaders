@@ -47,6 +47,7 @@ nav:
       - life (L-Systems): api/life.md
       - super-earth: api/superearth.md
       - cosmos (solar system): api/cosmos.md
+      - subatomic (Standard Model): api/subatomic.md
       - blast (nuclear): api/blast.md
       - buildings: api/buildings.md
   - Gallery: gallery.md
