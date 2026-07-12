@@ -454,12 +454,19 @@ def render_city_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3
             lit = win * wp.step(lh - 0.5) * standing
             wc = wp.vec3(1.0, 0.80, 0.46) + wp.vec3(0.0, 0.06, 0.22) * (lh - 0.5)
             col = col + wc * (lit * 1.9)
+            # collapsed buildings SMOULDER — glowing embers/fires in the rubble, so
+            # the destruction reads clearly (and dramatically) at dusk
+            fh = hash21(wp.vec2(idx * 5.3 - fl * 2.0, idz * 3.7 + fl))
+            ember = collapse * wp.smoothstep(0.3, 0.9, fh)
+            fire = wp.vec3(1.0, 0.32, 0.07) + wp.vec3(0.0, 0.28, 0.0) * fh   # deep orange->amber
+            col = col + fire * (ember * 2.4)
         else:
             n = _gnormal(p[0], p[2])
             street = wp.vec3(0.07, 0.07, 0.08)                # dark asphalt
             n_road = wp.smoothstep(0.9, 0.7, n[1])
             albedo = street * (1.0 - n_road) + wp.vec3(0.05, 0.05, 0.05) * n_road
-            scorch = wp.smoothstep(front_r, front_r * 0.55, d_gz)
+            # everything the front has passed is a burnt scar (out to the 5 psi ring)
+            scorch = wp.smoothstep(front_r, front_r * 0.9, d_gz)
             crater = wp.smoothstep(r_fb * 1.8, r_fb * 0.5, d_gz)
             scorch = wp.max(scorch, crater)
             char_col = wp.vec3(0.03, 0.025, 0.02)
@@ -470,6 +477,10 @@ def render_city_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3
             fbdir = wp.normalize(burst - p)
             col = col + wp.cw_mul(albedo, fb_glow) * (wp.max(wp.dot(n, fbdir), 0.0)
                                                       * fb_bright * 0.8 / (1.0 + 0.015 * d_gz * d_gz))
+            # the burnt ground smoulders — a field of embers in the flattened scar
+            gh = hash21(wp.vec2(wp.floor(p[0] * 0.7), wp.floor(p[2] * 0.7)))
+            gember = scorch * wp.smoothstep(0.55, 0.95, gh)
+            col = col + wp.vec3(1.0, 0.28, 0.05) * (gember * 1.3)
     else:
         col = _sky(rd, sun, fb_glow)
 
@@ -552,20 +563,24 @@ def render_city(width, height, time, mouse, device, yield_kt):
 
     burst_alt = r_fb_vis * 1.4 + 10.0                   # low air-burst above downtown
     rise = max(time - 1.5, 0.0)
-    # the mushroom towers over the flattened city (realistically 10-20 km tall)
-    lift = float(P.mushroom_height(rise, yield_kt)) * s * 2.0
+    # a moderate mushroom rising from the burning city (kept low enough that it
+    # does not occlude ground zero — the destruction is the subject)
+    lift = float(P.mushroom_height(rise, yield_kt)) * s * 1.05
     burst = (0.0, burst_alt + lift, 0.0)
 
     cap_y = burst_alt + lift
-    cap_r = r_fb_vis * (1.6 + 1.3 * min(rise / 6.0, 1.0))
-    stem_r = r_fb_vis * 1.1
+    cap_r = r_fb_vis * (1.8 + 1.6 * min(rise / 6.0, 1.0))
+    stem_r = r_fb_vis * 1.0
 
-    az = 0.55 + float(mouse[0]) * 0.01
-    dist = 172.0
-    eye = (math.sin(az) * dist, 40.0 + float(mouse[1]) * 0.1, math.cos(az) * dist)
-    target = (0.0, 18.0 + 0.5 * lift, 0.0)              # tilt up to frame the cap
-    cam = make_camera(eye, target, fov_deg=60.0, aspect=width / height)
-    sun = wp.normalize(wp.vec3(0.5, 0.28, 0.35))        # low dusk sun
+    # aerial 3/4 looking DOWN into the flattened, burning zone — the devastation
+    # (a scorched rubble field of embers) fills the midground; the mushroom rises
+    # behind ground zero; standing lit towers ring the far perimeter.
+    az = 0.7 + float(mouse[0]) * 0.01
+    dist = 138.0
+    eye = (math.sin(az) * dist, 92.0 + float(mouse[1]) * 0.1, math.cos(az) * dist)
+    target = (0.0, 6.0, 0.0)
+    cam = make_camera(eye, target, fov_deg=62.0, aspect=width / height)
+    sun = wp.normalize(wp.vec3(0.5, 0.32, 0.35))        # low dusk sun
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(render_city_kernel, dim=(height, width),

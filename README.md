@@ -426,10 +426,12 @@ python render.py --scene super_tsar_space  --quality high -o out/space.png
   atmospheric burst is the point.
 - **`nuke_city`** — the model **re-aimed at a city**: the
   [buildings](#buildings--architecture-as-signed-distance-fields) SDF kit stands a
-  dusk downtown of towers and blocks that **collapse to rubble** as the
-  overpressure front sweeps out to the 5 psi `destruction_radius`, lit windows
-  extinguishing block by block as the wave passes, under a mushroom towering over
-  the flattened skyline. Damage rings sized by `blast.physics`; see
+  dusk downtown of towers and blocks that **collapse into a burning field of
+  rubble** as the overpressure front sweeps out to the 5 psi `destruction_radius`.
+  Everything inside is a scorched crater of glowing embers, the surviving skyline
+  (windows still lit) rings the perimeter, and the mushroom climbs from the centre
+  — the whole overpressure ladder in one frame. Damage rings sized by
+  `blast.physics`; see
   [`docs/research/18-nuke-the-city.md`](docs/research/18-nuke-the-city.md).
 
   ![nuke the city](docs/engine/nuke_city.png)
