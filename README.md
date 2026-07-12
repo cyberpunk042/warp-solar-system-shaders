@@ -628,6 +628,27 @@ from warp_shaders.cosmos import presets, render_system
 img = render_system(presets.get("trinary"), 960, 540, time=0.0)   # or build your own
 ```
 
+And three of the most **extraordinary** objects and events in the universe, all
+built on the same GR photon integrator that bends light around the black hole
+(`cosmos.{wormhole,quasar,tde}`; see
+[`docs/research/19-extraordinary-cosmos.md`](docs/research/19-extraordinary-cosmos.md)):
+
+- **`wormhole`** — an **Ellis throat** connecting two universes: rays that miss the
+  throat lens *this* universe's blue nebula into an **Einstein ring**; rays that
+  enter cross to *another*, amber universe fish-eyed through the portal, with an
+  **exotic-matter rim** (the *Interstellar* look).
+- **`quasar`** — a supermassive black hole firing **twin relativistic jets**:
+  collimated **synchrotron** beams along the spin axis with drifting shock knots,
+  the approaching jet Doppler-beamed brighter, over the lensed accretion disk (an
+  active galactic nucleus).
+- **`tidal_disruption`** — a star **spaghettified**: torn into a hot log-spiral
+  debris stream (blue-white plunging gas → orange trailing remains) that spirals
+  into the hole and **flares** as it is devoured — an animated event.
+
+| wormhole | quasar (relativistic jets) | tidal disruption |
+|---|---|---|
+| ![wormhole](docs/engine/wormhole.png) | ![quasar](docs/engine/quasar.png) | ![tidal disruption](docs/engine/tidal_disruption.png) |
+
 ## Install
 
 ```bash

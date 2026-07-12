@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (108 scenes).
+`python render.py --list` for the full, current list (111 scenes).
 
 ## Engine showcase
 
@@ -233,6 +233,16 @@ an expanding shock-ring scar.
 
 Also in this family: `neutron_star` (pulsar with relativistic jets) and
 `starfield` (a minimal registry demo).
+
+## Extraordinary cosmos
+
+Three of the most extraordinary objects and events in the universe, all built on
+the same reusable GR photon integrator that bends light around the black hole. See
+[Research 19](research/19-extraordinary-cosmos.md).
+
+| | | |
+|---|---|---|
+| **wormhole**<br>an Ellis throat — this universe lensed into an Einstein ring, *another* universe seen through the portal<br>![wormhole](engine/wormhole.png) | **quasar**<br>a supermassive black hole firing twin relativistic synchrotron jets over a Doppler-beamed disk<br>![quasar](engine/quasar.png) | **tidal disruption**<br>a star spaghettified into a hot spiral debris stream spiralling into the hole, flaring as it feeds<br>![tidal disruption](engine/tidal_disruption.png) |
 
 ## Elements (stylized Bohr atoms)
 
