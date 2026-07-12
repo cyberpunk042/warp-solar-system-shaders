@@ -34,6 +34,21 @@ precess, seed)` builds one. Kinds: `SUN`, `NEUTRON`, `WHITE_DWARF`, `BLACK_HOLE`
 | `bh_escape_dir(ro, rd, rs)` | device | the lensed exit direction (background sampling) |
 | `render_black_hole(cfg, w, h, …)` | host | render one centred hole (lensed starfield + disk) |
 
+## Extraordinary phenomena — `cosmos.{wormhole,quasar,tde}`
+
+Three of the most extraordinary objects and events, all reusing the same GR
+photon-bending machinery. See [Research 19](../research/19-extraordinary-cosmos.md).
+
+| Symbol | Kind | Purpose |
+|---|---|---|
+| `wormhole.render_wormhole(w, h, t, …)` | host | an Ellis throat — this universe lensed into an Einstein ring, another universe fish-eyed through the portal, exotic-matter rim |
+| `quasar.render_quasar(w, h, t, …)` | host | a supermassive black hole + Doppler disk + twin **relativistic jets** (synchrotron, drifting shock knots, Doppler-beamed) |
+| `quasar.quasar_pixel` / `tde.tde_pixel` | device | photon integrators that reuse `bh_escape_dir` + `_disk_emission` and add jets / a debris stream |
+| `tde.render_tde(w, h, t, …)` | host | a **tidal disruption event** — a star spaghettified into a hot log-spiral debris stream + brightening accretion flare |
+
+Scenes: [`wormhole`](../gallery.md), [`quasar`](../gallery.md),
+[`tidal_disruption`](../gallery.md).
+
 ## Orbits — `cosmos.orbits`
 
 | Symbol | Purpose |
