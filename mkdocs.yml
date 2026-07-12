@@ -71,6 +71,7 @@ nav:
       - Buildings: research/17-buildings.md
       - Nuke the city: research/18-nuke-the-city.md
       - Extraordinary cosmos: research/19-extraordinary-cosmos.md
+      - More cosmos, worlds & cross-strand: research/20-more-cosmos-worlds-crossstrand.md
 
 markdown_extensions:
   - admonition

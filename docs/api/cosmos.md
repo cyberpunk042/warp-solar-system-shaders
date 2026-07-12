@@ -49,6 +49,23 @@ photon-bending machinery. See [Research 19](../research/19-extraordinary-cosmos.
 Scenes: [`wormhole`](../gallery.md), [`quasar`](../gallery.md),
 [`tidal_disruption`](../gallery.md).
 
+## More cosmic events — `cosmos.{supernova,kilonova,gwaves}`
+
+More of the universe's most violent events, reusing the stellar-evolution
+expanding-shell integrator and the shared starfield. See
+[Research 20](../research/20-more-cosmos-worlds-crossstrand.md).
+
+| Symbol | Kind | Purpose |
+|---|---|---|
+| `supernova.render_supernova(w, h, t, …)` | host | a core-collapse **supernova** — a flash then a self-similar expanding, cooling shock shell (reuses `stellar_evolution._march_env`, ENV_SUPERNOVA) |
+| `kilonova.render_kilonova(w, h, t, …)` | host | a **neutron-star merger** — inspiral, merge flash, blue-polar + red-equatorial r-process ejecta and a short-GRB jet |
+| `gwaves.render_gwaves(w, h, t, …)` | host | a chirping binary inspiral whose m=2 quadrupole **gravitational-wave** ripples warp the starfield until the pair merges |
+
+Scenes: [`supernova`](../gallery.md), [`kilonova`](../gallery.md),
+[`gravitational_waves`](../gallery.md). The worlds (`ringed_planet`,
+`ocean_moon`, `transit`) and cross-strand scenes (`city_planet`, `exomoon_life`)
+from the same arc are self-contained under `warp_shaders/scenes/`.
+
 ## Orbits — `cosmos.orbits`
 
 | Symbol | Purpose |
