@@ -424,17 +424,19 @@ python render.py --scene super_tsar_space  --quality high -o out/space.png
   **ballistic plasma shell** expanding over the planet against the stars, with a
   faint **Starfish-Prime** aurora at its footprint. The contrast with the
   atmospheric burst is the point.
-- **`nuke_city`** — the model **re-aimed at a city**: the
-  [buildings](#buildings--architecture-as-signed-distance-fields) SDF kit stands a
-  dusk downtown of towers and blocks that **collapse into a burning field of
-  rubble** as the overpressure front sweeps out to the 5 psi `destruction_radius`.
-  Everything inside is a scorched crater of glowing embers, the surviving skyline
-  (windows still lit) rings the perimeter, and the mushroom climbs from the centre
-  — the whole overpressure ladder in one frame. Damage rings sized by
-  `blast.physics`; see
+- **`nuke_city`** / **`nuke_suburb`** — the model **re-aimed at a built-up area**:
+  the [buildings](#buildings--architecture-as-signed-distance-fields) SDF kit stands
+  a dusk **downtown of towers** (or a **suburb of pitched-roof houses**, smaller
+  yield) that **collapse into a burning field of rubble** as the overpressure front
+  sweeps out to the 5 psi `destruction_radius`. Everything inside is a scorched
+  crater of glowing embers with thin smoke wisps rising; the survivors (windows
+  still lit) ring the perimeter; the mushroom climbs from the centre — the whole
+  overpressure ladder in one frame. Damage rings sized by `blast.physics`; see
   [`docs/research/18-nuke-the-city.md`](docs/research/18-nuke-the-city.md).
 
-  ![nuke the city](docs/engine/nuke_city.png)
+  | downtown of towers | neighbourhood of houses |
+  |---|---|
+  | ![nuke the city](docs/engine/nuke_city.png) | ![nuke the suburb](docs/engine/nuke_suburb.png) |
 
 The scaling laws are unit-tested against the measured Tsar anchors
 (`tests/test_blast.py`), the collapse model against its overpressure grade

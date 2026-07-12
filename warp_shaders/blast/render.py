@@ -17,7 +17,7 @@ import math
 import numpy as np
 import warp as wp
 
-from ..buildings.sdf import _rep, _repid, sd_block, sd_tower, window_mask
+from ..buildings.sdf import _rep, _repid, sd_block, sd_house, sd_tower, window_mask
 from ..engine import post
 from ..engine.color import kelvin_to_rgb
 from ..engine.intersect import sphere_t
@@ -327,16 +327,26 @@ def render_ground(width, height, time, mouse, device, yield_kt, flash=True):
     return post.vignette(out, 0.32)
 
 
-# --- the nuke tested on a city (buildings collapse by overpressure grade) ----
+# --- the nuke tested on a built-up area (buildings collapse by overpressure) --
 @wp.func
-def _city_blast_de(p: wp.vec3, front_r: float, dest_r: float, sev_r: float,
-                   gz: wp.vec2, lot: float, seed: float) -> wp.vec2:
-    """A `buildings.city_de`-style domain-repeated city, but each lot's building
-    **collapses** by its overpressure grade. Returns ``(dist, collapse)`` where
-    collapse in [0,1] is 0 = intact, 1 = flattened to rubble. The overpressure
-    front has swept out to `front_r`; damage grades from the 20 psi `sev_r`
-    (total) out to the 5 psi `dest_r` (buildings collapse) — see
-    ``docs/research/18-nuke-the-city.md``."""
+def _collapse_at(d_gz: float, front_r: float, dest_r: float, sev_r: float) -> float:
+    """Collapse factor [0,1] for a lot `d_gz` from ground zero: 0 = intact,
+    1 = flattened. One-sided from the front inward (0 at/beyond `front_r`, and at
+    t=0), harder toward the 20 psi `sev_r`. See ``docs/research/18-nuke-the-city.md``."""
+    passed = wp.smoothstep(front_r, front_r - 0.20 * dest_r, d_gz)
+    depth = wp.clamp((dest_r - d_gz) / (dest_r - sev_r + 1.0e-3), 0.0, 1.0)
+    collapse = passed * (0.5 + 0.5 * depth)
+    collapse = wp.max(collapse, passed * wp.smoothstep(sev_r, sev_r * 0.65, d_gz))
+    return wp.clamp(collapse, 0.0, 1.0)
+
+
+@wp.func
+def _blast_de(p: wp.vec3, kind: float, front_r: float, dest_r: float, sev_r: float,
+              gz: wp.vec2, lot: float, seed: float) -> wp.vec2:
+    """A domain-repeated built-up area whose buildings **collapse** by their
+    overpressure grade. `kind < 0.5` = a downtown of towers/blocks
+    (`buildings.city_de`), else a suburb of pitched-roof houses
+    (`buildings.suburb_de`). Returns ``(dist, collapse)``."""
     idx = _repid(p[0], lot)
     idz = _repid(p[2], lot)
     rnd = hash21(wp.vec2(idx + seed, idz - seed))
@@ -344,58 +354,85 @@ def _city_blast_de(p: wp.vec3, front_r: float, dest_r: float, sev_r: float,
     qx = _rep(p[0], lot)
     qz = _rep(p[2], lot)
     d_gz = wp.length(wp.vec2(idx * lot, idz * lot) - gz)      # lot centre -> GZ
+    collapse = _collapse_at(d_gz, front_r, dest_r, sev_r)
 
-    h = 4.0 + 19.0 * rnd * rnd                               # tall towers rarer
-    w = lot * 0.5 * (0.30 + 0.18 * rnd2)                     # footprint (rest = street)
-
-    # collapse: front has passed this lot, harder toward the 20 psi ring. One-sided
-    # from the front inward — 1 well inside the front, 0 at/beyond it (and at t=0).
-    passed = wp.smoothstep(front_r, front_r - 0.20 * dest_r, d_gz)
-    depth = wp.clamp((dest_r - d_gz) / (dest_r - sev_r + 1.0e-3), 0.0, 1.0)
-    collapse = passed * (0.5 + 0.5 * depth)
-    collapse = wp.max(collapse, passed * wp.smoothstep(sev_r, sev_r * 0.65, d_gz))
-    collapse = wp.clamp(collapse, 0.0, 1.0)
-
-    h_eff = h * (1.0 - 0.95 * collapse)                      # crush height down
-    half = wp.vec3(w, h_eff, w)
-    qb = wp.vec3(qx, p[1] - h_eff, qz)
-    if rnd2 < 0.28:
-        d = sd_block(qb, wp.vec3(w, h_eff * 0.45, w), 1.5)
+    if kind < 0.5:
+        # --- city: tower or low block ---
+        h = 4.0 + 19.0 * rnd * rnd                           # tall towers rarer
+        w = lot * 0.5 * (0.30 + 0.18 * rnd2)                 # footprint (rest = street)
+        h_eff = h * (1.0 - 0.95 * collapse)                  # crush height down
+        qb = wp.vec3(qx, p[1] - h_eff, qz)
+        if rnd2 < 0.28:
+            d = sd_block(qb, wp.vec3(w, h_eff * 0.45, w), 1.5)
+        else:
+            d = sd_tower(qb, wp.vec3(w, h_eff, w), 1.6, 0.5)
+        rub_h = collapse * (0.5 + 1.3 * rnd)
+        rw = w * 1.25
     else:
-        d = sd_tower(qb, half, 1.6, 0.5)
+        # --- suburb: a pitched-roof house crushed toward the ground ---
+        hw = 2.2 + 0.9 * rnd
+        hd = 2.8 + 1.0 * rnd
+        bh = 1.7 + 0.7 * rnd2                                # body half-height
+        roof = 2.0 + 0.9 * rnd2
+        bh_eff = bh * (1.0 - 0.9 * collapse)
+        roof_eff = roof * (1.0 - 0.96 * collapse)            # roof caves in first
+        qb = wp.vec3(qx, p[1] - bh_eff, qz)
+        d = sd_house(qb, wp.vec3(hw, bh_eff, hd), roof_eff)
+        rub_h = collapse * (0.4 + 0.7 * rnd)
+        rw = hw * 1.1
+
     # rubble mound piling up in the footprint where the building came down
-    rub_h = collapse * (0.5 + 1.3 * rnd)
-    rubble = sd_box(wp.vec3(qx, p[1] - rub_h, qz), wp.vec3(w * 1.25, rub_h + 0.05, w * 1.25))
+    rubble = sd_box(wp.vec3(qx, p[1] - rub_h, qz), wp.vec3(rw, rub_h + 0.05, rw))
     return wp.vec2(op_union(d, rubble), collapse)
 
 
 @wp.func
-def _city_map(p: wp.vec3, front_r: float, dest_r: float, sev_r: float,
-              gz: wp.vec2, lot: float, seed: float) -> float:
-    return wp.min(p[1] - _height(p[0], p[2]),
-                  _city_blast_de(p, front_r, dest_r, sev_r, gz, lot, seed)[0])
+def _city_blast_de(p: wp.vec3, front_r: float, dest_r: float, sev_r: float,
+                   gz: wp.vec2, lot: float, seed: float) -> wp.vec2:
+    """City (tower) specialization of :func:`_blast_de` — kept for the collapse
+    unit test; the render kernel calls :func:`_blast_de` directly with `kind`."""
+    return _blast_de(p, 0.0, front_r, dest_r, sev_r, gz, lot, seed)
 
 
 @wp.func
-def _city_normal(p: wp.vec3, front_r: float, dest_r: float, sev_r: float,
-                 gz: wp.vec2, lot: float, seed: float) -> wp.vec3:
+def _blast_map(p: wp.vec3, kind: float, front_r: float, dest_r: float, sev_r: float,
+               gz: wp.vec2, lot: float, seed: float) -> float:
+    return wp.min(p[1] - _height(p[0], p[2]),
+                  _blast_de(p, kind, front_r, dest_r, sev_r, gz, lot, seed)[0])
+
+
+@wp.func
+def _blast_normal(p: wp.vec3, kind: float, front_r: float, dest_r: float, sev_r: float,
+                  gz: wp.vec2, lot: float, seed: float) -> wp.vec3:
     e = 0.03
-    dx = _city_map(p + wp.vec3(e, 0.0, 0.0), front_r, dest_r, sev_r, gz, lot, seed) \
-        - _city_map(p - wp.vec3(e, 0.0, 0.0), front_r, dest_r, sev_r, gz, lot, seed)
-    dy = _city_map(p + wp.vec3(0.0, e, 0.0), front_r, dest_r, sev_r, gz, lot, seed) \
-        - _city_map(p - wp.vec3(0.0, e, 0.0), front_r, dest_r, sev_r, gz, lot, seed)
-    dz = _city_map(p + wp.vec3(0.0, 0.0, e), front_r, dest_r, sev_r, gz, lot, seed) \
-        - _city_map(p - wp.vec3(0.0, 0.0, e), front_r, dest_r, sev_r, gz, lot, seed)
+    dx = _blast_map(p + wp.vec3(e, 0.0, 0.0), kind, front_r, dest_r, sev_r, gz, lot, seed) \
+        - _blast_map(p - wp.vec3(e, 0.0, 0.0), kind, front_r, dest_r, sev_r, gz, lot, seed)
+    dy = _blast_map(p + wp.vec3(0.0, e, 0.0), kind, front_r, dest_r, sev_r, gz, lot, seed) \
+        - _blast_map(p - wp.vec3(0.0, e, 0.0), kind, front_r, dest_r, sev_r, gz, lot, seed)
+    dz = _blast_map(p + wp.vec3(0.0, 0.0, e), kind, front_r, dest_r, sev_r, gz, lot, seed) \
+        - _blast_map(p - wp.vec3(0.0, 0.0, e), kind, front_r, dest_r, sev_r, gz, lot, seed)
     return wp.normalize(wp.vec3(dx, dy, dz))
 
 
+@wp.func
+def _ground_smoke(p: wp.vec3, front_r: float, gz: wp.vec2, top: float, t: float) -> float:
+    """Sparse rising smoke wisps over the burning zone — thin, patchy plumes that
+    veil the fires without smothering them (not a solid pall)."""
+    rr = wp.length(wp.vec2(p[0] - gz[0], p[2] - gz[2]))
+    disc = wp.smoothstep(front_r * 1.05, front_r * 0.55, rr)
+    high = wp.smoothstep(top, 2.0, p[1])                      # rises off the ground
+    n1 = fbm_perlin3(p * 0.11 + wp.vec3(0.0, -t * 0.2, t * 0.05), 4)
+    wisp = wp.smoothstep(0.2, 0.62, n1)                       # only strong-noise patches
+    return wp.clamp(disc * high * wisp, 0.0, 1.0)
+
+
 @wp.kernel
-def render_city_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
-                       burst: wp.vec3, r_fb: float, front_r: float, dest_r: float,
-                       sev_r: float, cap_y: float, cap_r: float, stem_r: float,
-                       core_k: float, fb_bright: float, lot: float, seed: float,
-                       t: float, march_steps: int, vol_steps: int,
-                       width: int, height: int):
+def render_blast_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
+                        kind: float, burst: wp.vec3, r_fb: float, front_r: float,
+                        dest_r: float, sev_r: float, cap_y: float, cap_r: float,
+                        stem_r: float, core_k: float, fb_bright: float, lot: float,
+                        seed: float, t: float, march_steps: int, vol_steps: int,
+                        width: int, height: int):
     i, j = wp.tid()
     u = (2.0 * (float(j) + 0.5) / float(width)) - 1.0
     v = (2.0 * (float(height - 1 - i) + 0.5) / float(height)) - 1.0
@@ -403,8 +440,9 @@ def render_city_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3
     rd = camera_ray_dir(cam, u, v)
     gz = wp.vec2(burst[0], burst[2])
     fb_glow = kelvin_to_rgb(core_k) * 0.5
+    smoke_top = dest_r * 0.55                             # height of the burning pall
 
-    # --- opaque scene: terrain + collapsing city ---
+    # --- opaque scene: terrain + collapsing built-up area ---
     t_hit = float(600.0)
     hit = int(0)
     tm = float(0.5)
@@ -413,7 +451,7 @@ def render_city_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3
     for _ in range(march_steps):
         p = ro + rd * tm
         dh = p[1] - _height(p[0], p[2])
-        cb = _city_blast_de(p, front_r, dest_r, sev_r, gz, lot, seed)
+        cb = _blast_de(p, kind, front_r, dest_r, sev_r, gz, lot, seed)
         d = wp.min(dh, cb[0])
         if d < 0.004 * tm + 0.002:
             hit = 1
@@ -430,12 +468,23 @@ def render_city_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3
         p = ro + rd * t_hit
         d_gz = wp.length(wp.vec2(p[0], p[2]) - gz)
         if is_bld == 1:
-            n = _city_normal(p, front_r, dest_r, sev_r, gz, lot, seed)
+            n = _blast_normal(p, kind, front_r, dest_r, sev_r, gz, lot, seed)
             standing = 1.0 - collapse
-            concrete = wp.vec3(0.15, 0.16, 0.19)              # dark dusk concrete
+            idx = _repid(p[0], lot)
+            idz = _repid(p[2], lot)
+            rnd2 = hash21(wp.vec2(idx * 1.7 + 5.3, idz * 2.3 + 9.1))
+            if kind < 0.5:
+                intact = wp.vec3(0.15, 0.16, 0.19)            # dark dusk concrete
+            else:
+                # plaster wall vs terracotta roof (roof = geometry near the top)
+                bh = (1.7 + 0.7 * rnd2) * (1.0 - 0.9 * collapse)
+                roof_m = wp.step(p[1] - 1.7 * bh) * standing
+                plaster = wp.vec3(0.34, 0.29, 0.23)
+                tile = wp.vec3(0.30, 0.10, 0.06)
+                intact = plaster * (1.0 - roof_m) + tile * roof_m
             rubble = wp.vec3(0.10, 0.09, 0.08)                # broken concrete/dust
             burnt = wp.vec3(0.03, 0.028, 0.025)
-            mat = concrete * (1.0 - collapse) + rubble * collapse
+            mat = intact * (1.0 - collapse) + rubble * collapse
             mat = mat * (1.0 - 0.6 * collapse) + burnt * (0.6 * collapse)
             ndl = wp.max(wp.dot(n, sun), 0.0)
             col = wp.cw_mul(mat, wp.vec3(1.0, 0.86, 0.66) * (0.12 + 0.5 * ndl))   # dim warm sun
@@ -446,23 +495,22 @@ def render_city_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3
                                                    * fb_bright * 1.1 / (1.0 + 0.010 * d_gz * d_gz))
             # emissive lit windows on STANDING buildings — they go dark as the
             # building collapses (the blast wave extinguishes the city)
-            idx = _repid(p[0], lot)
-            idz = _repid(p[2], lot)
             fl = wp.floor(p[1] / 2.0)
             lh = hash21(wp.vec2(idx * 13.0 + fl, idz * 7.0 - fl))
             win = window_mask(p, 1.7, 2.0)
             lit = win * wp.step(lh - 0.5) * standing
             wc = wp.vec3(1.0, 0.80, 0.46) + wp.vec3(0.0, 0.06, 0.22) * (lh - 0.5)
             col = col + wc * (lit * 1.9)
-            # collapsed buildings SMOULDER — glowing embers/fires in the rubble, so
-            # the destruction reads clearly (and dramatically) at dusk
+            # collapsed buildings SMOULDER — patchy fires broken up by noise so the
+            # rubble reads as scattered burning debris, not a uniform glowing top
             fh = hash21(wp.vec2(idx * 5.3 - fl * 2.0, idz * 3.7 + fl))
-            ember = collapse * wp.smoothstep(0.3, 0.9, fh)
-            fire = wp.vec3(1.0, 0.32, 0.07) + wp.vec3(0.0, 0.28, 0.0) * fh   # deep orange->amber
-            col = col + fire * (ember * 2.4)
+            turb = wp.clamp(0.35 + 0.75 * fbm_perlin3(p * 0.55, 3), 0.0, 1.0)
+            ember = collapse * wp.smoothstep(0.32, 0.95, fh) * turb
+            fire = wp.vec3(1.0, 0.30, 0.06) + wp.vec3(0.0, 0.36, 0.0) * fh   # deep orange->amber
+            col = col + fire * (ember * 2.7)
         else:
             n = _gnormal(p[0], p[2])
-            street = wp.vec3(0.07, 0.07, 0.08)                # dark asphalt
+            street = wp.vec3(0.07, 0.07, 0.08)                # dark asphalt/lawn
             n_road = wp.smoothstep(0.9, 0.7, n[1])
             albedo = street * (1.0 - n_road) + wp.vec3(0.05, 0.05, 0.05) * n_road
             # everything the front has passed is a burnt scar (out to the 5 psi ring)
@@ -477,10 +525,11 @@ def render_city_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3
             fbdir = wp.normalize(burst - p)
             col = col + wp.cw_mul(albedo, fb_glow) * (wp.max(wp.dot(n, fbdir), 0.0)
                                                       * fb_bright * 0.8 / (1.0 + 0.015 * d_gz * d_gz))
-            # the burnt ground smoulders — a field of embers in the flattened scar
+            # the burnt ground smoulders — a patchy field of embers in the scar
             gh = hash21(wp.vec2(wp.floor(p[0] * 0.7), wp.floor(p[2] * 0.7)))
-            gember = scorch * wp.smoothstep(0.55, 0.95, gh)
-            col = col + wp.vec3(1.0, 0.28, 0.05) * (gember * 1.3)
+            gturb = wp.clamp(0.3 + 0.8 * fbm_perlin3(p * 0.4, 3), 0.0, 1.0)
+            gember = scorch * wp.smoothstep(0.55, 0.95, gh) * gturb
+            col = col + wp.vec3(1.0, 0.26, 0.05) * (gember * 1.4)
     else:
         col = _sky(rd, sun, fb_glow)
 
@@ -530,18 +579,29 @@ def render_city_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3
             a = wp.clamp(cd * 1.7 * dt, 0.0, 1.0)
             acc = acc + smoke * (a * trans)
             trans = trans * (1.0 - a)
+        # ground-hugging smoke pall over the burning zone — dark, drifting, and
+        # underlit orange by the fires below (a burning-city haze)
+        sm = _ground_smoke(p, front_r, gz, smoke_top, t)
+        if sm > 0.001:
+            glow = wp.smoothstep(smoke_top, 0.0, p[1])       # brighter near the fires
+            sc = wp.vec3(0.11, 0.09, 0.09) + wp.vec3(1.0, 0.34, 0.10) * (glow * 0.7)
+            a = wp.clamp(sm * 0.5 * dt, 0.0, 1.0)            # thin — veils, not smothers
+            acc = acc + sc * (a * trans)
+            trans = trans * (1.0 - a)
         tv += dt
     col = col * trans + acc
 
     img[i, j] = col
 
 
-def render_city(width, height, time, mouse, device, yield_kt):
-    """Render one frame of a detonation over a **city** — the buildings collapse
-    to rubble as the overpressure front sweeps out to the 5 psi destruction ring.
-    The overpressure front expands over the shot (the visualization compresses the
-    few real seconds of wave propagation); final damage radii are from
-    `blast.physics`. See ``docs/research/18-nuke-the-city.md``."""
+def _render_blast(width, height, time, mouse, device, yield_kt, kind, lot, eye_y,
+                  dist, target_y, fov):
+    """Render one frame of a detonation over a built-up area — the buildings
+    collapse into a burning field of rubble as the overpressure front sweeps out to
+    the 5 psi destruction ring, under a mushroom rising from the centre. `kind` = 0
+    downtown towers / 1 suburb houses. The front expands over the shot (the
+    visualization compresses the few real seconds of wave propagation); final damage
+    radii are from `blast.physics`. See ``docs/research/18-nuke-the-city.md``."""
     tier = active_tier()
     ms, vs = _counts(tier.name)
     s = 60.0 / float(P.destruction_radius(yield_kt))   # 5 psi ring -> 60 frame units
@@ -549,7 +609,6 @@ def render_city(width, height, time, mouse, device, yield_kt):
     r_fb = float(P.fireball_radius(yield_kt)) * s
     dest_r = float(P.destruction_radius(yield_kt)) * s
     sev_r = float(P.severe_radius(yield_kt)) * s
-    lot = 15.0
     seed = 3.0
 
     # the fireball flares then fades; the overpressure front expands to the 5 psi
@@ -563,7 +622,7 @@ def render_city(width, height, time, mouse, device, yield_kt):
 
     burst_alt = r_fb_vis * 1.4 + 10.0                   # low air-burst above downtown
     rise = max(time - 1.5, 0.0)
-    # a moderate mushroom rising from the burning city (kept low enough that it
+    # a moderate mushroom rising from the burning area (kept low enough that it
     # does not occlude ground zero — the destruction is the subject)
     lift = float(P.mushroom_height(rise, yield_kt)) * s * 1.05
     burst = (0.0, burst_alt + lift, 0.0)
@@ -574,21 +633,19 @@ def render_city(width, height, time, mouse, device, yield_kt):
 
     # aerial 3/4 looking DOWN into the flattened, burning zone — the devastation
     # (a scorched rubble field of embers) fills the midground; the mushroom rises
-    # behind ground zero; standing lit towers ring the far perimeter.
+    # behind ground zero; standing lit buildings ring the far perimeter.
     az = 0.7 + float(mouse[0]) * 0.01
-    dist = 138.0
-    eye = (math.sin(az) * dist, 92.0 + float(mouse[1]) * 0.1, math.cos(az) * dist)
-    target = (0.0, 6.0, 0.0)
-    cam = make_camera(eye, target, fov_deg=62.0, aspect=width / height)
+    eye = (math.sin(az) * dist, eye_y + float(mouse[1]) * 0.1, math.cos(az) * dist)
+    cam = make_camera(eye, (0.0, target_y, 0.0), fov_deg=fov, aspect=width / height)
     sun = wp.normalize(wp.vec3(0.5, 0.32, 0.35))        # low dusk sun
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
-    wp.launch(render_city_kernel, dim=(height, width),
-              inputs=[img, cam, sun, wp.vec3(*burst), float(r_fb_now), float(front_r),
-                      float(dest_r), float(sev_r), float(cap_y), float(cap_r),
-                      float(stem_r), float(core_k), float(fb_bright), float(lot),
-                      float(seed), float(time), int(ms), int(vs), int(width),
-                      int(height)], device=device)
+    wp.launch(render_blast_kernel, dim=(height, width),
+              inputs=[img, cam, sun, float(kind), wp.vec3(*burst), float(r_fb_now),
+                      float(front_r), float(dest_r), float(sev_r), float(cap_y),
+                      float(cap_r), float(stem_r), float(core_k), float(fb_bright),
+                      float(lot), float(seed), float(time), int(ms), int(vs),
+                      int(width), int(height)], device=device)
     wp.synchronize_device(device)
     hdr = img.numpy()
 
@@ -599,8 +656,22 @@ def render_city(width, height, time, mouse, device, yield_kt):
     r = max(3, int(min(width, height) * 0.02))
     hdr = post.bloom(hdr, threshold=0.8, strength=0.6, radius=r, passes=3)
     out = post.tonemap(hdr, mode="aces", exposure=0.92)
-    out = post.chromatic_aberration(out, 0.0004)
+    out = post.chromatic_aberration(out, 0.0002)
     return post.vignette(out, 0.4)
+
+
+def render_city(width, height, time, mouse, device, yield_kt):
+    """A detonation over a **downtown** of SDF towers/blocks (see
+    :func:`_render_blast`)."""
+    return _render_blast(width, height, time, mouse, device, yield_kt, kind=0.0,
+                         lot=15.0, eye_y=92.0, dist=138.0, target_y=6.0, fov=62.0)
+
+
+def render_suburb(width, height, time, mouse, device, yield_kt):
+    """A detonation over a **suburb** of pitched-roof houses — smaller, lower
+    buildings, so a lower camera reads the human-scale devastation."""
+    return _render_blast(width, height, time, mouse, device, yield_kt, kind=1.0,
+                         lot=8.0, eye_y=64.0, dist=104.0, target_y=3.0, fov=60.0)
 
 
 # --- vacuum burst over a planet (no atmosphere -> no blast/fireball/mushroom) -
