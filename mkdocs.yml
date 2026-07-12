@@ -72,6 +72,7 @@ nav:
       - Nuke the city: research/18-nuke-the-city.md
       - Extraordinary cosmos: research/19-extraordinary-cosmos.md
       - More cosmos, worlds & cross-strand: research/20-more-cosmos-worlds-crossstrand.md
+      - The Standard Model: research/21-standard-model.md
 
 markdown_extensions:
   - admonition
