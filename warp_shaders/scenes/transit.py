@@ -49,7 +49,7 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, planet_c: wp.vec3
     # soft chromospheric glow just outside the limb
     bimp = wp.length(wp.cross(ro, rd))
     if not star_hit:
-        halo = wp.exp(-(bimp - _STAR_R) * 2.2) * wp.step(bimp - _STAR_R)
+        halo = wp.exp(-(bimp - _STAR_R) * 2.2) * wp.step(_STAR_R - bimp)   # wp.step(x)=1 when x<0
         col = col + star_rgb * (halo * star_glow * 0.25)
 
     # the planet (dark silhouette) in front, with a backlit atmosphere ring
