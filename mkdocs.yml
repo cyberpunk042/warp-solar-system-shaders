@@ -47,6 +47,7 @@ nav:
       - life (L-Systems): api/life.md
       - super-earth: api/superearth.md
       - cosmos (solar system): api/cosmos.md
+      - subatomic (Standard Model): api/subatomic.md
       - blast (nuclear): api/blast.md
       - buildings: api/buildings.md
   - Gallery: gallery.md
@@ -72,6 +73,7 @@ nav:
       - Nuke the city: research/18-nuke-the-city.md
       - Extraordinary cosmos: research/19-extraordinary-cosmos.md
       - More cosmos, worlds & cross-strand: research/20-more-cosmos-worlds-crossstrand.md
+      - The Standard Model: research/21-standard-model.md
 
 markdown_extensions:
   - admonition
