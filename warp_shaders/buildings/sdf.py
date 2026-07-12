@@ -39,10 +39,19 @@ def sd_triprism(p: wp.vec3, hx: float, hz: float) -> float:
 
 @wp.func
 def sd_tower(p: wp.vec3, half: wp.vec3, floor_h: float, win_w: float) -> float:
-    """A modern high-rise: a solid body + a parapet rim + a base plinth. The
-    window grid is a **shading** detail (`window_mask`), not geometry, so the SDF
-    stays a clean solid. `half` = half-extents about the body centre."""
+    """A modern high-rise: body + protruding **floor bands** + corner pilasters +
+    parapet + base plinth (windows are a shading detail, `window_mask`, so the SDF
+    stays a clean solid). `half` = half-extents about the body centre."""
     body = sd_box(p, half)
+    # floor-band ledges: a thin slab poking out at every floor -> facade relief
+    band = sd_box(wp.vec3(p[0], _rep(p[1], floor_h), p[2]),
+                  wp.vec3(half[0] + 0.12, floor_h * 0.09, half[2] + 0.12))
+    band = wp.max(band, wp.abs(p[1]) - half[1])      # clamp to the building height
+    d = op_union(body, band)
+    # corner pilasters: vertical ribs at the four edges
+    pil = sd_box(wp.vec3(wp.abs(p[0]) - half[0], p[1], wp.abs(p[2]) - half[2]),
+                 wp.vec3(0.18, half[1], 0.18))
+    d = op_union(d, pil)
     # parapet: a hollow rim at the roofline (a thin ledge that reads as a cap)
     top = p - wp.vec3(0.0, half[1], 0.0)
     ledge = sd_box(top, wp.vec3(half[0] + 0.15, 0.14, half[2] + 0.15))
@@ -88,8 +97,8 @@ def city_de(p: wp.vec3, lot: float, seed: float) -> wp.vec4:
     rnd2 = hash21(wp.vec2(idx * 1.7 + 5.3, idz * 2.3 + 9.1))
     q = wp.vec3(_rep(p[0], lot), p[1], _rep(p[2], lot))
 
-    h = 4.0 + 30.0 * rnd * rnd                       # tall towers are rarer
-    w = lot * 0.5 * (0.5 + 0.28 * rnd2)              # footprint; rest is street
+    h = 4.0 + 26.0 * rnd * rnd                       # tall towers are rarer
+    w = lot * 0.5 * (0.32 + 0.2 * rnd2)              # footprint (rest is street)
     half = wp.vec3(w, h, w)
     qb = wp.vec3(q[0], q[1] - h, q[2])               # base sits on the ground
     if rnd2 < 0.28:
@@ -100,9 +109,24 @@ def city_de(p: wp.vec3, lot: float, seed: float) -> wp.vec4:
 
 
 @wp.func
+def suburb_de(p: wp.vec3, lot: float, seed: float) -> wp.vec4:
+    """A suburb by domain repetition: each lot grows a different **house**
+    (pitched roof). Returns ``(dist, body_half_h, variant, lot_rand)``."""
+    idx = _repid(p[0], lot)
+    idz = _repid(p[2], lot)
+    rnd = hash21(wp.vec2(idx + seed, idz - seed))
+    rnd2 = hash21(wp.vec2(idx * 1.3 + 2.1, idz * 1.9 + 4.7))
+    q = wp.vec3(_rep(p[0], lot), p[1], _rep(p[2], lot))
+    half = wp.vec3(2.2 + 0.9 * rnd, 1.7 + 0.7 * rnd2, 2.8 + 1.0 * rnd)
+    qb = wp.vec3(q[0], q[1] - half[1], q[2])
+    d = sd_house(qb, half, 2.0 + 0.9 * rnd2)
+    return wp.vec4(d, half[1], rnd2, rnd)
+
+
+@wp.func
 def window_mask(p: wp.vec3, cell_xy: float, floor_h: float) -> float:
     """1 inside a window pane, 0 on the mullions — for glass vs concrete
     material and lit-window selection at a surface point."""
     fx = wp.abs(_rep(p[0] + p[2], cell_xy))          # column phase (both facades)
     fy = wp.abs(_rep(p[1], floor_h))
-    return wp.step(fx, cell_xy * 0.34) * wp.step(fy, floor_h * 0.34)
+    return wp.step(cell_xy * 0.34 - fx) * wp.step(floor_h * 0.34 - fy)

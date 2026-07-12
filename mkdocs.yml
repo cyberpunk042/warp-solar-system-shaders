@@ -48,6 +48,7 @@ nav:
       - super-earth: api/superearth.md
       - cosmos (solar system): api/cosmos.md
       - blast (nuclear): api/blast.md
+      - buildings: api/buildings.md
   - Gallery: gallery.md
   - Research notes:
       - Foundations: research/00-foundations.md

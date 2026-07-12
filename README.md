@@ -430,6 +430,34 @@ The scaling laws are unit-tested against the measured Tsar anchors
 (buildings, cities) later. Physics + citations:
 [`docs/research/15-nuclear-fireball.md`](docs/research/15-nuclear-fireball.md).
 
+## Buildings — architecture as signed distance fields
+
+`warp_shaders.buildings` is a parametric **SDF architecture kit** — towers,
+houses and blocks — and a whole **city** or **suburb** grown from one function by
+per-lot **domain repetition** + hashed variation (each cell hashes to a different
+building; streets are the gaps). Built as clean solids so they sphere-trace like
+any SDF — and so they can later become **blast targets** (they drop straight into
+`blast.render`'s per-cell instancing, so a nuke can be tested on a city).
+
+| city (night, glowing windows) | suburb (pitched-roof houses) |
+|---|---|
+| ![city](docs/engine/city.png) | ![suburb](docs/engine/suburb.png) |
+
+```bash
+python render.py --scene city   --quality high -o city.png
+python render.py --scene suburb --quality high -o suburb.png
+```
+
+- **`city`** — a night skyline: `sd_tower` with protruding **floor bands** +
+  corner pilasters, ~half the window panes lit as warm **emissive** windows
+  (hashed per pane), bloomed into a glowing skyline over a light-pollution haze.
+- **`suburb`** — a neighbourhood of `sd_house` (box body + **pitched gable roof** +
+  carved door/windows): plaster walls, terracotta roofs, a warm low sun.
+
+An original Warp reimplementation of standard SDF techniques (Quilez distance
+functions + domain repetition); inspired by ShaderToy studies from kishimisu and
+dr2. See [docs/research/17-buildings.md](docs/research/17-buildings.md).
+
 ## Earth — every warhead at once (a sensitization piece)
 
 A gravitationally-bound **particle Earth** under simultaneous global detonation.
