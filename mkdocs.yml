@@ -87,6 +87,7 @@ nav:
       - States of matter & phase: research/31-states-of-matter.md
       - Electromagnetism & fields: research/32-electromagnetism-and-fields.md
       - The cell up close: research/33-the-cell-up-close.md
+      - Electronics components: research/35-electronics-components.md
 
 markdown_extensions:
   - admonition

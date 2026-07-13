@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (236 scenes).
+`python render.py --list` for the full, current list (253 scenes).
 
 ## Engine showcase
 
@@ -584,3 +584,34 @@ engulfing a pathogen.
 | virus | mitochondrion | ribosome | bacterium | lipid_bilayer | immune_cell |
 |---|---|---|---|---|---|
 | ![virus](engine/virus.png) | ![mitochondrion](engine/mitochondrion.png) | ![ribosome](engine/ribosome.png) | ![bacterium](engine/bacterium.png) | ![lipid_bilayer](engine/lipid_bilayer.png) | ![immune_cell](engine/immune_cell.png) |
+
+**Electronics — silicon to the memory bit** — a computer built from the ground up,
+respecting the physics. A monocrystalline **silicon** boule, its diamond-cubic
+**crystal** lattice, a **wafer** with thin-film sheen, and a doped **p-n junction**.
+
+| silicon_ingot | silicon_crystal | silicon_wafer | pn_junction |
+|---|---|---|---|
+| ![silicon_ingot](engine/silicon_ingot.png) | ![silicon_crystal](engine/silicon_crystal.png) | ![silicon_wafer](engine/silicon_wafer.png) | ![pn_junction](engine/pn_junction.png) |
+
+The **discrete components** every board carries — a colour-banded **resistor**, an
+electrolytic + ceramic **capacitor**, a glowing **LED** + diode, a wound **inductor**,
+and a quartz **crystal oscillator**.
+
+| resistor | capacitor | led | inductor | crystal_oscillator |
+|---|---|---|---|---|
+| ![resistor](engine/resistor.png) | ![capacitor](engine/capacitor.png) | ![led](engine/led.png) | ![inductor](engine/inductor.png) | ![crystal_oscillator](engine/crystal_oscillator.png) |
+
+**Interconnect & packaging** — a **PCB** with copper traces and vias, a **DIP** chip
+package, a **BGA** ball-grid underside, and the gold **bond wires** from die to leadframe.
+
+| pcb | ic_package | bga | bond_wire |
+|---|---|---|---|
+| ![pcb](engine/pcb.png) | ![ic_package](engine/ic_package.png) | ![bga](engine/bga.png) | ![bond_wire](engine/bond_wire.png) |
+
+**The memory & logic cells (the bit)** — a **DRAM** cell (1T1C, the RAM bit), a **NAND
+flash** floating-gate cell (the SSD bit), a **CMOS inverter** (the logic atom), and a 6T
+**SRAM** cell (the cache bit).
+
+| dram_cell | nand_flash_cell | cmos_inverter | sram_cell |
+|---|---|---|---|
+| ![dram_cell](engine/dram_cell.png) | ![nand_flash_cell](engine/nand_flash_cell.png) | ![cmos_inverter](engine/cmos_inverter.png) | ![sram_cell](engine/sram_cell.png) |
