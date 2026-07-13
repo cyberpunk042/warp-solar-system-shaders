@@ -79,6 +79,10 @@ nav:
       - Origin & large-scale universe: research/23-origin-and-large-scale-universe.md
       - The living body: research/24-the-living-body.md
       - Earth & weather: research/25-earth-and-weather.md
+      - The machine (tech & computation): research/26-the-machine.md
+      - Mathematics made visible: research/27-mathematics-made-visible.md
+      - The deep ocean: research/28-the-deep-ocean.md
+      - Megastructures & the far future: research/29-megastructures-and-far-future.md
 
 markdown_extensions:
   - admonition
