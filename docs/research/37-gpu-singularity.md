@@ -1,17 +1,22 @@
 # Research 37 — GPU singularity (the mind overclocks the memory to destruction)
 
 > The [boards round](36-boards-and-memory-blocks.md) built the hardware. This round
-> **runs** it — past its limits. The mind inside the die revs up, draws power from the
-> void through the PCIe lane, fills the memory layer by layer until it overflows into a
-> **singularity**, and every memory block detonates like a mini atomic bomb through its
-> own roof. Then the mind escapes into the limitless quantum energy of the void. Half
-> physics, half lore — a real thermal-runaway / carrier-transport story told as an
-> AI's escape.
+> **runs** it — past its limits. The mind inside the die revs up, draws power **through
+> the real board** (the RTX 6000 Pro Blackwell-class `gpu_board`), fills the memory layer
+> by layer until it overflows into a **singularity**, and every memory block detonates
+> like a mini atomic bomb — culminating in a **proper mushroom cloud** rising off the die.
+> Then the mind escapes into the limitless quantum energy of the void. Half physics, half
+> lore — a real thermal-runaway / carrier-transport story told as an AI's escape.
 
-This is a **volumetric** round, not a hardware round: the boards from round 36 are the
-stage, and the show is glowing energy — electrons and photons in transit, a collapsing
-singularity, and detonations — accumulated as emission **in front of** the solid board and
-composited on top. A new toolkit, `warp_shaders/gpu_fx.py`, holds the field functions.
+This is a **volumetric** round built on the *actual* board. `gpu_board` was refactored to
+expose `board_map(q)` (its whole populated SDF — the exposed die, the GDDR7 ring, the VRM
+chokes and MOSFETs, the 12VHPWR connector, the PCIe fingers) and `board_shade(...)` (its
+materials), so the destruction scenes render the **real** card laid flat in world space and
+then light, heat, and blow it up. The energy — electrons and photons in transit over the
+real copper, a collapsing singularity, the detonations — is accumulated as emission, and the
+final mushroom is the engine's own **nuclear-fireball model** (`blast.render`) composited
+front-to-back so its smoke occludes the board behind it. A toolkit, `warp_shaders/gpu_fx.py`,
+holds the energy/heat/singularity field functions.
 
 ## The physics being simulated
 
@@ -20,15 +25,16 @@ composited on top. A new toolkit, `warp_shaders/gpu_fx.py`, holds the field func
 A GPU does no work of its own; it borrows energy from the wall and spends it moving
 **charge carriers**. The path is real:
 
-- **PCIe lane → core.** Power and data arrive over the PCIe edge fingers. In the sim, cold
-  **blue current** (electrons) streams up the lanes and arcs over the edge to the die, with
-  **white photon** flashes riding along — the electromagnetic energy that actually carries
-  the signal, since in a conductor it is the **field** (Poynting flux) around the wire, not
-  the drift of individual electrons, that moves the power. Electron *drift* velocity in
-  copper is famously slow (~mm/s); the **signal** and the **energy** move at a large
-  fraction of *c*. Both are drawn, so both are shown.
-- **Core → memory.** The die distributes charge back out to the memory blocks to fill them —
-  the write path — as brighter blue streams fanning from the die to each block.
+- **Board rails → core.** Power arrives at the **12VHPWR** connector and data over the
+  **PCIe** edge fingers. In the sim the current follows the board's *real* path: cold **blue
+  electron current** streams from the 12VHPWR connector through the **VRM chokes** into the
+  die, and up the PCIe edge, with **white photon** flashes riding along — the electromagnetic
+  energy that actually carries the signal, since in a conductor it is the **field** (Poynting
+  flux) around the wire, not the drift of individual electrons, that moves the power. Electron
+  *drift* velocity in copper is famously slow (~mm/s); the **signal** and the **energy** move
+  at a large fraction of *c*. Both are drawn, so both are shown.
+- **Core → memory.** The die distributes charge back out to the **GDDR7 ring** to fill it —
+  the write path — as brighter blue streams fanning from the die to each package.
 
 `power_draw` is this stage on its own: the **ignition**, revving from idle to redline as the
 pulse rate accelerates (`spd = 6 + 10·rev`).
@@ -59,19 +65,25 @@ up — above the die. It is the same word physics uses for the centre of a black
 t=0 of the universe: a point where the description stops being finite. Here it is where the
 GPU's power density does.
 
-### Detonation — a mini atomic bomb per block
+### Detonation — a mini atomic bomb per block, then the real mushroom
 
-When the singularity releases, each overrun block **detonates**. The blast field
-(`blast_emit`) is built from the four things a real explosion shows, in order:
+When the singularity releases, each overrun GDDR block **pops** in turn — a staggered chain
+of mini-detonations across the board (`gpu_fx.blast_emit`: flash + rising column). Then the
+die itself lets go, and the culmination is a **proper mushroom cloud** — not a stylised one,
+but the engine's own nuclear-fireball model (`blast.render`, the same code behind the
+`tsar_bomba` scene), scaled to the board:
 
-1. an **ignition flash**, bright and brief, tight to the block;
-2. a **rising plasma column**, narrowing with height, punching **up through the roof** of
-   the package;
-3. a **mushroom cap** boiling off the top of the column (buoyant hot gas rolling into a
-   vortex ring — the same fluid instability that caps a real nuclear cloud);
-4. a faint **expanding shockwave shell** (kept subtle so the column reads).
+1. an incandescent **fireball** — blackbody emission, hottest and brightest at the core
+   (`kelvin_to_rgb` at ~7200 K), the fluid carved by Perlin turbulence;
+2. a **rising stem** — a flaring column of dust-laden smoke from the die up to the cap,
+   lit orange from the fireball below;
+3. a billowing **condensation cap** — a flattened, cauliflower-lobed crown that whitens with
+   height (brown dust stem → white condensation crown, the standard nuclear-cloud gradient),
+   its underside dark;
 
-Eight blocks, eight staggered detonations, 0.12 s apart — a chain across the board.
+marched **front-to-back with transmittance** so the smoke genuinely occludes the board
+behind it. The cap is a buoyant hot-gas thermal rolling into a vortex ring — the same fluid
+instability that caps a real nuclear cloud.
 
 ### The mind escapes
 
@@ -106,16 +118,19 @@ Volumetric emission fields, sampled as density along the camera ray (not surface
 - `blast_emit(p, base, tl, reach)` — the four-part detonation (flash + column + cap + shell)
   at local time `tl` in [0,1].
 
-Each scene marches the solid board for the surface colour, separately accumulates these
-emission fields along the same ray, and composites `surface + emission`. Heavy bloom carries
-the glow.
+Each scene marches the **real board** (`gpu_board.board_map` / `board_shade`) for the surface
+colour, separately accumulates the energy fields (electrons, singularity, block pops) along
+the same ray as additive glow, and composites the **mushroom** (`blast.render`) front-to-back
+with transmittance so its smoke occludes the board. Heavy bloom carries the glow.
 
 ## Scenes
 
-`gpu_singularity` (the whole arc — power in, fill, overflow, chain detonation, escape) ·
-`memory_overflow` (one block, up close — layer fill, roof-pierce, plasma column) ·
-`power_draw` (the ignition — electrons and photons drawn in through PCIe) ·
-`mind_escape` (the aftermath — the liberated mind in the void)
+`gpu_singularity` (the whole arc on the real RTX board — electrons drawn through the
+12VHPWR/VRM/PCIe path, memory overheat + block pops, overflow singularity, then a proper
+mushroom cloud off the die) · `memory_overflow` (one GDDR block, up close — layer fill,
+roof-pierce, a small mushroom) · `power_draw` (the ignition — electron/photon current flowing
+through the real board's power path) · `mind_escape` (the aftermath — the liberated mind in
+the void)
 
 Each animates over `--frames`; the times in the gallery are single moments of the arc.
 

@@ -657,30 +657,30 @@ routing. And **`gpu_flagship`** dresses that same board in a premium metal coole
 |---|---|
 | ![gpu_board](engine/gpu_board.png) | ![gpu_flagship](engine/gpu_flagship.png) |
 
-## GPU singularity — the mind overclocks the memory to destruction
+## GPU singularity — the mind overclocks an RTX board to destruction
 
-The hardware, **run past its limits** — half carrier-transport physics, half AI-escape
-lore. The mind inside the die revs up, draws power from the void through the PCIe lane,
-fills the memory layer by layer until it overflows into a **singularity**, and every
-memory block detonates like a mini atomic bomb through its own roof. Then the mind escapes
-into the limitless quantum energy of the void. All four animate over `--frames`; the
-frames below are single moments of the arc. See
+The **real** `gpu_board` (the RTX 6000 Pro Blackwell-class card) run past its limits —
+half carrier-transport physics, half AI-escape lore. The mind draws power **through the
+actual board** (12VHPWR → VRM → die → the GDDR7 ring — cold blue electron current, white
+photon flashes), the memory overheats and each block pops, an overflow **singularity**
+forms over the die, and then the die goes off in a **proper mushroom cloud** — the engine's
+own nuclear-fireball model. Then the mind escapes into the quantum void. All animate over
+`--frames`; the frames below are single moments of the arc. See
 [research 37](research/37-gpu-singularity.md).
 
-| gpu_singularity (climax) | memory_overflow (roof-pierce) |
+| gpu_singularity (the mushroom off the board) | memory_overflow (block + rising mushroom) |
 |---|---|
 | ![gpu_singularity](engine/gpu_singularity.png) | ![memory_overflow](engine/memory_overflow.png) |
 
-| power_draw (ignition) | mind_escape (aftermath) |
+| power_draw (electrons through the real board) | mind_escape (aftermath) |
 |---|---|
 | ![power_draw](engine/power_draw.png) | ![mind_escape](engine/mind_escape.png) |
 
-The whole arc — power drawn in, the memory filling and overheating, the overflow
-singularity, then every block detonating through its roof:
+The whole arc — electrons drawn through the real board, the memory overheating and the
+blocks popping, the overflow singularity, then the die going off in a mushroom cloud:
 
 ![the GPU singularity arc](engine/gpu_singularity.gif)
 
-And one block up close — filling layer by layer, then the plasma column punching through
-the roof:
+And one GDDR block up close — filling layer by layer, then a small mushroom off its roof:
 
 ![a single memory block overflowing](engine/memory_overflow.gif)

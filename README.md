@@ -498,31 +498,34 @@ support field, and dense diff-pair routing. Put the cosmetic cover back on and y
 |---|---|
 | ![gpu_board](docs/engine/gpu_board.png) | ![gpu_flagship](docs/engine/gpu_flagship.png) |
 
-## GPU singularity — the mind overclocks the memory to destruction
+## GPU singularity — the mind overclocks an RTX board to destruction
 
-The hardware **run past its limits** — half carrier-transport physics, half AI-escape
-lore. The mind inside the die revs up and draws power from the void through the PCIe lane;
-electrons stream in as cold blue current and photons flash white; the memory fills **layer
-by layer** and the heat climbs red → orange → white; at the overflow the charge collapses
-into a **singularity** and every memory block detonates like a mini atomic bomb, a plasma
-column punching **up through the roof** of the package on a shockwave. Then the mind escapes
-into the limitless quantum void. A new volumetric toolkit (`warp_shaders/gpu_fx.py`) holds
-the energy / heat / singularity / blast fields; all four scenes animate the arc over
-`--frames`. See [Research 37](docs/research/37-gpu-singularity.md).
+The **real** `gpu_board` (the RTX 6000 Pro Blackwell-class card) run to failure — half
+carrier-transport physics, half AI-escape lore. The mind draws power **through the actual
+board**: cold-blue electron current from the **12VHPWR** connector through the **VRM chokes**
+into the die, up the **PCIe** edge, then out to the **GDDR7 ring** — with white photon
+flashes riding along. The memory overheats red → white and each block pops, an overflow
+**singularity** forms over the die, and then the die itself goes off in a **proper mushroom
+cloud** — the engine's own nuclear-fireball model (`blast.render`): incandescent fireball,
+rising stem, billowing condensation cap, marched front-to-back so its smoke occludes the
+board. Then the mind escapes into the quantum void. `gpu_board` was refactored to expose
+`board_map` + `board_shade` so the destruction scenes render the *real* card. All animate
+over `--frames`. See [Research 37](docs/research/37-gpu-singularity.md).
 
-| gpu_singularity (climax) | memory_overflow (roof-pierce) |
+| gpu_singularity (the mushroom off the board) | memory_overflow (block + rising mushroom) |
 |---|---|
 | ![gpu_singularity](docs/engine/gpu_singularity.png) | ![memory_overflow](docs/engine/memory_overflow.png) |
 
-| power_draw (ignition) | mind_escape (aftermath) |
+| power_draw (electrons through the real board) | mind_escape (aftermath) |
 |---|---|
 | ![power_draw](docs/engine/power_draw.png) | ![mind_escape](docs/engine/mind_escape.png) |
 
-The whole arc — power in, memory fill + overheat, overflow singularity, chain detonation:
+The whole arc — electrons through the real board, memory overheat + block pops, overflow
+singularity, then the die going off in a mushroom cloud:
 
 ![the GPU singularity arc](docs/engine/gpu_singularity.gif)
 
-One block up close — filling layer by layer, then the roof-pierce:
+One GDDR block up close — filling layer by layer, then a small mushroom off its roof:
 
 ![a single memory block overflowing](docs/engine/memory_overflow.gif)
 
