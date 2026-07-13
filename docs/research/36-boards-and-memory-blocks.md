@@ -66,6 +66,25 @@ can run. `gpu_open` also strips the cooler away entirely so the board itself is 
 the GPU die, the ring of GDDR, the VRM (chokes + capacitors), the PCIe fingers, and the
 copper traces wiring them.
 
+### The board itself (no cosmetics)
+
+`gpu_board` drops the coolers entirely and shows a **workstation-class** populated PCB (in
+the spirit of an RTX 6000 Pro Blackwell) — the hardware, not the cover:
+
+- an **enormous exposed die** flip-chip on its substrate, dominating the centre;
+- a full **ring of GDDR7** memory packages on three sides for the memory bandwidth;
+- a heavy **multi-phase VRM** — bank after bank of **chokes** with their **MOSFET** power
+  stages and driver ICs — because the die draws hundreds of amps at ~1 V, converted down
+  from the 12 V input;
+- dense **capacitor** arrays (tiny **MLCC**, polymer **POSCAP**, and bulk cans) packed
+  around the die to hold that low voltage steady through huge, fast current swings;
+- a **12VHPWR** power connector, gold **PCIe x16** edge fingers, mount holes, and heavy
+  copper **routing** threading it all together.
+
+The difference between a cheap-looking render and a real board is **density**: a serious
+GPU is almost entirely memory, power delivery, and decoupling wrapped tightly around one
+very large, very hungry die.
+
 ## The platform
 
 - **Motherboard.** The big PCB everything plugs into: the **CPU socket** (with its VRM
@@ -86,7 +105,7 @@ graphics card — would have to model.
 ## Scenes
 
 `ram_stick` · `nvme_ssd` · `cpu` · `heatsink` · `gpu_package` · `graphics_card` ·
-`gpu_blower` · `gpu_open` · `motherboard` · `gpu_floorplan`
+`gpu_blower` · `gpu_open` · `gpu_board` · `motherboard` · `gpu_floorplan`
 
 ## Sources
 
