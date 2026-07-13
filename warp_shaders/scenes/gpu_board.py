@@ -188,6 +188,49 @@ def _routing(lx: float, lz: float) -> float:
     return c
 
 
+@wp.func
+def _dhash(a: float, b: float) -> float:
+    h = wp.sin(a * 12.9898 + b * 78.233) * 43758.5453
+    return h - wp.floor(h)
+
+
+@wp.func
+def _die_look(dx: float, dz: float, time: float) -> wp.vec3:
+    """Die-shot floorplan in die-local coords dx,dz in [-1,1]: SM/GPC compute
+    array, a central L2-cache spine, and a memory-controller / PHY perimeter."""
+    ax = wp.abs(dx)
+    az = wp.abs(dz)
+    # perimeter ring: memory controllers + I/O PHY, fine stripes perpendicular to edge
+    if ax > 0.8 or az > 0.82:
+        s = dz * 42.0
+        if az > 0.82:
+            s = dx * 46.0
+        st = 0.5 + 0.5 * wp.sin(s)
+        return wp.vec3(0.10, 0.20, 0.40) * (0.55 + 0.6 * st)
+    # central L2-cache spine: two amber bands either side of centre
+    if az < 0.12 or (az > 0.32 and az < 0.44):
+        st = 0.5 + 0.5 * wp.sin(dx * 34.0)
+        return wp.vec3(0.42, 0.30, 0.10) * (0.7 + 0.4 * st)
+    # SM / GPC compute array — coarse clusters subdivided into fine cores
+    gcx = dx * 6.0
+    gcz = dz * 5.0
+    ci = wp.floor(gcx)
+    cj = wp.floor(gcz)
+    act = 0.45 + 0.55 * (0.5 + 0.5 * wp.sin(time * 1.6 + _dhash(ci, cj) * 6.2832))
+    fx = gcx - wp.floor(gcx)
+    fz = gcz - wp.floor(gcz)
+    core = 1.0
+    fcx = dx * 46.0 - wp.floor(dx * 46.0)
+    fcz = dz * 40.0 - wp.floor(dz * 40.0)
+    if fcx < 0.14 or fcz < 0.14:
+        core = 0.45                              # fine core-lane separations
+    gpc = 1.0
+    if fx < 0.07 or fz < 0.07:
+        gpc = 0.25                               # thick GPC-cluster boundaries
+    col = wp.vec3(0.10, 0.58, 0.80) * (act * core * gpc)
+    return col + wp.vec3(0.02, 0.05, 0.09)
+
+
 @wp.kernel
 def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
                    right: wp.vec3, up: wp.vec3, width: int, height: int,
@@ -236,15 +279,10 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
 
     if dgpu <= mind + eps:
         if _die_top(q) <= dgpu + eps and q[1] > 0.18:
-            col = ec.lit(n, rd, 0, ao, wp.vec3(0.0, 0.0, 0.0))
-            gx = q[0] / 0.075 - wp.floor(q[0] / 0.075)
-            gz = q[2] / 0.075 - wp.floor(q[2] / 0.075)
-            grid = wp.min(wp.min(gx, 1.0 - gx), wp.min(gz, 1.0 - gz))
-            if grid < 0.12:
-                col = col * 1.6 + wp.vec3(0.06, 0.10, 0.18)
-            else:
-                col = col + wp.vec3(0.02, 0.04, 0.08)                    # faint active-silicon glow
-            img[i, j] = col                                              # exposed die
+            ldx = (q[0] - _GPUX) / _DIEH[0]
+            ldz = (q[2] - 0.05) / _DIEH[2]
+            form = 0.4 + 0.6 * ao                                       # a little PBR form
+            img[i, j] = _die_look(ldx, ldz, time) * form                # exposed die floorplan
         else:
             img[i, j] = ec.lit(n, rd, 4, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.4   # substrate
     elif dmem <= mind + eps:
