@@ -1,0 +1,322 @@
+"""GPU board — an advanced professional graphics board, no cover.
+
+The real thing, stripped of every cosmetic: no shroud, no fans, no heatsink — just
+the dense populated PCB of a workstation-class card (in the spirit of an RTX 6000
+Pro Blackwell). One enormous exposed GPU die dominates the centre, flip-chip on its
+substrate and ringed on three sides by a full set of GDDR7 memory packages. A heavy
+multi-phase VRM — bank after bank of chokes with their MOSFET power stages and driver
+ICs — turns the 12 V input into the hundreds of amps the die drinks, steadied by
+arrays of MLCC and POSCAP capacitors packed around the die. A 12VHPWR connector feeds
+it, a gold PCIe x16 edge plugs it in, and copper routing threads the whole board.
+See ``docs/research/36-boards-and-memory-blocks.md``.
+"""
+
+import math
+
+import numpy as np
+import warp as wp
+
+from ..procedural.sdf import op_subtract, op_union, sd_box, sd_cylinder
+from .. import electronics_common as ec
+from ..scene import Scene
+
+_MAXD = 60.0
+_GPUX = -0.75            # GPU centre x
+_DIEH = wp.vec3(0.86, 0.05, 0.76)   # die half-extents
+
+
+@wp.func
+def _rot(p: wp.vec3, time: float) -> wp.vec3:
+    a = 0.12 + 0.05 * wp.sin(time * 0.3)
+    ca = wp.cos(a)
+    sa = wp.sin(a)
+    q = wp.vec3(ca * p[0] + sa * p[2], p[1], -sa * p[0] + ca * p[2])
+    tb = 0.16
+    ct = wp.cos(tb)
+    st = wp.sin(tb)
+    return wp.vec3(q[0], ct * q[1] - st * q[2], st * q[1] + ct * q[2])
+
+
+@wp.func
+def _pcb(q: wp.vec3) -> float:
+    board = sd_box(q, wp.vec3(3.7, 0.06, 1.5)) - 0.01
+    notch = sd_box(q - wp.vec3(0.9, 0.0, -1.5), wp.vec3(0.09, 0.2, 0.16))   # PCIe key
+    board = op_subtract(board, notch)
+    h0 = sd_cylinder(q - wp.vec3(-3.4, 0.0, 1.25), 0.2, 0.12)               # mount holes
+    h1 = sd_cylinder(q - wp.vec3(3.45, 0.0, 1.25), 0.2, 0.12)
+    board = op_subtract(board, h0)
+    return op_subtract(board, h1)
+
+
+@wp.func
+def _gpu(q: wp.vec3) -> float:
+    sub = sd_box(q - wp.vec3(_GPUX, 0.11, 0.05), wp.vec3(1.12, 0.05, 1.0)) - 0.01
+    die = sd_box(q - wp.vec3(_GPUX, 0.18, 0.05), _DIEH) - 0.004
+    return op_union(sub, die)
+
+
+@wp.func
+def _die_top(q: wp.vec3) -> float:
+    return sd_box(q - wp.vec3(_GPUX, 0.18, 0.05), _DIEH) - 0.004
+
+
+@wp.func
+def _mem(q: wp.vec3) -> float:
+    # GDDR7 packages ringing the GPU: top row, bottom row, left column
+    tx = wp.clamp(wp.floor((q[0] - (-1.9)) / 0.56 + 0.5), 0.0, 4.0)
+    top = sd_box(q - wp.vec3(-1.9 + 0.56 * tx, 0.12, 1.2), wp.vec3(0.24, 0.055, 0.22)) - 0.006
+    bx = wp.clamp(wp.floor((q[0] - (-1.9)) / 0.56 + 0.5), 0.0, 4.0)
+    bot = sd_box(q - wp.vec3(-1.9 + 0.56 * bx, 0.12, -1.1), wp.vec3(0.24, 0.055, 0.22)) - 0.006
+    lz = wp.clamp(wp.floor((q[2] - (-0.55)) / 0.55 + 0.5), 0.0, 2.0)
+    lft = sd_box(q - wp.vec3(-2.35, 0.12, -0.55 + 0.55 * lz), wp.vec3(0.2, 0.055, 0.24)) - 0.006
+    return wp.min(wp.min(top, bot), lft)
+
+
+@wp.func
+def _chokes(q: wp.vec3) -> float:
+    # two dense rows of VRM inductors on the right
+    x0 = 0.7
+    xi = wp.clamp(wp.floor((q[0] - x0) / 0.4 + 0.5), 0.0, 6.0)
+    cx = x0 + 0.4 * xi
+    r0 = sd_box(q - wp.vec3(cx, 0.16, 1.2), wp.vec3(0.15, 0.1, 0.15)) - 0.01
+    r1 = sd_box(q - wp.vec3(cx, 0.16, 0.72), wp.vec3(0.15, 0.1, 0.15)) - 0.01
+    return wp.min(r0, r1)
+
+
+@wp.func
+def _mosfets(q: wp.vec3) -> float:
+    x0 = 0.7
+    xi = wp.clamp(wp.floor((q[0] - x0) / 0.4 + 0.5), 0.0, 6.0)
+    cx = x0 + 0.4 * xi
+    m0 = sd_box(q - wp.vec3(cx, 0.11, 0.97), wp.vec3(0.14, 0.045, 0.08)) - 0.005
+    m1 = sd_box(q - wp.vec3(cx, 0.11, 0.47), wp.vec3(0.14, 0.045, 0.08)) - 0.005
+    return wp.min(m0, m1)
+
+
+@wp.func
+def _mlcc(q: wp.vec3) -> float:
+    # dense MLCC field on the substrate border, skipping the die footprint
+    xi = wp.floor(q[0] / 0.12 + 0.5)
+    zi = wp.floor(q[2] / 0.12 + 0.5)
+    cx = 0.12 * xi
+    cz = 0.12 * zi
+    onsub = wp.abs(cx - _GPUX) < 1.05 and wp.abs(cz - 0.05) < 0.92
+    ondie = wp.abs(cx - _GPUX) < 0.92 and wp.abs(cz - 0.05) < 0.82
+    if onsub and not ondie:
+        return sd_box(q - wp.vec3(cx, 0.1, cz), wp.vec3(0.035, 0.02, 0.02))
+    return 1e9
+
+
+@wp.func
+def _poscap(q: wp.vec3) -> float:
+    # POSCAP array just off the die's -z edge + right edge
+    xi = wp.clamp(wp.floor((q[0] - (-1.4)) / 0.4 + 0.5), 0.0, 3.0)
+    a = sd_box(q - wp.vec3(-1.4 + 0.4 * xi, 0.1, -0.72), wp.vec3(0.16, 0.045, 0.08)) - 0.004
+    zi = wp.clamp(wp.floor((q[2] - (-0.4)) / 0.4 + 0.5), 0.0, 2.0)
+    b = sd_box(q - wp.vec3(0.55, 0.1, -0.4 + 0.4 * zi), wp.vec3(0.08, 0.045, 0.16)) - 0.004
+    return wp.min(a, b)
+
+
+@wp.func
+def _bulk(q: wp.vec3) -> float:
+    # bulk electrolytic cans near the power input
+    c0 = sd_cylinder(q - wp.vec3(2.7, 0.2, -0.2), 0.16, 0.19)
+    c1 = sd_cylinder(q - wp.vec3(3.2, 0.2, -0.2), 0.16, 0.19)
+    return wp.min(c0, c1)
+
+
+@wp.func
+def _power(q: wp.vec3) -> float:
+    # 12VHPWR / 12V-2x6 connector
+    return sd_box(q - wp.vec3(3.15, 0.18, 0.95), wp.vec3(0.55, 0.13, 0.24)) - 0.01
+
+
+@wp.func
+def _ctrl(q: wp.vec3) -> float:
+    a = sd_box(q - wp.vec3(1.4, 0.12, -1.05), wp.vec3(0.22, 0.05, 0.18)) - 0.008   # VRM controller
+    b = sd_box(q - wp.vec3(2.3, 0.11, -1.05), wp.vec3(0.14, 0.04, 0.12)) - 0.006   # BIOS / support
+    return wp.min(a, b)
+
+
+@wp.func
+def _map(p: wp.vec3, time: float) -> float:
+    q = _rot(p, time)
+    d = op_union(_pcb(q), _gpu(q))
+    d = op_union(d, _mem(q))
+    d = op_union(d, _chokes(q))
+    d = op_union(d, _mosfets(q))
+    d = op_union(d, _mlcc(q))
+    d = op_union(d, _poscap(q))
+    d = op_union(d, _bulk(q))
+    d = op_union(d, _power(q))
+    return op_union(d, _ctrl(q))
+
+
+@wp.func
+def _normal(p: wp.vec3, time: float) -> wp.vec3:
+    e = 0.0011
+    dx = _map(p + wp.vec3(e, 0.0, 0.0), time) - _map(p - wp.vec3(e, 0.0, 0.0), time)
+    dy = _map(p + wp.vec3(0.0, e, 0.0), time) - _map(p - wp.vec3(0.0, e, 0.0), time)
+    dz = _map(p + wp.vec3(0.0, 0.0, e), time) - _map(p - wp.vec3(0.0, 0.0, e), time)
+    return wp.normalize(wp.vec3(dx, dy, dz))
+
+
+@wp.func
+def _ao(p: wp.vec3, n: wp.vec3, time: float) -> float:
+    occ = float(0.0)
+    sca = float(1.0)
+    for k in range(5):
+        hr = 0.012 + 0.06 * float(k)
+        d = _map(p + n * hr, time)
+        occ += (hr - d) * sca
+        sca *= 0.85
+    return wp.clamp(1.0 - 2.0 * occ, 0.0, 1.0)
+
+
+@wp.func
+def _routing(lx: float, lz: float) -> float:
+    # dense fine copper routing on exposed board areas (many parallel + orthogonal runs)
+    a = lx * 6.0
+    fa = a - wp.floor(a)
+    b = lz * 6.0
+    fb = b - wp.floor(b)
+    c = float(0.0)
+    if fa < 0.16:
+        c = 1.0
+    if fb < 0.16 and lx > 0.6:
+        c = 1.0
+    return c
+
+
+@wp.kernel
+def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
+                   right: wp.vec3, up: wp.vec3, width: int, height: int,
+                   time: float, tanfov: float):
+    i, j = wp.tid()
+    aspect = float(width) / float(height)
+    u = (2.0 * (float(j) + 0.5) / float(width) - 1.0) * tanfov * aspect
+    v = (2.0 * (float(height - 1 - i) + 0.5) / float(height) - 1.0) * tanfov
+    rd = wp.normalize(fwd + right * u + up * v)
+
+    t = float(0.0)
+    hit = int(0)
+    for _ in range(240):
+        p = eye + rd * t
+        d = _map(p, time)
+        if d < 0.0007 * t + 0.0004:
+            hit = 1
+            break
+        t += d * 0.82
+        if t > _MAXD:
+            break
+
+    if hit == 0:
+        img[i, j] = ec.studio_sky(rd)
+        return
+
+    p = eye + rd * t
+    n = _normal(p, time)
+    ao = _ao(p, n, time)
+
+    q = _rot(p, time)
+    dgpu = _gpu(q)
+    dmem = _mem(q)
+    dch = _chokes(q)
+    dmo = _mosfets(q)
+    dml = _mlcc(q)
+    dpo = _poscap(q)
+    dbk = _bulk(q)
+    dpw = _power(q)
+    dct = _ctrl(q)
+    dpc = _pcb(q)
+    m0 = wp.min(wp.min(dgpu, dmem), wp.min(dch, dmo))
+    m1 = wp.min(wp.min(dml, dpo), wp.min(dbk, dpw))
+    mind = wp.min(wp.min(m0, m1), wp.min(dct, dpc))
+    eps = 0.0009
+
+    if dgpu <= mind + eps:
+        if _die_top(q) <= dgpu + eps and q[1] > 0.18:
+            col = ec.lit(n, rd, 0, ao, wp.vec3(0.0, 0.0, 0.0))
+            gx = q[0] / 0.075 - wp.floor(q[0] / 0.075)
+            gz = q[2] / 0.075 - wp.floor(q[2] / 0.075)
+            grid = wp.min(wp.min(gx, 1.0 - gx), wp.min(gz, 1.0 - gz))
+            if grid < 0.12:
+                col = col * 1.6 + wp.vec3(0.06, 0.10, 0.18)
+            else:
+                col = col + wp.vec3(0.02, 0.04, 0.08)                    # faint active-silicon glow
+            img[i, j] = col                                              # exposed die
+        else:
+            img[i, j] = ec.lit(n, rd, 4, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.4   # substrate
+    elif dmem <= mind + eps:
+        col = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0))
+        if q[1] > 0.16:
+            mk = q[0] / 0.09 - wp.floor(q[0] / 0.09)
+            if mk < 0.12:
+                col = col * 0.6                                          # package marking
+        img[i, j] = col                                                 # GDDR7 modules
+    elif dch <= mind + eps:
+        img[i, j] = ec.lit(n, rd, 7, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.82  # VRM chokes
+    elif dmo <= mind + eps:
+        img[i, j] = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.9   # MOSFET stages
+    elif dml <= mind + eps:
+        col = ec.lit(n, rd, 6, ao, wp.vec3(0.0, 0.0, 0.0))
+        img[i, j] = wp.cw_mul(col, wp.vec3(0.9, 0.8, 0.65))            # MLCC caps
+    elif dpo <= mind + eps:
+        col = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0))
+        if q[1] > 0.12:
+            col = col + wp.vec3(0.18, 0.12, 0.03)                       # POSCAP top stripe
+        img[i, j] = col
+    elif dbk <= mind + eps:
+        img[i, j] = ec.lit(n, rd, 7, ao, wp.vec3(0.0, 0.0, 0.0))        # bulk cans
+    elif dpw <= mind + eps:
+        col = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0))
+        if q[1] > 0.24:
+            sx = q[0] / 0.12 - wp.floor(q[0] / 0.12)                    # connector pins
+            if sx < 0.5:
+                col = col * 0.4
+        img[i, j] = col
+    elif dct <= mind + eps:
+        img[i, j] = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.85  # controller ICs
+    else:
+        # dark professional PCB: gold PCIe fingers on -z edge, dense routing elsewhere
+        if q[2] < -1.28 and q[1] > -0.02:
+            fx = q[0] / 0.1 - wp.floor(q[0] / 0.1)
+            if fx > 0.28 and wp.abs(q[0] - 0.9) > 0.15:
+                img[i, j] = ec.lit(n, rd, 2, ao, wp.vec3(0.0, 0.0, 0.0))
+            else:
+                img[i, j] = ec.lit(n, rd, 4, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.4
+        elif q[1] > 0.05 and n[1] > 0.5 and _routing(q[0], q[2]) > 0.5:
+            img[i, j] = ec.lit(n, rd, 2, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.5   # copper routing
+        else:
+            img[i, j] = ec.lit(n, rd, 4, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.26   # dark pro PCB
+
+
+def _render(width, height, time, mouse, device):
+    az = 0.14 + float(mouse[0]) * 0.01
+    el = 0.78 + float(mouse[1]) * 0.005
+    dist = 8.4
+    eye = wp.vec3(dist * math.cos(el) * math.sin(az),
+                  dist * math.sin(el) + 0.15,
+                  dist * math.cos(el) * math.cos(az))
+    tgt = wp.vec3(0.0, -0.12, 0.0)
+    fwd = wp.normalize(tgt - eye)
+    right = wp.normalize(wp.cross(fwd, wp.vec3(0.0, 1.0, 0.0)))
+    up = wp.cross(right, fwd)
+    tanfov = math.tan(math.radians(42.0) * 0.5)
+
+    img = wp.zeros((height, width), dtype=wp.vec3, device=device)
+    wp.launch(_render_kernel, dim=(height, width),
+              inputs=[img, eye, fwd, right, up, width, height, time, tanfov],
+              device=device)
+    wp.synchronize_device(device)
+    return ec.finish(img.numpy(), width, height, threshold=1.7, strength=0.3)
+
+
+SCENE = Scene(
+    name="gpu_board",
+    description="an advanced workstation GPU board with no cover — a huge exposed "
+                "die ringed by GDDR7 memory, a dense multi-phase VRM (chokes, MOSFETs, "
+                "drivers), MLCC/POSCAP/bulk cap arrays, a 12VHPWR connector, gold PCIe "
+                "x16 fingers, and heavy copper routing. The real board, no cosmetics.",
+    renderer=_render,
+)
