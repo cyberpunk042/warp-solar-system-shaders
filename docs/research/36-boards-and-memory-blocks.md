@@ -50,6 +50,22 @@ The round's centrepiece. A GPU is a huge die that is nearly all **compute**, so 
   extra watts, and a metal **I/O bracket** for the display outputs.
 - **A cooler** — a shroud and finned heatsink with two or three **fans** over the whole thing.
 
+### Cooling styles
+
+The same board can wear different coolers, and the choice changes how the card behaves:
+
+| Style | How it moves air | Best for | Scene |
+|---|---|---|---|
+| **Open-air** | 2–3 **axial** fans push air *down* through the fins; hot air spills into the case | most desktop cards; quietest, coolest | `graphics_card` |
+| **Blower** | one **centrifugal** fan *induces* air along a sealed tunnel and exhausts it out the bracket | small cases, dense multi-GPU servers | `gpu_blower` |
+| **Passive (fanless)** | no fan at all — a big heatsink sheds heat by convection alone | silent / low-power cards | `gpu_open` |
+
+A **blower** is self-contained (no hot air dumped in the case) but louder; **open-air** is
+quieter and cooler but recirculates heat; **passive** is silent but limits how hard the die
+can run. `gpu_open` also strips the cooler away entirely so the board itself is visible —
+the GPU die, the ring of GDDR, the VRM (chokes + capacitors), the PCIe fingers, and the
+copper traces wiring them.
+
 ## The platform
 
 - **Motherboard.** The big PCB everything plugs into: the **CPU socket** (with its VRM
@@ -70,7 +86,7 @@ graphics card — would have to model.
 ## Scenes
 
 `ram_stick` · `nvme_ssd` · `cpu` · `heatsink` · `gpu_package` · `graphics_card` ·
-`motherboard` · `gpu_floorplan`
+`gpu_blower` · `gpu_open` · `motherboard` · `gpu_floorplan`
 
 ## Sources
 

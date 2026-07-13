@@ -473,6 +473,15 @@ shader-core compute fabric (the target of a "virtual graphics card"):
 |---|---|---|---|
 | ![graphics_card](docs/engine/graphics_card.png) | ![gpu_package](docs/engine/gpu_package.png) | ![motherboard](docs/engine/motherboard.png) | ![gpu_floorplan](docs/engine/gpu_floorplan.png) |
 
+The same high-end card in **three cooling styles** — an open-air triple-fan
+(`graphics_card`), a **blower** / induction fan that exhausts out the back
+(`gpu_blower`), and a **fanless / open** board with the GPU, memory, VRM, and copper
+traces all exposed (`gpu_open`, the board to trace current across):
+
+| graphics_card (open-air) | gpu_blower (blower) | gpu_open (fanless, exposed) |
+|---|---|---|
+| ![graphics_card](docs/engine/graphics_card.png) | ![gpu_blower](docs/engine/gpu_blower.png) | ![gpu_open](docs/engine/gpu_open.png) |
+
 ```bash
 python render.py --scene graphics_card -o gpu.png
 python render.py --scene gpu_floorplan --frames 120 --gif out/die.gif
