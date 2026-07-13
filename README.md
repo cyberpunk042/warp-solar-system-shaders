@@ -575,11 +575,27 @@ Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosin
 hemisphere sampling over the SDF scene) scatters rays around the room many times, so colour
 bleeds between surfaces, shadows go soft and contact-tight for free, and everything is lit
 consistently by whatever emits — the missing physics the single-bounce renderer couldn't
-fake. See [Research 39](docs/research/39-engine-leap.md).
+fake. The same integrator then absorbs **specular** materials (mirror + Snell/Fresnel glass),
+**subsurface** scattering (a bounded random walk inside a translucent solid) and **motion
+blur** (a random shutter instant per ray). See [Research 39](docs/research/39-engine-leap.md).
 
-| cornell_box — real global illumination (colour bleed, soft shadows, one ceiling light) |
-|---|
-| ![cornell_box](docs/engine/cornell_box.png) |
+| cornell_box — global illumination | glass_box — reflection + refraction |
+|---|---|
+| ![cornell_box](docs/engine/cornell_box.png) | ![glass_box](docs/engine/glass_box.png) |
+| subsurface — translucent random walk | motion_blur — distributed temporal sampling |
+| ![subsurface](docs/engine/subsurface.png) | ![motion_blur](docs/engine/motion_blur.png) |
+
+## Physics simulations
+
+Not physics *drawn* — physics **run**. A state stepped forward in time by the governing
+equations on Warp; the image is whatever the dynamics produce. A real O(N²) **N-body gravity**
+sim (two star clouds colliding, tidal tails, a merged core) and a 2-D incompressible
+**Navier–Stokes** fluid (Stam's Stable Fluids — semi-Lagrangian advection, pressure projection,
+buoyancy, vorticity confinement). See [Research 40](docs/research/40-physics-sims.md).
+
+| nbody — O(N²) gravity, two clouds colliding | fluid — Navier–Stokes smoke plume |
+|---|---|
+| ![nbody](docs/engine/nbody.png) | ![fluid](docs/engine/fluid.png) |
 
 ```bash
 python render.py --scene gpu_singularity --frames 180 --gif out/singularity.gif

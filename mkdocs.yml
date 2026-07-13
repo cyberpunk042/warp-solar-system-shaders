@@ -92,6 +92,7 @@ nav:
       - GPU singularity: research/37-gpu-singularity.md
       - Electricity in motion: research/38-electricity.md
       - Engine leap (path tracing): research/39-engine-leap.md
+      - Physics simulations (gravity, fluids): research/40-physics-sims.md
 
 markdown_extensions:
   - admonition

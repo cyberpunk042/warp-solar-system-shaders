@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (280 scenes).
+`python render.py --list` for the full, current list (285 scenes).
 
 ## Engine showcase
 
@@ -729,12 +729,31 @@ Cherenkov-cone `tachyon`).
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
 hemisphere sampling over an SDF scene) lets rays scatter around the room many times — so
 colour bleeds between surfaces, shadows go soft and contact-tight for free, and everything is
-lit consistently by whatever emits. See [research 39](research/39-engine-leap.md).
+lit consistently by whatever emits. Then the same integrator absorbs **specular** materials
+(mirror + Snell/Fresnel glass), **subsurface** scattering (a bounded random walk inside a
+translucent solid), and **motion blur** (a random instant sampled per ray). See
+[research 39](research/39-engine-leap.md).
 
-| cornell_box (path-traced global illumination) |
-|---|
-| ![cornell_box](engine/cornell_box.png) |
+| cornell_box (path-traced global illumination) | glass_box (reflection + refraction) |
+|---|---|
+| ![cornell_box](engine/cornell_box.png) | ![glass_box](engine/glass_box.png) |
+| subsurface (translucent random walk) | motion_blur (distributed temporal sampling) |
+| ![subsurface](engine/subsurface.png) | ![motion_blur](engine/motion_blur.png) |
 
 And one GDDR block up close — filling layer by layer, then a small mushroom off its roof:
 
 ![a single memory block overflowing](engine/memory_overflow.gif)
+
+## Physics simulations
+
+Not physics *drawn* — physics **run**. A state stepped forward in time by the governing
+equations on Warp, the image is whatever the dynamics produce. See
+[research 40](research/40-physics-sims.md).
+
+| nbody (O(N²) gravity — two star clouds colliding) | fluid (2-D Navier–Stokes smoke plume) |
+|---|---|
+| ![nbody](engine/nbody.png) | ![fluid](engine/fluid.png) |
+
+The fluid plume rising and rolling — buoyancy, vorticity confinement, pressure projection every step:
+
+![a rising Navier–Stokes smoke plume](engine/fluid.gif)
