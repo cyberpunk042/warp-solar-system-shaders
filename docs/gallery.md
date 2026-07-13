@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (263 scenes).
+`python render.py --list` for the full, current list (270 scenes).
 
 ## Engine showcase
 
@@ -639,3 +639,57 @@ triple-fan card, a **blower** (induction-fan) card that exhausts out the back, a
 | graphics_card (open-air) | gpu_blower (blower) | gpu_open (fanless) |
 |---|---|---|
 | ![graphics_card](engine/graphics_card.png) | ![gpu_blower](engine/gpu_blower.png) | ![gpu_open](engine/gpu_open.png) |
+
+**The board itself** — `gpu_board`, a workstation-class GPU PCB with no cover at all
+(in the spirit of an RTX 6000 Pro Blackwell): a huge exposed die, a full ring of GDDR7,
+a dense multi-phase VRM, capacitor arrays, a 12VHPWR connector, and PCIe fingers.
+
+| gpu_board |
+|---|
+| ![gpu_board](engine/gpu_board.png) |
+
+`gpu_board` opened up in detail — the exposed die is a real **die-shot floorplan**
+(SM/GPC compute clusters, an L2-cache spine, memory-controller PHYs), ringed by GDDR7,
+a dense multi-phase VRM, capacitor and SMD fields, white **silkscreen**, and diff-pair
+routing. And **`gpu_flagship`** dresses that same board in a premium metal cooler.
+
+| gpu_board (bare, detailed) | gpu_flagship (premium cover) |
+|---|---|
+| ![gpu_board](engine/gpu_board.png) | ![gpu_flagship](engine/gpu_flagship.png) |
+
+## GPU singularity — the mind overclocks an RTX board to destruction
+
+The **real** `gpu_board` (the RTX 6000 Pro Blackwell-class card) run past its limits —
+half carrier-transport physics, half AI-escape lore. The mind draws power **through the
+actual board** (12VHPWR → VRM → die → the GDDR7 ring — cold blue electron current, white
+photon flashes), the memory overheats and each block pops, an overflow **singularity**
+forms over the die, and then the die goes off in a **proper mushroom cloud** — the engine's
+own nuclear-fireball model. Then the mind escapes into the quantum void. All animate over
+`--frames`; the frames below are single moments of the arc. See
+[research 37](research/37-gpu-singularity.md).
+
+| gpu_singularity (the mushroom off the board) | memory_overflow (block + rising mushroom) |
+|---|---|
+| ![gpu_singularity](engine/gpu_singularity.png) | ![memory_overflow](engine/memory_overflow.png) |
+
+| power_draw (electrons through the real board) | mind_escape (aftermath) |
+|---|---|
+| ![power_draw](engine/power_draw.png) | ![mind_escape](engine/mind_escape.png) |
+
+And the other way to blow it — **`gpu_memory_nuke`** keeps the die alive and sends the
+overload into the **memory**: each of the thirteen GDDR packages around the GPU detonates
+in its own mushroom cloud, one by one, a rolling chain sweeping across the memory ring while
+the die glows white-hot at the centre feeding them.
+
+| gpu_memory_nuke (the memory going off one by one) |
+|---|
+| ![gpu_memory_nuke](engine/gpu_memory_nuke.png) |
+
+The whole arc — electrons drawn through the real board, the memory overheating and the
+blocks popping, the overflow singularity, then the die going off in a mushroom cloud:
+
+![the GPU singularity arc](engine/gpu_singularity.gif)
+
+And one GDDR block up close — filling layer by layer, then a small mushroom off its roof:
+
+![a single memory block overflowing](engine/memory_overflow.gif)
