@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (285 scenes).
+`python render.py --list` for the full, current list (289 scenes).
 
 ## Engine showcase
 
@@ -757,3 +757,22 @@ equations on Warp, the image is whatever the dynamics produce. See
 The fluid plume rising and rolling — buoyancy, vorticity confinement, pressure projection every step:
 
 ![a rising Navier–Stokes smoke plume](engine/fluid.gif)
+
+## Waves, resonance & interference
+
+One equation — ``u_tt = c²∇²u`` — seen four ways: sand jumping to the still nodal lines of a
+ringing plate (**cymatics**), two ripples crossing, a drum singing its **Bessel** modes, and a
+plane wave squeezing through **two slits**. Analytic eigenmodes for the plate and drum;
+a real finite-difference wave-equation sim (`sim/wave.py`) for the ripple tank and double slit.
+See [research 41](research/41-waves-and-resonance.md).
+
+| chladni (cymatics — sand on the nodal lines) | ripple_tank (two-source interference) |
+|---|---|
+| ![chladni](engine/chladni.png) | ![ripple_tank](engine/ripple_tank.png) |
+| standing_membrane (a drumhead's Bessel mode) | double_slit (Young's fringes forming) |
+| ![standing_membrane](engine/standing_membrane.png) | ![double_slit](engine/double_slit.png) |
+
+The plate sweeping up through its resonances, and the double slit's fringe fan building as the wave arrives:
+
+| ![Chladni modes morphing](engine/chladni.gif) | ![double-slit fringes forming](engine/double_slit.gif) |
+|---|---|
