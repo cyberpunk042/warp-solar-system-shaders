@@ -81,6 +81,41 @@ def blackbody(t: float) -> wp.vec3:
 # --------------------------------------------------------------------------- #
 
 @wp.func
+def wavelength_rgb(nm: float) -> wp.vec3:
+    """Approximate visible-spectrum colour for a wavelength in nanometres
+    (~380–750 nm), the classic piecewise Bruton approximation. Returns an
+    un-normalised linear RGB (dim at the spectrum's violet/red ends). Used by the
+    prism, rainbow and diffraction scenes to colour light by wavelength."""
+    r = float(0.0)
+    g = float(0.0)
+    b = float(0.0)
+    if nm >= 380.0 and nm < 440.0:
+        r = -(nm - 440.0) / (440.0 - 380.0)
+        b = 1.0
+    elif nm >= 440.0 and nm < 490.0:
+        g = (nm - 440.0) / (490.0 - 440.0)
+        b = 1.0
+    elif nm >= 490.0 and nm < 510.0:
+        g = 1.0
+        b = -(nm - 510.0) / (510.0 - 490.0)
+    elif nm >= 510.0 and nm < 580.0:
+        r = (nm - 510.0) / (580.0 - 510.0)
+        g = 1.0
+    elif nm >= 580.0 and nm < 645.0:
+        r = 1.0
+        g = -(nm - 645.0) / (645.0 - 580.0)
+    elif nm >= 645.0 and nm <= 750.0:
+        r = 1.0
+    # intensity fall-off near the ends of the visible range
+    fall = float(1.0)
+    if nm < 420.0:
+        fall = 0.3 + 0.7 * (nm - 380.0) / (420.0 - 380.0)
+    elif nm > 700.0:
+        fall = 0.3 + 0.7 * (750.0 - nm) / (750.0 - 700.0)
+    return wp.vec3(r, g, b) * wp.max(fall, 0.0)
+
+
+@wp.func
 def luminance(c: wp.vec3) -> float:
     """Rec. 709 relative luminance."""
     return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]
