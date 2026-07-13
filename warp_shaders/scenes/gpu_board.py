@@ -211,6 +211,44 @@ def _routing(lx: float, lz: float) -> float:
 
 
 @wp.func
+def _silk(lx: float, lz: float) -> float:
+    """White silkscreen: board border, component courtyards, row ticks, labels."""
+    w = 0.018
+    s = float(0.0)
+    # board border inset
+    if wp.abs(wp.abs(lx) - 3.55) < w and wp.abs(lz) < 1.44:
+        s = 1.0
+    if wp.abs(wp.abs(lz) - 1.42) < w and wp.abs(lx) < 3.57:
+        s = 1.0
+    # die courtyard outline
+    ddx = wp.abs(lx - _GPUX)
+    ddz = wp.abs(lz - 0.05)
+    if wp.abs(ddx - 1.2) < w and ddz < 1.06:
+        s = 1.0
+    if wp.abs(ddz - 1.06) < w and ddx < 1.2:
+        s = 1.0
+    # memory-row bracket lines (top + bottom) with per-module designator ticks
+    if wp.abs(lz - 1.46) < 0.5 and lx > -2.2 and lx < 0.6:
+        if wp.abs(lz - 1.47) < w:
+            s = 1.0
+        tk = lx - 0.56 * wp.floor(lx / 0.56 + 0.5)
+        if wp.abs(tk) < 0.02 and wp.abs(lz - 1.44) < 0.06:
+            s = 1.0
+    # VRM label bracket (top-right)
+    if wp.abs(lz - 1.47) < w and lx > 0.6 and lx < 3.4:
+        s = 1.0
+    # a solid silkscreen label block near the power connector
+    if lx > 2.5 and lx < 3.5 and lz > 0.45 and lz < 0.62:
+        s = 1.0
+    # fiducial dots at two corners
+    if wp.length(wp.vec2(lx + 3.3, lz + 1.2)) < 0.05:
+        s = 1.0
+    if wp.length(wp.vec2(lx - 3.3, lz - 1.2)) < 0.05:
+        s = 1.0
+    return s
+
+
+@wp.func
 def _dhash(a: float, b: float) -> float:
     h = wp.sin(a * 12.9898 + b * 78.233) * 43758.5453
     return h - wp.floor(h)
@@ -363,6 +401,8 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
                 img[i, j] = ec.lit(n, rd, 2, ao, wp.vec3(0.0, 0.0, 0.0))
             else:
                 img[i, j] = ec.lit(n, rd, 4, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.4
+        elif q[1] > 0.04 and n[1] > 0.5 and _silk(q[0], q[2]) > 0.5:
+            img[i, j] = wp.vec3(0.72, 0.74, 0.72) * (0.6 + 0.4 * ao)          # white silkscreen
         elif q[1] > 0.05 and n[1] > 0.5 and _routing(q[0], q[2]) > 0.5:
             img[i, j] = ec.lit(n, rd, 2, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.5   # copper routing
         else:
