@@ -41,6 +41,7 @@ nav:
       - Overview: api/index.md
       - procedural: api/procedural.md
       - engine: api/engine.md
+      - sim (physics simulators): api/sim.md
       - textures: api/textures.md
       - lod: api/lod.md
       - scene: api/scene.md
