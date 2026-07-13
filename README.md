@@ -450,7 +450,21 @@ A third massive four-strand round (see
 |---|---|---|---|---|---|
 | ![virus](docs/engine/virus.png) | ![mitochondrion](docs/engine/mitochondrion.png) | ![ribosome](docs/engine/ribosome.png) | ![bacterium](docs/engine/bacterium.png) | ![bilayer](docs/engine/lipid_bilayer.png) | ![immune cell](docs/engine/immune_cell.png) |
 
+**Electronics — silicon to the memory bit** — a computer built from the ground up,
+respecting the physics, in four steps (see
+[Research 35](docs/research/35-electronics-components.md)): the **silicon** material
+(boule → crystal lattice → wafer → doped p-n junction); the **discrete components**
+(resistor, capacitor, LED/diode, inductor, quartz oscillator); **interconnect &
+packaging** (PCB, DIP, BGA, gold bond wires); and the single-bit **memory & logic cells**
+that a RAM, an SSD, or a processor is tiled from:
+
+| dram_cell (RAM bit) | nand_flash_cell (SSD bit) | cmos_inverter (logic atom) | sram_cell (cache bit) |
+|---|---|---|---|
+| ![dram_cell](docs/engine/dram_cell.png) | ![nand_flash_cell](docs/engine/nand_flash_cell.png) | ![cmos_inverter](docs/engine/cmos_inverter.png) | ![sram_cell](docs/engine/sram_cell.png) |
+
 ```bash
+python render.py --scene silicon_wafer -o wafer.png
+python render.py --scene bga -o bga.png
 python render.py --scene prism -o prism.png
 python render.py --scene virus --frames 60 --gif out/virus.gif
 python render.py --scene ferrofluid --frames 60 --gif out/ferro.gif
