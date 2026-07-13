@@ -6,8 +6,10 @@ lives at ``reference/neutron-star.frag``; this is a faithful ``@wp.kernel``
 translation, exposed through the scene registry as ``SCENE``.
 """
 
+import numpy as np
 import warp as wp
 
+from ..engine import post
 from ..scene import Scene
 from ..sdf import fbm2d, hash2d, noise2d, rot2, sd_torus
 
@@ -222,8 +224,24 @@ def render_kernel(
     img[i, j] = col
 
 
+def _render(width, height, time, mouse, device):
+    ss = 2                                            # supersample the thin jets + rings
+    W, H = int(width) * ss, int(height) * ss
+    img = wp.zeros((H, W), dtype=wp.vec3, device=device)
+    wp.launch(render_kernel, dim=(H, W),
+              inputs=[img, int(W), int(H), float(time), wp.vec2(0.0, 0.0)], device=device)
+    wp.synchronize_device(device)
+    hdr = post.downsample(img.numpy().astype(np.float32), ss)
+    hdr = np.maximum(hdr - 0.07, 0.0)                 # crush the flat ambient base to black
+    r = max(2, int(min(width, height) * 0.014))
+    hdr = post.bloom(hdr, threshold=1.0, strength=0.5, radius=r, passes=3, octaves=2)
+    return post.tonemap(hdr, mode="aces", exposure=1.0, preserve_hue=True)
+
+
 SCENE = Scene(
     name="neutron_star",
-    kernel=render_kernel,
-    description="Pulsar core with relativistic jets, magnetic field rings, orbiting matter, and a starfield.",
+    renderer=_render,
+    description="A pulsar core with relativistic jets, magnetic field rings and orbiting "
+                "matter over a starfield — a soft HDR glow through the engine bloom + "
+                "hue-preserving tonemap, 2×2 supersampled.",
 )
