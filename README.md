@@ -569,6 +569,18 @@ the motion carried by pulses of glow racing up the beam and the spirals:
 
 ![tachyon_v2](docs/engine/tachyon_v2.gif)
 
+## Engine leap — global illumination
+
+Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
+hemisphere sampling over the SDF scene) scatters rays around the room many times, so colour
+bleeds between surfaces, shadows go soft and contact-tight for free, and everything is lit
+consistently by whatever emits — the missing physics the single-bounce renderer couldn't
+fake. See [Research 39](docs/research/39-engine-leap.md).
+
+| cornell_box — real global illumination (colour bleed, soft shadows, one ceiling light) |
+|---|
+| ![cornell_box](docs/engine/cornell_box.png) |
+
 ```bash
 python render.py --scene gpu_singularity --frames 180 --gif out/singularity.gif
 python render.py --scene memory_overflow --frames 120 --gif out/overflow.gif

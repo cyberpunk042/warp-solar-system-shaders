@@ -91,6 +91,7 @@ nav:
       - Boards & memory blocks: research/36-boards-and-memory-blocks.md
       - GPU singularity: research/37-gpu-singularity.md
       - Electricity in motion: research/38-electricity.md
+      - Engine leap (path tracing): research/39-engine-leap.md
 
 markdown_extensions:
   - admonition
