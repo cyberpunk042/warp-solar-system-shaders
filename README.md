@@ -529,6 +529,10 @@ white-hot at the centre feeding them.
 |---|
 | ![gpu_memory_nuke](docs/engine/gpu_memory_nuke.png) |
 
+The chain rolling across the memory ring, die surviving at the centre:
+
+![the memory-block chain detonation](docs/engine/gpu_memory_nuke.gif)
+
 The whole arc — electrons through the real board, memory overheat + block pops, overflow
 singularity, then the die going off in a mushroom cloud:
 
@@ -537,6 +541,45 @@ singularity, then the die going off in a mushroom cloud:
 One GDDR block up close — filling layer by layer, then a small mushroom off its roof:
 
 ![a single memory block overflowing](docs/engine/memory_overflow.gif)
+
+## Electricity in motion
+
+Charge that flows and does work — the sequel to pushing electrons through the GPU. A
+toolkit (`warp_shaders/electric.py`) glows conductors and arcs and generates **fractal
+lightning** (recursive midpoint displacement + branching = stepped-leader dielectric
+breakdown). Eight scenes, all animated over `--frames`. See
+[Research 38](docs/research/38-electricity.md).
+
+| lightning | tesla_coil | spark_gap | plasma_globe |
+|---|---|---|---|
+| ![lightning](docs/engine/lightning.png) | ![tesla_coil](docs/engine/tesla_coil.png) | ![spark_gap](docs/engine/spark_gap.png) | ![plasma_globe](docs/engine/plasma_globe.png) |
+
+| capacitor_charge | electric_motor | transformer | power_grid |
+|---|---|---|---|
+| ![capacitor_charge](docs/engine/capacitor_charge.png) | ![electric_motor](docs/engine/electric_motor.png) | ![transformer](docs/engine/transformer.png) | ![power_grid](docs/engine/power_grid.png) |
+
+```bash
+python render.py --scene lightning --frames 120 --gif out/lightning.gif
+python render.py --scene tesla_coil --frames 120 --gif out/tesla.gif
+```
+
+A luminous exotic-particle study on the same glow toolkit — **`tachyon_v2`**: a ray
+climbing the axis with a central orb and two rays spiralling into a conic destination,
+the motion carried by pulses of glow racing up the beam and the spirals:
+
+![tachyon_v2](docs/engine/tachyon_v2.gif)
+
+## Engine leap — global illumination
+
+Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
+hemisphere sampling over the SDF scene) scatters rays around the room many times, so colour
+bleeds between surfaces, shadows go soft and contact-tight for free, and everything is lit
+consistently by whatever emits — the missing physics the single-bounce renderer couldn't
+fake. See [Research 39](docs/research/39-engine-leap.md).
+
+| cornell_box — real global illumination (colour bleed, soft shadows, one ceiling light) |
+|---|
+| ![cornell_box](docs/engine/cornell_box.png) |
 
 ```bash
 python render.py --scene gpu_singularity --frames 180 --gif out/singularity.gif

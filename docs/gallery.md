@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (270 scenes).
+`python render.py --list` for the full, current list (280 scenes).
 
 ## Engine showcase
 
@@ -685,10 +685,55 @@ the die glows white-hot at the centre feeding them.
 |---|
 | ![gpu_memory_nuke](engine/gpu_memory_nuke.png) |
 
+The chain rolling across the memory ring — each GDDR package going off in turn while the
+die survives at the centre:
+
+![the memory-block chain detonation](engine/gpu_memory_nuke.gif)
+
 The whole arc — electrons drawn through the real board, the memory overheating and the
 blocks popping, the overflow singularity, then the die going off in a mushroom cloud:
 
 ![the GPU singularity arc](engine/gpu_singularity.gif)
+
+## Electricity in motion
+
+Charge that flows and does work — the sequel to pushing electrons through the GPU. A
+toolkit (`warp_shaders.electric`) glows conductors, arcs, and a **fractal lightning**
+generator (recursive midpoint displacement + branching = stepped-leader dielectric
+breakdown). Every scene animates over `--frames`. See
+[research 38](research/38-electricity.md).
+
+| lightning | tesla_coil | spark_gap |
+|---|---|---|
+| ![lightning](engine/lightning.png) | ![tesla_coil](engine/tesla_coil.png) | ![spark_gap](engine/spark_gap.png) |
+
+| plasma_globe | capacitor_charge | electric_motor |
+|---|---|---|
+| ![plasma_globe](engine/plasma_globe.png) | ![capacitor_charge](engine/capacitor_charge.png) | ![electric_motor](engine/electric_motor.png) |
+
+| transformer | power_grid |
+|---|---|
+| ![transformer](engine/transformer.png) | ![power_grid](engine/power_grid.png) |
+
+A luminous exotic-particle study built on the same glow toolkit — **`tachyon_v2`**: a ray
+climbing the axis with a central orb and two rays spiralling into a conic destination, the
+motion carried by pulses of glow racing up the beam and the spirals (a companion to the
+Cherenkov-cone `tachyon`).
+
+| tachyon_v2 |
+|---|
+| ![tachyon_v2](engine/tachyon_v2.png) |
+
+## Engine leap — global illumination
+
+Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
+hemisphere sampling over an SDF scene) lets rays scatter around the room many times — so
+colour bleeds between surfaces, shadows go soft and contact-tight for free, and everything is
+lit consistently by whatever emits. See [research 39](research/39-engine-leap.md).
+
+| cornell_box (path-traced global illumination) |
+|---|
+| ![cornell_box](engine/cornell_box.png) |
 
 And one GDDR block up close — filling layer by layer, then a small mushroom off its roof:
 
