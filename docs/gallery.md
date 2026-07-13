@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (138 scenes).
+`python render.py --list` for the full, current list (161 scenes).
 
 ## Engine showcase
 
@@ -272,6 +272,47 @@ confinement bag, and the electron's real probability cloud.
 | | |
 |---|---|
 | **the Standard Model chart** — all 17 particles, family-coloured, mass-scaled<br>![standard_model](engine/standard_model.png) | **beta decay** — n→p+e⁻+ν̄ₑ, a down quark flips emitting a W⁻<br>![beta_decay](engine/beta_decay.png) |
+
+## Chemistry — atoms into molecules
+
+The rung up from the atoms (`warp_shaders.molecules`) — ball-and-stick molecules,
+crystals and reactions. See [Research 22](research/22-chemistry-and-molecules.md).
+
+| | | | |
+|---|---|---|---|
+| **water** H₂O (bent)<br>![water](engine/water.png) | **CO₂** (linear)<br>![carbon_dioxide](engine/carbon_dioxide.png) | **methane** CH₄ (tetrahedral)<br>![methane](engine/methane.png) | **ammonia** NH₃<br>![ammonia](engine/ammonia.png) |
+| **benzene** C₆H₆ (aromatic ring)<br>![benzene](engine/benzene.png) | **salt crystal** NaCl lattice<br>![salt_crystal](engine/salt_crystal.png) | **combustion** CH₄+2O₂→CO₂+2H₂O<br>![combustion](engine/combustion.png) | **periodic table** (block-coloured)<br>![periodic_table](engine/periodic_table.png) |
+
+## The origin & the largest scales
+
+The other bookend of the sub-atomic (`warp_shaders.scenes`, cosmology) — the Big
+Bang, the CMB, and the cosmic web. See
+[Research 23](research/23-origin-and-large-scale-universe.md).
+
+| | | |
+|---|---|---|
+| **Big Bang** — expanding cooling plasma<br>![big_bang](engine/big_bang.png) | **CMB** — the anisotropy sky (Planck palette)<br>![cmb](engine/cmb.png) | **cosmic web** — filaments + voids<br>![cosmic_web](engine/cosmic_web.png) |
+| **first stars** — cosmic dawn igniting<br>![first_stars](engine/first_stars.png) | **structure formation** — the web assembling<br>![structure_formation](engine/structure_formation.png) | |
+
+## The living body
+
+Cells, organs and the mind (`warp_shaders.scenes`, biology). See
+[Research 24](research/24-the-living-body.md).
+
+| | | |
+|---|---|---|
+| **the mind** — a neural network firing<br>![neural_net](engine/neural_net.png) | **neuron** — an action potential<br>![neuron](engine/neuron.png) | **heartbeat** — a beating heart<br>![heartbeat](engine/heartbeat.png) |
+| **DNA transcription** — helix → mRNA<br>![dna_transcription](engine/dna_transcription.png) | **red blood cells** — biconcave discs flowing<br>![red_blood_cells](engine/red_blood_cells.png) | |
+
+## Earth & weather
+
+The planet as a machine (`warp_shaders.scenes`, Earth systems). See
+[Research 25](research/25-earth-and-weather.md).
+
+| | | |
+|---|---|---|
+| **hurricane** — a cyclone from orbit<br>![hurricane](engine/hurricane.png) | **lightning storm** — forked bolts<br>![lightning_storm](engine/lightning_storm.png) | **plate tectonics** — glowing plate boundaries<br>![plate_tectonics](engine/plate_tectonics.png) |
+| **ocean currents** — the great conveyor<br>![ocean_currents](engine/ocean_currents.png) | **water cycle** — evaporation → rain<br>![water_cycle](engine/water_cycle.png) | |
 
 ## Extraordinary cosmos
 
