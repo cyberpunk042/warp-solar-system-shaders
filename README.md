@@ -60,6 +60,8 @@ for every public symbol.
 | ![aurora](docs/engine/aurora.png) | ![lava planet](docs/engine/lava_planet.png) | ![dunes](docs/engine/dunes.png) |
 | **glacier** | **depth of field** | **slot canyon** |
 | ![glacier](docs/engine/glacier.png) | ![depth of field](docs/engine/dof_showcase.png) | ![canyon](docs/engine/canyon.png) |
+| **ringed vista** (giant over dunes) | **binary sea** (twin suns) | **comet** (ion + dust tails) |
+| ![ringed vista](docs/engine/ringed_vista.png) | ![binary sea](docs/engine/binary_sea.png) | ![comet](docs/engine/comet.png) |
 | **underwater reef** | **Mandelbulb fractal** | **Mandelbox fractal** |
 | ![reef](docs/engine/reef.png) | ![mandelbulb](docs/engine/mandelbulb.png) | ![mandelbox](docs/engine/mandelbox.png) |
 | **Menger sponge** | **Sierpinski tetrahedron** | **kaleidoscopic temple (KIFS)** |

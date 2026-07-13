@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (210 scenes).
+`python render.py --list` for the full, current list (213 scenes).
 
 ## Engine showcase
 
@@ -13,12 +13,21 @@ volumetrics + post) and honours `--quality low..ultra`.
 |---|---|---|
 | **Earth v2** (flagship)<br>PBR ocean + real atmosphere + volumetric clouds<br>![earth_v2](engine/earth_v2.png) | **baked-map Earth**<br>drop-in NASA equirect texture + atmosphere<br>![earth_map](engine/earth_map.png) | **sky**<br>Rayleigh + Mie atmospheric scattering<br>![sky](engine/sky.png) |
 | **volumetric clouds**<br>HG phase, Beer–Lambert, sun light-march<br>![clouds](engine/clouds.png) | **PBR demo**<br>GGX raymarch, soft shadows, AO, bloom<br>![pbr_demo](engine/pbr_demo.png) | **noise gallery**<br>fBm / Perlin / Worley / ridged / warp / curl<br>![noise](engine/noise_gallery.png) |
-| **terrain**<br>raymarched heightfield + aerial perspective<br>![terrain](engine/terrain.png) | **ocean**<br>analytic waves, Fresnel sky, GGX glitter, foam<br>![ocean](engine/ocean.png) | **nebula**<br>emissive volume from a baked 3D noise field<br>![nebula](engine/nebula.png) |
+| **terrain**<br>raymarched heightfield + aerial perspective<br>![terrain](engine/terrain.png) | **ocean**<br>analytic waves, Fresnel sky, GGX glitter, foam<br>![ocean](engine/ocean.png) | **nebula**<br>embedded stars ionising filaments of gas + dust pillars<br>![nebula](engine/nebula.png) |
 | **gas giant + rings**<br>banded atmosphere, red spot, ring shadows<br>![gas_giant](engine/gas_giant.png) | **alien world**<br>twin coloured suns, violet sky, jagged terrain<br>![alien](engine/alien.png) | **spiral galaxy**<br>log-spiral arms, core bulge, HII knots<br>![galaxy](engine/galaxy.png) |
 | **aurora**<br>volumetric light curtains over a night landscape<br>![aurora](engine/aurora.png) | **lava planet**<br>molten sea, cooled-crust rafts, basalt islands<br>![lava_planet](engine/lava_planet.png) | **desert dunes**<br>wind ripples, long low-sun shadows, aerial haze<br>![dunes](engine/dunes.png) |
 | **glacier**<br>blue ice + snow, subsurface glow, cold low sun<br>![glacier](engine/glacier.png) | **depth of field**<br>thin-lens focus pull, near/far bokeh<br>![dof_showcase](engine/dof_showcase.png) | **slot canyon**<br>layered sandstone + volumetric god-rays<br>![canyon](engine/canyon.png) |
 | **underwater reef**<br>rippling caustics, blue-green depth, god-rays<br>![reef](engine/reef.png) | **post-FX showcase**<br>blackbody orbs + starfield + full post chain<br>![postfx](engine/postfx.png) | **soft shadows + AO**<br>analytic sphere shadows + ambient occlusion, no SDF march<br>![shadow_demo](engine/shadow_demo.png) |
 | **reflections**<br>Whitted mirror + glass + gold spheres, reflecting each other (bounce loop)<br>![reflections](engine/reflections.png) | | |
+
+## Alien skies — ground-level vistas
+
+Cinematic *surface* shots: the engine's heightfield / water renderer composed with
+a procedural sky body, so the drama is where you'd actually stand and look up.
+
+| | | |
+|---|---|---|
+| **ringed vista**<br>a huge ringed gas giant over a rust dune sea, rings crossing behind + in front of the disk<br>![ringed_vista](engine/ringed_vista.png) | **binary sea**<br>two suns setting over a wave-rippled Fresnel ocean, twin glitter paths<br>![binary_sea](engine/binary_sea.png) | **comet**<br>a great comet — blue ion + curved dust tail over a night ridge<br>![comet](engine/comet.png) |
 
 ## 3D fractals
 
