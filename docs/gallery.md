@@ -685,6 +685,11 @@ the die glows white-hot at the centre feeding them.
 |---|
 | ![gpu_memory_nuke](engine/gpu_memory_nuke.png) |
 
+The chain rolling across the memory ring — each GDDR package going off in turn while the
+die survives at the centre:
+
+![the memory-block chain detonation](engine/gpu_memory_nuke.gif)
+
 The whole arc — electrons drawn through the real board, the memory overheating and the
 blocks popping, the overflow singularity, then the die going off in a mushroom cloud:
 
