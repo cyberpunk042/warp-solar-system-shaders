@@ -20,6 +20,7 @@ import warp as wp
 
 from ..engine import post
 from ..procedural.sdf import op_union, sd_box, sd_sphere
+from ..engine.pathtrace import onb_cosine
 from ..scene import Scene
 
 _SPP = 288
@@ -106,19 +107,6 @@ def _march(ro: wp.vec3, rd: wp.vec3, tt: float, time: float):
 
 
 @wp.func
-def _onb(n: wp.vec3, r1: float, r2: float) -> wp.vec3:
-    a = wp.vec3(1.0, 0.0, 0.0)
-    if wp.abs(n[0]) > 0.9:
-        a = wp.vec3(0.0, 1.0, 0.0)
-    tang = wp.normalize(wp.cross(a, n))
-    bit = wp.cross(n, tang)
-    r = wp.sqrt(r1)
-    phi = 6.2831853 * r2
-    return wp.normalize(tang * (r * wp.cos(phi)) + bit * (r * wp.sin(phi))
-                        + n * wp.sqrt(wp.max(0.0, 1.0 - r1)))
-
-
-@wp.func
 def _sky(rd: wp.vec3) -> wp.vec3:
     # soft studio dome: bright warm overhead, cool sides — lights the whole scene
     up = wp.clamp(rd[1] * 0.5 + 0.5, 0.0, 1.0)
@@ -159,7 +147,7 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
                 n = -n
             throughput = wp.cw_mul(throughput, _albedo(p, tt, time))
             ro = p + n * 0.002
-            rd = _onb(n, wp.randf(rng), wp.randf(rng))
+            rd = onb_cosine(n, wp.randf(rng), wp.randf(rng))
         acc = acc + radiance
 
     img[i, j] = acc / float(spp)

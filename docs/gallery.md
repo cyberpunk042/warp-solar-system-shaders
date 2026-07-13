@@ -419,7 +419,7 @@ the shared `SCENES` list — `python render.py --scene carbon`, `--scene argon`,
 | hydrogen<br>![H](elements/hydrogen.png) | helium<br>![He](elements/helium.png) | carbon<br>![C](elements/carbon.png) | oxygen<br>![O](elements/oxygen.png) |
 | neon<br>![Ne](elements/neon.png) | sodium<br>![Na](elements/sodium.png) | chlorine<br>![Cl](elements/chlorine.png) | argon<br>![Ar](elements/argon.png) |
 
-## Physics simulations
+## Physics simulations — particle blasts
 
 Real Warp particle physics (gravity, buoyancy, drag) driving nuclear /
 thermonuclear blasts and Earth-impact scenarios — see `warp_shaders/sim/`.

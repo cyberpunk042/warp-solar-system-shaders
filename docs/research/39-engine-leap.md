@@ -40,13 +40,21 @@ What that buys, that a single-bounce renderer cannot fake:
   same SDF toolkit that drives the rest of the engine drives the path tracer — no separate
   triangle pipeline. Normals come from the SDF gradient; the normal is flipped to face the
   incoming ray so interior walls light correctly.
-- **Lights are geometry**: an emissive patch is just a surface whose emission is non-zero;
-  a path that lands on it terminates and deposits `throughput × emission`. No separate light
-  list, no next-event estimation yet (naive path tracing — simple, unbiased, a little noisy).
+- **Lights are geometry**: an emissive patch is just a surface whose emission is non-zero.
+  A camera (or specular) path that lands on it deposits `throughput × emission`.
+- **Next-event estimation (NEE)**: waiting for a random bounce to *stumble onto* a small light
+  is the dominant noise source, so at every diffuse hit the tracer also **samples a point on the
+  light directly** and casts a shadow ray — an area-light estimator (`brdf · L · cos·cos / dist²
+  · area`). To stay unbiased, an emitter reached by an indirect bounce is then *not* counted
+  again (NEE already accounted for it). This is what makes the Cornell box clean at ~160 samples
+  instead of grainy at 400+ — the direct term, which used to be pure luck, is now sampled every
+  bounce. The diffuse walls of `glass_box` get the same treatment.
 
-The cost is variance: the image is **noisy** until enough samples accumulate (noise falls as
-1/√spp). On CPU that means dozens-to-hundreds of samples per pixel for a clean still; on GPU
-the same kernel scales up directly.
+The residual cost is variance: the image is still a little **noisy** until enough samples
+accumulate (noise falls as 1/√spp), and NEE only helps the diffuse term — specular refraction
+through the glass sphere and the subsurface random walk are sampled the old way, so those keep
+some grain. On CPU a clean still is dozens-to-hundreds of samples per pixel; on GPU the same
+kernel scales up directly.
 
 ## Beyond diffuse — specular, subsurface, and time
 
