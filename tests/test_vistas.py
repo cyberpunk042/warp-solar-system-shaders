@@ -13,9 +13,10 @@ import warp as wp
 
 import warp_shaders as ws
 
-# new this round + the four reworked scenes
+# quality-round scenes: new vistas + reworked hero scenes across both rounds
 _SCENES = ["ringed_vista", "binary_sea", "comet", "galaxy", "nebula",
-           "mandelbulb", "aurora"]
+           "mandelbulb", "aurora",
+           "volcano", "crystal_cave", "hurricane", "cosmic_web", "supernova"]
 
 
 def _check(name, time=0.0):
@@ -33,7 +34,8 @@ def _check(name, time=0.0):
 def main():
     wp.init()
     # mandelbulb morphs power 2->8 over time; render it near the detailed end
-    times = {"mandelbulb": 12.3, "aurora": 2.0, "binary_sea": 1.0}
+    times = {"mandelbulb": 12.3, "aurora": 2.0, "binary_sea": 1.0,
+             "supernova": 6.5, "volcano": 2.0}
     for name in _SCENES:
         _check(name, times.get(name, 0.0))
     print("ALL PASSED")
