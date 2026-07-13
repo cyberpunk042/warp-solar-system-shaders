@@ -15,9 +15,9 @@ import warp_shaders as ws
 
 # scene -> a time inside its arc where there is clearly something on screen
 _SCENES = [
-    ("gpu_singularity", 4.6),   # chain detonation climax
-    ("memory_overflow", 4.2),   # roof-pierce plasma column
-    ("power_draw", 3.6),        # ignition, near redline
+    ("gpu_singularity", 7.5),   # the mushroom cloud off the real board
+    ("memory_overflow", 5.0),   # block detonation + rising mushroom
+    ("power_draw", 3.6),        # ignition — electrons through the real board
     ("mind_escape", 1.5),       # the mind loose in the void
 ]
 
