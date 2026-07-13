@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (186 scenes).
+`python render.py --list` for the full, current list (210 scenes).
 
 ## Engine showcase
 
@@ -502,3 +502,39 @@ and a **Matrioshka brain** turning a star into computation.
 | dyson_sphere | ringworld | oneill_cylinder | space_elevator | generation_ship | matrioshka_brain |
 |---|---|---|---|---|---|
 | ![dyson_sphere](engine/dyson_sphere.png) | ![ringworld](engine/ringworld.png) | ![oneill_cylinder](engine/oneill_cylinder.png) | ![space_elevator](engine/space_elevator.png) | ![generation_ship](engine/generation_ship.png) | ![matrioshka_brain](engine/matrioshka_brain.png) |
+
+## Four more frontiers — light, matter, fields, the cell
+
+A third four-strand round (see [Research 30](research/30-light-and-optics.md)–[33](research/33-the-cell-up-close.md)).
+
+**Light & optics** — a **prism** dispersing white light, the **rainbow**'s 42°/51° bows,
+soap-bubble **thin-film** iridescence, a **diffraction grating**'s spectral orders,
+pool-floor **caustics**, and a Michelson **interferometer**'s fringes.
+
+| prism | rainbow | thin_film | diffraction_grating | caustics | interferometer |
+|---|---|---|---|---|---|
+| ![prism](engine/prism.png) | ![rainbow](engine/rainbow.png) | ![thin_film](engine/thin_film.png) | ![diffraction_grating](engine/diffraction_grating.png) | ![caustics](engine/caustics.png) | ![interferometer](engine/interferometer.png) |
+
+**States of matter & phase** — a **plasma** arc, a dendritic **crystallization** front,
+a **ferrofluid**'s Rosensweig spikes, a rolling **boil**, a **Bose–Einstein** condensate
+peak, and **glass vs crystal** order.
+
+| plasma_arc | crystallization | ferrofluid | boiling | bose_einstein | glass_vs_crystal |
+|---|---|---|---|---|---|
+| ![plasma_arc](engine/plasma_arc.png) | ![crystallization](engine/crystallization.png) | ![ferrofluid](engine/ferrofluid.png) | ![boiling](engine/boiling.png) | ![bose_einstein](engine/bose_einstein.png) | ![glass_vs_crystal](engine/glass_vs_crystal.png) |
+
+**Electromagnetism & fields** — a **bar magnet**'s dipole field, an **electric dipole**,
+an **EM wave** (E⊥B), a **solenoid**, **magnetic reconnection** at an X-point, and
+**cyclotron** motion.
+
+| bar_magnet | electric_dipole | em_wave | solenoid | magnetic_reconnection | cyclotron |
+|---|---|---|---|---|---|
+| ![bar_magnet](engine/bar_magnet.png) | ![electric_dipole](engine/electric_dipole.png) | ![em_wave](engine/em_wave.png) | ![solenoid](engine/solenoid.png) | ![magnetic_reconnection](engine/magnetic_reconnection.png) | ![cyclotron](engine/cyclotron.png) |
+
+**The cell up close** — a **virus** (capsid + spikes), a **mitochondrion**, a
+**ribosome** translating, a **bacterium**, the **lipid bilayer**, and an **immune cell**
+engulfing a pathogen.
+
+| virus | mitochondrion | ribosome | bacterium | lipid_bilayer | immune_cell |
+|---|---|---|---|---|---|
+| ![virus](engine/virus.png) | ![mitochondrion](engine/mitochondrion.png) | ![ribosome](engine/ribosome.png) | ![bacterium](engine/bacterium.png) | ![lipid_bilayer](engine/lipid_bilayer.png) | ![immune_cell](engine/immune_cell.png) |

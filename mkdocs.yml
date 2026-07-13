@@ -83,6 +83,10 @@ nav:
       - Mathematics made visible: research/27-mathematics-made-visible.md
       - The deep ocean: research/28-the-deep-ocean.md
       - Megastructures & the far future: research/29-megastructures-and-far-future.md
+      - Light & optics: research/30-light-and-optics.md
+      - States of matter & phase: research/31-states-of-matter.md
+      - Electromagnetism & fields: research/32-electromagnetism-and-fields.md
+      - The cell up close: research/33-the-cell-up-close.md
 
 markdown_extensions:
   - admonition
