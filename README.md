@@ -340,6 +340,42 @@ python render.py --scene orbitals --frames 60 --gif out/orbitals.gif
 python render.py --scene beta_decay --frames 64 --gif out/beta.gif
 ```
 
+## Four frontiers — chemistry, the universe, the body, the Earth
+
+A massive four-strand round spanning the scales, all physically grounded (see
+[Research 22](docs/research/22-chemistry-and-molecules.md)–[25](docs/research/25-earth-and-weather.md)):
+
+**Chemistry** — the rung up from atoms (`warp_shaders.molecules`): ball-and-stick
+molecules (VSEPR geometry, CPK colours), crystals and reactions.
+
+| water | methane | benzene | salt crystal | combustion | periodic table |
+|---|---|---|---|---|---|
+| ![water](docs/engine/water.png) | ![methane](docs/engine/methane.png) | ![benzene](docs/engine/benzene.png) | ![salt](docs/engine/salt_crystal.png) | ![combustion](docs/engine/combustion.png) | ![periodic](docs/engine/periodic_table.png) |
+
+**The origin & the largest scales** — the other bookend of the sub-atomic:
+
+| Big Bang | CMB | cosmic web | first stars | structure formation |
+|---|---|---|---|---|
+| ![big bang](docs/engine/big_bang.png) | ![cmb](docs/engine/cmb.png) | ![cosmic web](docs/engine/cosmic_web.png) | ![first stars](docs/engine/first_stars.png) | ![structure](docs/engine/structure_formation.png) |
+
+**The living body** — cells, organs and the mind:
+
+| the mind | neuron | heartbeat | DNA transcription | red blood cells |
+|---|---|---|---|---|
+| ![neural net](docs/engine/neural_net.png) | ![neuron](docs/engine/neuron.png) | ![heartbeat](docs/engine/heartbeat.png) | ![dna](docs/engine/dna_transcription.png) | ![rbc](docs/engine/red_blood_cells.png) |
+
+**Earth & weather** — the planet as a machine:
+
+| hurricane | lightning | plate tectonics | ocean currents | water cycle |
+|---|---|---|---|---|
+| ![hurricane](docs/engine/hurricane.png) | ![lightning](docs/engine/lightning_storm.png) | ![tectonics](docs/engine/plate_tectonics.png) | ![currents](docs/engine/ocean_currents.png) | ![water cycle](docs/engine/water_cycle.png) |
+
+```bash
+python render.py --scene benzene -o benzene.png
+python render.py --scene neural_net --frames 60 --gif out/mind.gif
+python render.py --scene big_bang --frames 60 --gif out/bang.gif
+```
+
 ## Elements — the stylized (non-realistic) aesthetic
 
 A deliberately artistic take on the atom: the iconic neon **Bohr-model** look —
