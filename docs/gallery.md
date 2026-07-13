@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (289 scenes).
+`python render.py --list` for the full, current list (290 scenes).
 
 ## Engine showcase
 
@@ -19,6 +19,22 @@ volumetrics + post) and honours `--quality low..ultra`.
 | **glacier**<br>blue ice + snow, subsurface glow, cold low sun<br>![glacier](engine/glacier.png) | **depth of field**<br>thin-lens focus pull, near/far bokeh<br>![dof_showcase](engine/dof_showcase.png) | **slot canyon**<br>layered sandstone + volumetric god-rays<br>![canyon](engine/canyon.png) |
 | **underwater reef**<br>rippling caustics, blue-green depth, god-rays<br>![reef](engine/reef.png) | **post-FX showcase**<br>blackbody orbs + starfield + full post chain<br>![postfx](engine/postfx.png) | **soft shadows + AO**<br>analytic sphere shadows + ambient occlusion, no SDF march<br>![shadow_demo](engine/shadow_demo.png) |
 | **reflections**<br>Whitted mirror + glass + gold spheres, reflecting each other (bounce loop)<br>![reflections](engine/reflections.png) | | |
+
+## Gravitational lensing — a black hole, ray-traced for real
+
+`gargantua` — every camera ray is a **photon** integrated along a real **null geodesic** of the
+Schwarzschild metric (`d²x/dλ² = −3/2·h²·x/r⁵`). Light falls past the horizon (the black shadow),
+grazes the photon sphere (the bright ring), or bends *over the top* of the hole to strike the far
+side of the accretion disk — the reason the disk arcs above and below the shadow. The disk carries
+a Shakura–Sunyaev blackbody temperature gradient with relativistic Doppler beaming + gravitational
+redshift; the background starfield is lensed by the bending. Deterministic (no Monte-Carlo), so it
+orbits cleanly. See [Research 42](research/42-gravitational-lensing.md).
+
+![gargantua — a geodesic-traced black hole](engine/gargantua.png)
+
+The camera orbiting the hole — the lensed disk and Einstein ring shifting as the geometry turns:
+
+![orbiting Gargantua](engine/gargantua.gif)
 
 ## Alien skies — ground-level vistas
 
@@ -419,7 +435,7 @@ the shared `SCENES` list — `python render.py --scene carbon`, `--scene argon`,
 | hydrogen<br>![H](elements/hydrogen.png) | helium<br>![He](elements/helium.png) | carbon<br>![C](elements/carbon.png) | oxygen<br>![O](elements/oxygen.png) |
 | neon<br>![Ne](elements/neon.png) | sodium<br>![Na](elements/sodium.png) | chlorine<br>![Cl](elements/chlorine.png) | argon<br>![Ar](elements/argon.png) |
 
-## Physics simulations
+## Physics simulations — particle blasts
 
 Real Warp particle physics (gravity, buoyancy, drag) driving nuclear /
 thermonuclear blasts and Earth-impact scenarios — see `warp_shaders/sim/`.
