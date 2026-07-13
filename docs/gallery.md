@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (280 scenes).
+`python render.py --list` for the full, current list (281 scenes).
 
 ## Engine showcase
 
@@ -731,9 +731,9 @@ hemisphere sampling over an SDF scene) lets rays scatter around the room many ti
 colour bleeds between surfaces, shadows go soft and contact-tight for free, and everything is
 lit consistently by whatever emits. See [research 39](research/39-engine-leap.md).
 
-| cornell_box (path-traced global illumination) |
-|---|
-| ![cornell_box](engine/cornell_box.png) |
+| cornell_box (path-traced global illumination) | glass_box (reflection + refraction) |
+|---|---|
+| ![cornell_box](engine/cornell_box.png) | ![glass_box](engine/glass_box.png) |
 
 And one GDDR block up close — filling layer by layer, then a small mushroom off its roof:
 
