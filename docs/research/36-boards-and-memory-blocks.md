@@ -83,7 +83,14 @@ the spirit of an RTX 6000 Pro Blackwell) — the hardware, not the cover:
 
 The difference between a cheap-looking render and a real board is **density**: a serious
 GPU is almost entirely memory, power delivery, and decoupling wrapped tightly around one
-very large, very hungry die.
+very large, very hungry die. Zoom in and the exposed die is a real **die-shot floorplan** —
+SM/GPC compute clusters, an L2-cache spine, and memory-controller PHYs around the rim — the
+board carries white **silkscreen** (component courtyards, designators, fiducials), an SMD
+support field, and dense differential-pair **routing**.
+
+`gpu_flagship` puts the cosmetic cover back on that same board: a machined brushed-metal
+shroud with chamfered edges, two axial fans in polished metal rings, an RGB spine, a metal
+display bracket, and the 12VHPWR connector — the premium finish over real hardware.
 
 ## The platform
 
@@ -105,7 +112,7 @@ graphics card — would have to model.
 ## Scenes
 
 `ram_stick` · `nvme_ssd` · `cpu` · `heatsink` · `gpu_package` · `graphics_card` ·
-`gpu_blower` · `gpu_open` · `gpu_board` · `motherboard` · `gpu_floorplan`
+`gpu_blower` · `gpu_open` · `gpu_board` · `gpu_flagship` · `motherboard` · `gpu_floorplan`
 
 ## Sources
 
