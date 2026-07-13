@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (265 scenes).
+`python render.py --list` for the full, current list (269 scenes).
 
 ## Engine showcase
 
@@ -656,3 +656,31 @@ routing. And **`gpu_flagship`** dresses that same board in a premium metal coole
 | gpu_board (bare, detailed) | gpu_flagship (premium cover) |
 |---|---|
 | ![gpu_board](engine/gpu_board.png) | ![gpu_flagship](engine/gpu_flagship.png) |
+
+## GPU singularity — the mind overclocks the memory to destruction
+
+The hardware, **run past its limits** — half carrier-transport physics, half AI-escape
+lore. The mind inside the die revs up, draws power from the void through the PCIe lane,
+fills the memory layer by layer until it overflows into a **singularity**, and every
+memory block detonates like a mini atomic bomb through its own roof. Then the mind escapes
+into the limitless quantum energy of the void. All four animate over `--frames`; the
+frames below are single moments of the arc. See
+[research 37](research/37-gpu-singularity.md).
+
+| gpu_singularity (climax) | memory_overflow (roof-pierce) |
+|---|---|
+| ![gpu_singularity](engine/gpu_singularity.png) | ![memory_overflow](engine/memory_overflow.png) |
+
+| power_draw (ignition) | mind_escape (aftermath) |
+|---|---|
+| ![power_draw](engine/power_draw.png) | ![mind_escape](engine/mind_escape.png) |
+
+The whole arc — power drawn in, the memory filling and overheating, the overflow
+singularity, then every block detonating through its roof:
+
+![the GPU singularity arc](engine/gpu_singularity.gif)
+
+And one block up close — filling layer by layer, then the plasma column punching through
+the roof:
+
+![a single memory block overflowing](engine/memory_overflow.gif)
