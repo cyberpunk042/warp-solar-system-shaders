@@ -299,6 +299,10 @@ and the electron's actual probability cloud with real orbital shapes.
 | proton (uud) | neutron (udd) | atom (H 1s) | orbitals (2p/3d) |
 |---|---|---|---|
 | ![proton](docs/engine/proton.png) | ![neutron](docs/engine/neutron.png) | ![atom](docs/engine/atom.png) | ![orbitals](docs/engine/orbitals.png) |
+| pion (u d̄) | positron (e⁺) | antiproton (ū ū d̄) | positronium (e⁻e⁺) |
+| ![pion](docs/engine/pion.png) | ![positron](docs/engine/positron.png) | ![antiproton](docs/engine/antiproton.png) | ![positronium](docs/engine/positronium.png) |
+| tachyon (Cherenkov cone) | graviton (spacetime ripple) | magnetic monopole | dark matter (lensing) |
+| ![tachyon](docs/engine/tachyon.png) | ![graviton](docs/engine/graviton.png) | ![monopole](docs/engine/magnetic_monopole.png) | ![dark matter](docs/engine/dark_matter.png) |
 
 **Quarks** — all six flavours, size ∝ log(mass); **leptons** — charged (EM fields)
 + neutrinos (faint, oscillating).
