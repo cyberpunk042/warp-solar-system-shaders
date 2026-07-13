@@ -159,8 +159,10 @@ def _headers(q: wp.vec3) -> float:
 
 
 @wp.func
-def _map(p: wp.vec3, time: float) -> float:
-    q = _rot(p, time)
+def board_map(q: wp.vec3) -> float:
+    """The whole populated board as one SDF, in board-local coords (no camera
+    rotation applied). Reusable by other scenes (e.g. the nuke) that want to put
+    the *real* board in world space and light / heat / destroy it."""
     d = op_union(_pcb(q), _gpu(q))
     d = op_union(d, _mem(q))
     d = op_union(d, _chokes(q))
@@ -172,6 +174,11 @@ def _map(p: wp.vec3, time: float) -> float:
     d = op_union(d, _ctrl(q))
     d = op_union(d, _smd(q))
     return op_union(d, _headers(q))
+
+
+@wp.func
+def _map(p: wp.vec3, time: float) -> float:
+    return board_map(_rot(p, time))
 
 
 @wp.func
@@ -292,6 +299,101 @@ def _die_look(dx: float, dz: float, time: float) -> wp.vec3:
     return col + wp.vec3(0.02, 0.05, 0.09)
 
 
+@wp.func
+def board_shade(q: wp.vec3, n: wp.vec3, rd: wp.vec3, ao: float, time: float) -> wp.vec3:
+    """Material colour for a board hit at board-local point q. Selects the nearest
+    component and shades it (die floorplan, GDDR, VRM, caps, connectors, silkscreen,
+    routing, PCB). Reusable so other scenes can render the *real* board and then
+    overlay their own effects (heat, blasts)."""
+    dgpu = _gpu(q)
+    dmem = _mem(q)
+    dch = _chokes(q)
+    dmo = _mosfets(q)
+    dml = _mlcc(q)
+    dpo = _poscap(q)
+    dbk = _bulk(q)
+    dpw = _power(q)
+    dct = _ctrl(q)
+    dsm = _smd(q)
+    dhd = _headers(q)
+    dpc = _pcb(q)
+    m0 = wp.min(wp.min(dgpu, dmem), wp.min(dch, dmo))
+    m1 = wp.min(wp.min(dml, dpo), wp.min(dbk, dpw))
+    m2 = wp.min(wp.min(dct, dsm), dhd)
+    mind = wp.min(wp.min(m0, m1), wp.min(m2, dpc))
+    eps = 0.0009
+    out = wp.vec3(0.0, 0.0, 0.0)
+
+    if dgpu <= mind + eps:
+        if _die_top(q) <= dgpu + eps and q[1] > 0.18:
+            ldx = (q[0] - _GPUX) / _DIEH[0]
+            ldz = (q[2] - 0.05) / _DIEH[2]
+            form = 0.4 + 0.6 * ao                                       # a little PBR form
+            out = _die_look(ldx, ldz, time) * form                      # exposed die floorplan
+        else:
+            out = ec.lit(n, rd, 4, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.4    # substrate
+    elif dmem <= mind + eps:
+        col = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0))
+        if q[1] > 0.16:
+            mk = q[0] / 0.09 - wp.floor(q[0] / 0.09)
+            if mk < 0.12:
+                col = col * 0.6                                          # package marking
+        out = col                                                       # GDDR7 modules
+    elif dch <= mind + eps:
+        out = ec.lit(n, rd, 7, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.82        # VRM chokes
+    elif dmo <= mind + eps:
+        out = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.9         # MOSFET stages
+    elif dml <= mind + eps:
+        col = ec.lit(n, rd, 6, ao, wp.vec3(0.0, 0.0, 0.0))
+        out = wp.cw_mul(col, wp.vec3(0.9, 0.8, 0.65))                    # MLCC caps
+    elif dpo <= mind + eps:
+        col = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0))
+        if q[1] > 0.12:
+            col = col + wp.vec3(0.18, 0.12, 0.03)                        # POSCAP top stripe
+        out = col
+    elif dbk <= mind + eps:
+        out = ec.lit(n, rd, 7, ao, wp.vec3(0.0, 0.0, 0.0))              # bulk cans
+    elif dpw <= mind + eps:
+        col = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0))
+        if q[1] > 0.24:
+            sx = q[0] / 0.12 - wp.floor(q[0] / 0.12)                    # connector pins
+            if sx < 0.5:
+                col = col * 0.4
+        out = col
+    elif dct <= mind + eps:
+        out = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.85        # controller ICs / drivers
+    elif dsm <= mind + eps:
+        # tiny SMD field: alternate dark resistors and tan caps by cell hash
+        h = _dhash(wp.floor(q[0] / 0.3 + 0.5), wp.floor(q[2] / 0.34 + 0.5))
+        if h > 0.5:
+            out = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.9     # SMD resistor
+        else:
+            col = ec.lit(n, rd, 6, ao, wp.vec3(0.0, 0.0, 0.0))
+            out = wp.cw_mul(col, wp.vec3(0.85, 0.78, 0.62))              # SMD cap
+    elif dhd <= mind + eps:
+        col = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0))
+        if q[1] > 0.2:
+            hx = q[0] / 0.08 - wp.floor(q[0] / 0.08)
+            if hx < 0.5:
+                col = col + wp.vec3(0.28, 0.2, 0.05)                     # header pins (gold)
+        out = col
+    else:
+        # dark professional PCB: gold PCIe fingers on -z edge, dense routing elsewhere
+        if q[2] < -1.28 and q[1] > -0.02:
+            fx = q[0] / 0.1 - wp.floor(q[0] / 0.1)
+            if fx > 0.28 and wp.abs(q[0] - 0.9) > 0.15:
+                out = ec.lit(n, rd, 2, ao, wp.vec3(0.0, 0.0, 0.0))
+            else:
+                out = ec.lit(n, rd, 4, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.4
+        elif q[1] > 0.04 and n[1] > 0.5 and _silk(q[0], q[2]) > 0.5:
+            out = wp.vec3(0.72, 0.74, 0.72) * (0.6 + 0.4 * ao)          # white silkscreen
+        elif q[1] > 0.05 and n[1] > 0.5 and _routing(q[0], q[2]) > 0.5:
+            out = ec.lit(n, rd, 2, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.5    # copper routing
+        else:
+            out = ec.lit(n, rd, 4, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.26   # dark pro PCB
+    return out
+
+
 @wp.kernel
 def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
                    right: wp.vec3, up: wp.vec3, width: int, height: int,
@@ -321,93 +423,7 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
     p = eye + rd * t
     n = _normal(p, time)
     ao = _ao(p, n, time)
-
-    q = _rot(p, time)
-    dgpu = _gpu(q)
-    dmem = _mem(q)
-    dch = _chokes(q)
-    dmo = _mosfets(q)
-    dml = _mlcc(q)
-    dpo = _poscap(q)
-    dbk = _bulk(q)
-    dpw = _power(q)
-    dct = _ctrl(q)
-    dsm = _smd(q)
-    dhd = _headers(q)
-    dpc = _pcb(q)
-    m0 = wp.min(wp.min(dgpu, dmem), wp.min(dch, dmo))
-    m1 = wp.min(wp.min(dml, dpo), wp.min(dbk, dpw))
-    m2 = wp.min(wp.min(dct, dsm), dhd)
-    mind = wp.min(wp.min(m0, m1), wp.min(m2, dpc))
-    eps = 0.0009
-
-    if dgpu <= mind + eps:
-        if _die_top(q) <= dgpu + eps and q[1] > 0.18:
-            ldx = (q[0] - _GPUX) / _DIEH[0]
-            ldz = (q[2] - 0.05) / _DIEH[2]
-            form = 0.4 + 0.6 * ao                                       # a little PBR form
-            img[i, j] = _die_look(ldx, ldz, time) * form                # exposed die floorplan
-        else:
-            img[i, j] = ec.lit(n, rd, 4, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.4   # substrate
-    elif dmem <= mind + eps:
-        col = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0))
-        if q[1] > 0.16:
-            mk = q[0] / 0.09 - wp.floor(q[0] / 0.09)
-            if mk < 0.12:
-                col = col * 0.6                                          # package marking
-        img[i, j] = col                                                 # GDDR7 modules
-    elif dch <= mind + eps:
-        img[i, j] = ec.lit(n, rd, 7, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.82  # VRM chokes
-    elif dmo <= mind + eps:
-        img[i, j] = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.9   # MOSFET stages
-    elif dml <= mind + eps:
-        col = ec.lit(n, rd, 6, ao, wp.vec3(0.0, 0.0, 0.0))
-        img[i, j] = wp.cw_mul(col, wp.vec3(0.9, 0.8, 0.65))            # MLCC caps
-    elif dpo <= mind + eps:
-        col = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0))
-        if q[1] > 0.12:
-            col = col + wp.vec3(0.18, 0.12, 0.03)                       # POSCAP top stripe
-        img[i, j] = col
-    elif dbk <= mind + eps:
-        img[i, j] = ec.lit(n, rd, 7, ao, wp.vec3(0.0, 0.0, 0.0))        # bulk cans
-    elif dpw <= mind + eps:
-        col = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0))
-        if q[1] > 0.24:
-            sx = q[0] / 0.12 - wp.floor(q[0] / 0.12)                    # connector pins
-            if sx < 0.5:
-                col = col * 0.4
-        img[i, j] = col
-    elif dct <= mind + eps:
-        img[i, j] = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.85  # controller ICs / drivers
-    elif dsm <= mind + eps:
-        # tiny SMD field: alternate dark resistors and tan caps by cell hash
-        h = _dhash(wp.floor(q[0] / 0.3 + 0.5), wp.floor(q[2] / 0.34 + 0.5))
-        if h > 0.5:
-            img[i, j] = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.9   # SMD resistor
-        else:
-            col = ec.lit(n, rd, 6, ao, wp.vec3(0.0, 0.0, 0.0))
-            img[i, j] = wp.cw_mul(col, wp.vec3(0.85, 0.78, 0.62))            # SMD cap
-    elif dhd <= mind + eps:
-        col = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0))
-        if q[1] > 0.2:
-            hx = q[0] / 0.08 - wp.floor(q[0] / 0.08)
-            if hx < 0.5:
-                col = col + wp.vec3(0.28, 0.2, 0.05)                        # header pins (gold)
-        img[i, j] = col
-    else:
-        # dark professional PCB: gold PCIe fingers on -z edge, dense routing elsewhere
-        if q[2] < -1.28 and q[1] > -0.02:
-            fx = q[0] / 0.1 - wp.floor(q[0] / 0.1)
-            if fx > 0.28 and wp.abs(q[0] - 0.9) > 0.15:
-                img[i, j] = ec.lit(n, rd, 2, ao, wp.vec3(0.0, 0.0, 0.0))
-            else:
-                img[i, j] = ec.lit(n, rd, 4, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.4
-        elif q[1] > 0.04 and n[1] > 0.5 and _silk(q[0], q[2]) > 0.5:
-            img[i, j] = wp.vec3(0.72, 0.74, 0.72) * (0.6 + 0.4 * ao)          # white silkscreen
-        elif q[1] > 0.05 and n[1] > 0.5 and _routing(q[0], q[2]) > 0.5:
-            img[i, j] = ec.lit(n, rd, 2, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.5   # copper routing
-        else:
-            img[i, j] = ec.lit(n, rd, 4, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.26   # dark pro PCB
+    img[i, j] = board_shade(_rot(p, time), n, rd, ao, time)
 
 
 def _render(width, height, time, mouse, device):
