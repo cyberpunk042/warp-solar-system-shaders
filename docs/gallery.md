@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (279 scenes).
+`python render.py --list` for the full, current list (280 scenes).
 
 ## Engine showcase
 
@@ -723,6 +723,17 @@ Cherenkov-cone `tachyon`).
 | tachyon_v2 |
 |---|
 | ![tachyon_v2](engine/tachyon_v2.png) |
+
+## Engine leap — global illumination
+
+Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
+hemisphere sampling over an SDF scene) lets rays scatter around the room many times — so
+colour bleeds between surfaces, shadows go soft and contact-tight for free, and everything is
+lit consistently by whatever emits. See [research 39](research/39-engine-leap.md).
+
+| cornell_box (path-traced global illumination) |
+|---|
+| ![cornell_box](engine/cornell_box.png) |
 
 And one GDDR block up close — filling layer by layer, then a small mushroom off its roof:
 
