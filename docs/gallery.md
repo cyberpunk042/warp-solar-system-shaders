@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (270 scenes).
+`python render.py --list` for the full, current list (278 scenes).
 
 ## Engine showcase
 
@@ -694,6 +694,26 @@ The whole arc — electrons drawn through the real board, the memory overheating
 blocks popping, the overflow singularity, then the die going off in a mushroom cloud:
 
 ![the GPU singularity arc](engine/gpu_singularity.gif)
+
+## Electricity in motion
+
+Charge that flows and does work — the sequel to pushing electrons through the GPU. A
+toolkit (`warp_shaders.electric`) glows conductors, arcs, and a **fractal lightning**
+generator (recursive midpoint displacement + branching = stepped-leader dielectric
+breakdown). Every scene animates over `--frames`. See
+[research 38](research/38-electricity.md).
+
+| lightning | tesla_coil | spark_gap |
+|---|---|---|
+| ![lightning](engine/lightning.png) | ![tesla_coil](engine/tesla_coil.png) | ![spark_gap](engine/spark_gap.png) |
+
+| plasma_globe | capacitor_charge | electric_motor |
+|---|---|---|
+| ![plasma_globe](engine/plasma_globe.png) | ![capacitor_charge](engine/capacitor_charge.png) | ![electric_motor](engine/electric_motor.png) |
+
+| transformer | power_grid |
+|---|---|
+| ![transformer](engine/transformer.png) | ![power_grid](engine/power_grid.png) |
 
 And one GDDR block up close — filling layer by layer, then a small mushroom off its roof:
 
