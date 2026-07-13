@@ -542,6 +542,27 @@ One GDDR block up close — filling layer by layer, then a small mushroom off it
 
 ![a single memory block overflowing](docs/engine/memory_overflow.gif)
 
+## Electricity in motion
+
+Charge that flows and does work — the sequel to pushing electrons through the GPU. A
+toolkit (`warp_shaders/electric.py`) glows conductors and arcs and generates **fractal
+lightning** (recursive midpoint displacement + branching = stepped-leader dielectric
+breakdown). Eight scenes, all animated over `--frames`. See
+[Research 38](docs/research/38-electricity.md).
+
+| lightning | tesla_coil | spark_gap | plasma_globe |
+|---|---|---|---|
+| ![lightning](docs/engine/lightning.png) | ![tesla_coil](docs/engine/tesla_coil.png) | ![spark_gap](docs/engine/spark_gap.png) | ![plasma_globe](docs/engine/plasma_globe.png) |
+
+| capacitor_charge | electric_motor | transformer | power_grid |
+|---|---|---|---|
+| ![capacitor_charge](docs/engine/capacitor_charge.png) | ![electric_motor](docs/engine/electric_motor.png) | ![transformer](docs/engine/transformer.png) | ![power_grid](docs/engine/power_grid.png) |
+
+```bash
+python render.py --scene lightning --frames 120 --gif out/lightning.gif
+python render.py --scene tesla_coil --frames 120 --gif out/tesla.gif
+```
+
 ```bash
 python render.py --scene gpu_singularity --frames 180 --gif out/singularity.gif
 python render.py --scene memory_overflow --frames 120 --gif out/overflow.gif
