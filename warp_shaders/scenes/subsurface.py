@@ -22,6 +22,7 @@ import numpy as np
 import warp as wp
 
 from ..engine import post
+from ..engine.pathtrace import onb_cosine, sample_sphere
 from ..procedural.sdf import op_union, sd_box, sd_sphere, sd_torus
 from ..scene import Scene
 
@@ -100,27 +101,6 @@ def _march(ro: wp.vec3, rd: wp.vec3):
     return t, hit
 
 
-@wp.func
-def _onb(n: wp.vec3, r1: float, r2: float) -> wp.vec3:
-    a = wp.vec3(1.0, 0.0, 0.0)
-    if wp.abs(n[0]) > 0.9:
-        a = wp.vec3(0.0, 1.0, 0.0)
-    tang = wp.normalize(wp.cross(a, n))
-    bit = wp.cross(n, tang)
-    r = wp.sqrt(r1)
-    phi = 6.2831853 * r2
-    return wp.normalize(tang * (r * wp.cos(phi)) + bit * (r * wp.sin(phi))
-                        + n * wp.sqrt(wp.max(0.0, 1.0 - r1)))
-
-
-@wp.func
-def _sphere_dir(r1: float, r2: float) -> wp.vec3:
-    z = 1.0 - 2.0 * r1
-    r = wp.sqrt(wp.max(0.0, 1.0 - z * z))
-    phi = 6.2831853 * r2
-    return wp.vec3(r * wp.cos(phi), r * wp.sin(phi), z)
-
-
 @wp.kernel
 def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
                    right: wp.vec3, up: wp.vec3, width: int, height: int, tanfov: float,
@@ -169,7 +149,7 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
                         break
                     pos = npos
                     throughput = wp.cw_mul(throughput, _SSS_ALB)
-                    wdir = _sphere_dir(wp.randf(rng), wp.randf(rng))   # isotropic scatter
+                    wdir = sample_sphere(wp.randf(rng), wp.randf(rng))   # isotropic scatter
                 if escaped == 0:
                     break                                    # absorbed deep inside
                 ro = pos + wdir * 0.01
@@ -180,7 +160,7 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
                     n = -n
                 throughput = wp.cw_mul(throughput, _albedo(p))
                 ro = p + n * 0.002
-                rd = _onb(n, wp.randf(rng), wp.randf(rng))
+                rd = onb_cosine(n, wp.randf(rng), wp.randf(rng))
         acc = acc + radiance
 
     img[i, j] = acc / float(spp)

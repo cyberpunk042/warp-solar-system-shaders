@@ -8,20 +8,26 @@ emissive patch on the ceiling. Cosine-weighted hemisphere sampling, a few bounce
 of samples per pixel, averaged. See ``docs/research/39-engine-leap.md``.
 """
 
-import math
-
 import numpy as np
 import warp as wp
 
 from ..engine import post
+from ..engine.pathtrace import camera_basis, onb_cosine, tanfov
 from ..procedural.sdf import op_union, sd_box
 from ..scene import Scene
 
 _RX = 1.0
 _RY = 1.0
 _RZ = 1.0
-_SPP = 384          # samples per pixel
+_SPP = 160          # samples per pixel (next-event estimation → far less noise per sample)
 _BOUNCES = 4
+
+# the ceiling light, sampled directly for next-event estimation
+_LY = wp.constant(0.955)                       # underside of the ceiling slab
+_LH = wp.constant(0.4)                         # half-extent (x,z) of the emissive patch
+_LAREA = wp.constant(0.64)                     # 0.8 × 0.8
+_LEMIT = wp.constant(wp.vec3(16.0, 13.0, 9.0))
+_INV_PI = wp.constant(0.31830989)
 
 
 @wp.func
@@ -87,19 +93,36 @@ def _march(ro: wp.vec3, rd: wp.vec3):
 
 
 @wp.func
-def _onb(n: wp.vec3, r1: float, r2: float) -> wp.vec3:
-    # cosine-weighted hemisphere sample around n
-    a = wp.vec3(1.0, 0.0, 0.0)
-    if wp.abs(n[0]) > 0.9:
-        a = wp.vec3(0.0, 1.0, 0.0)
-    tang = wp.normalize(wp.cross(a, n))
-    bit = wp.cross(n, tang)
-    r = wp.sqrt(r1)
-    phi = 6.2831853 * r2
-    x = r * wp.cos(phi)
-    y = r * wp.sin(phi)
-    z = wp.sqrt(wp.max(0.0, 1.0 - r1))
-    return wp.normalize(tang * x + bit * y + n * z)
+def _visible(a: wp.vec3, b: wp.vec3) -> float:
+    # unshadowed test: march from a toward b, occluded if we hit anything before b
+    d = b - a
+    dist = wp.length(d)
+    rd = d / dist
+    t = float(0.004)
+    while t < dist - 0.01:
+        dd = _scene(a + rd * t)
+        if dd < 0.0007:
+            return 0.0
+        t += wp.max(dd * 0.9, 0.0009)
+    return 1.0
+
+
+@wp.func
+def _direct(p: wp.vec3, n: wp.vec3, alb: wp.vec3, r1: float, r2: float) -> wp.vec3:
+    # next-event estimation: sample a point on the ceiling light and connect
+    q = wp.vec3((r1 * 2.0 - 1.0) * _LH, _LY, (r2 * 2.0 - 1.0) * _LH)
+    to = q - p
+    dist = wp.length(to)
+    wi = to / dist
+    cos_s = wp.dot(n, wi)                       # cosine at the shaded surface
+    cos_l = wi[1]                               # cosine at the light (normal points down: (0,-1,0))
+    if cos_s <= 0.0 or cos_l <= 0.0:
+        return wp.vec3(0.0, 0.0, 0.0)
+    if _visible(p + n * 0.002, q) < 0.5:
+        return wp.vec3(0.0, 0.0, 0.0)
+    g = cos_s * cos_l / (dist * dist)
+    # Lambertian BRDF = albedo/π; area-light estimator multiplies by the patch area
+    return wp.cw_mul(alb * _INV_PI, _LEMIT) * (g * _LAREA)
 
 
 @wp.kernel
@@ -121,6 +144,7 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
         ro = eye
         throughput = wp.vec3(1.0, 1.0, 1.0)
         radiance = wp.vec3(0.0, 0.0, 0.0)
+        see_emit = float(1.0)                              # 1 only on the camera ray (NEE handles the rest)
 
         for _b in range(_BOUNCES):
             t, hit = _march(ro, rd)
@@ -132,12 +156,15 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
                 n = -n                                     # face the ray (room walls)
             emit = _emission(p)
             if emit[0] > 0.0:
-                radiance = radiance + wp.cw_mul(throughput, emit)
-                break
+                radiance = radiance + wp.cw_mul(throughput, emit) * see_emit
+                break                                      # the light is a sink
             alb = _material(p, wp.vec3(0.72, 0.72, 0.72))
+            radiance = radiance + wp.cw_mul(throughput,
+                                            _direct(p, n, alb, wp.randf(rng), wp.randf(rng)))
             throughput = wp.cw_mul(throughput, alb)
             ro = p + n * 0.002
-            rd = _onb(n, wp.randf(rng), wp.randf(rng))
+            rd = onb_cosine(n, wp.randf(rng), wp.randf(rng))
+            see_emit = 0.0                                 # indirect emitter hits already counted by NEE
         acc = acc + radiance
 
     img[i, j] = acc / float(spp)
@@ -150,15 +177,11 @@ def _render(width, height, time, mouse, device):
 
     # camera sits back from the open front, framing the whole box
     eye = wp.vec3(0.0 + float(mouse[0]) * 0.004, 0.0, 2.75)
-    tgt = wp.vec3(0.0, 0.0, 0.0)
-    fwd = wp.normalize(tgt - eye)
-    right = wp.normalize(wp.cross(fwd, wp.vec3(0.0, 1.0, 0.0)))
-    up = wp.cross(right, fwd)
-    tanfov = math.tan(math.radians(42.0) * 0.5)
+    fwd, right, up = camera_basis(eye, wp.vec3(0.0, 0.0, 0.0))
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(_render_kernel, dim=(height, width),
-              inputs=[img, eye, fwd, right, up, width, height, tanfov, spp, 12345],
+              inputs=[img, eye, fwd, right, up, width, height, tanfov(42.0), spp, 12345],
               device=device)
     wp.synchronize_device(device)
     hdr = img.numpy()
