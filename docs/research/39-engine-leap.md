@@ -48,6 +48,28 @@ The cost is variance: the image is **noisy** until enough samples accumulate (no
 1/√spp). On CPU that means dozens-to-hundreds of samples per pixel for a clean still; on GPU
 the same kernel scales up directly.
 
+## Beyond diffuse — specular, subsurface, and time
+
+Once rays bounce, every material is just a rule for *how a ray leaves a surface*, and the same
+integrator absorbs them all:
+
+- **Specular (mirror + glass).** A mirror reflects the incoming ray about the normal; a
+  dielectric splits into a reflected and a refracted ray by **Snell's law**, with the split
+  ratio given by the **Fresnel** term (Schlick's approximation) and **total internal
+  reflection** when the refraction has no real solution. Choosing one branch per bounce
+  (Russian-roulette on the Fresnel probability) keeps the estimator unbiased. This is
+  reflection *and* refraction sharing one path tracer with the diffuse walls.
+- **Subsurface scattering.** Wax, jade, marble and skin are neither opaque nor clear: light
+  enters, **random-walks inside** the medium — exponential free-flight steps, isotropic
+  scatter, a single-scattering albedo multiplied in at each step — and leaves elsewhere.
+  Thin regions let the walk escape and **glow**; thick regions absorb it. Modelled here as a
+  literal bounded random walk against the object's own SDF, so it is the volumetric analogue
+  of the surface path trace.
+- **Motion blur.** A real shutter is open for a slice of *time*. Because path tracing already
+  averages many samples per pixel, each sample can also pick a **random instant within the
+  shutter** and evaluate the geometry at that instant — moving objects smear, static ones stay
+  sharp, for free. Temporal sampling is spatial anti-aliasing extended by one dimension.
+
 ## Scenes
 
 `cornell_box` — the canonical global-illumination test: a five-wall open-front room (red left,
@@ -55,8 +77,21 @@ green right, white rest) with two white blocks, lit only by a ceiling emitter, p
 the coloured walls bleed onto the blocks and floor with soft contact shadows. The "hello
 world" of GI, and the proof the path tracer works.
 
-*(more to come as the strand grows: a dielectric-glass / caustics showcase, subsurface
-scattering, motion blur, and re-renders of flagship scenes at the new fidelity tier.)*
+`glass_box` — the same room with **specular materials**: a glass sphere that refracts an
+inverted image of the room and glints by Fresnel, and a mirror sphere that reflects the red/
+green walls and the ceiling light. Reflection, refraction and diffuse GI share one unbiased
+integrator.
+
+`subsurface` — a jade sphere and a thin standing ring backlit by a warm panel, with light
+entering the translucent medium and **random-walking** until it escapes. The thin ring glows
+right through; the sphere shows a bright translucent rim around a denser, warmer core.
+
+`motion_blur` — three spheres translating left-to-right at rising speeds (sharp → smear → long
+streak) and a striped sphere whose spin blurs its bands, all from **distributed temporal
+sampling** in the same integrator that jitters rays for anti-aliasing.
+
+*(more to come as the strand grows: caustics focusing, and re-renders of flagship scenes at the
+new fidelity tier.)*
 
 ## Sources
 

@@ -11,7 +11,7 @@ import warp as wp
 
 import warp_shaders as ws
 
-_SCENES = ["cornell_box", "glass_box"]
+_SCENES = ["cornell_box", "glass_box", "subsurface", "motion_blur"]
 
 
 def _check(name):

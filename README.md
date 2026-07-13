@@ -575,11 +575,15 @@ Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosin
 hemisphere sampling over the SDF scene) scatters rays around the room many times, so colour
 bleeds between surfaces, shadows go soft and contact-tight for free, and everything is lit
 consistently by whatever emits — the missing physics the single-bounce renderer couldn't
-fake. See [Research 39](docs/research/39-engine-leap.md).
+fake. The same integrator then absorbs **specular** materials (mirror + Snell/Fresnel glass),
+**subsurface** scattering (a bounded random walk inside a translucent solid) and **motion
+blur** (a random shutter instant per ray). See [Research 39](docs/research/39-engine-leap.md).
 
 | cornell_box — global illumination | glass_box — reflection + refraction |
 |---|---|
 | ![cornell_box](docs/engine/cornell_box.png) | ![glass_box](docs/engine/glass_box.png) |
+| subsurface — translucent random walk | motion_blur — distributed temporal sampling |
+| ![subsurface](docs/engine/subsurface.png) | ![motion_blur](docs/engine/motion_blur.png) |
 
 ```bash
 python render.py --scene gpu_singularity --frames 180 --gif out/singularity.gif
