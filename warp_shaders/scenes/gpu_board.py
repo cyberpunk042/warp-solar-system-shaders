@@ -198,14 +198,15 @@ def _ao(p: wp.vec3, n: wp.vec3, time: float) -> float:
 @wp.func
 def _routing(lx: float, lz: float) -> float:
     # dense fine copper routing on exposed board areas (many parallel + orthogonal runs)
-    a = lx * 6.0
+    # dense differential-pair routing: two close runs per period, both axes
+    a = lx * 9.0
     fa = a - wp.floor(a)
-    b = lz * 6.0
+    b = lz * 9.0
     fb = b - wp.floor(b)
     c = float(0.0)
-    if fa < 0.16:
+    if fa < 0.1 or (fa > 0.2 and fa < 0.3):
         c = 1.0
-    if fb < 0.16 and lx > 0.6:
+    if (fb < 0.1 or (fb > 0.2 and fb < 0.3)) and lx > 0.5:
         c = 1.0
     return c
 
