@@ -482,6 +482,13 @@ traces all exposed (`gpu_open`, the board to trace current across):
 |---|---|---|
 | ![graphics_card](docs/engine/graphics_card.png) | ![gpu_blower](docs/engine/gpu_blower.png) | ![gpu_open](docs/engine/gpu_open.png) |
 
+And with the cover dropped entirely — **`gpu_board`**, a dense workstation-class GPU
+board in the spirit of an RTX 6000 Pro Blackwell: a huge exposed die ringed by GDDR7,
+a heavy multi-phase VRM, capacitor arrays, a 12VHPWR connector, and PCIe x16 fingers.
+The hardware, no cosmetics.
+
+![gpu_board](docs/engine/gpu_board.png)
+
 ```bash
 python render.py --scene graphics_card -o gpu.png
 python render.py --scene gpu_floorplan --frames 120 --gif out/die.gif
