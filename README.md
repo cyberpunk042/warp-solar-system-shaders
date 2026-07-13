@@ -411,6 +411,41 @@ python render.py --scene strange_attractor -o lorenz.png
 python render.py --scene space_elevator -o elevator.png
 ```
 
+## Four more frontiers — light, matter, fields, the cell
+
+A third massive four-strand round (see
+[Research 30](docs/research/30-light-and-optics.md)–[33](docs/research/33-the-cell-up-close.md)):
+
+**Light & optics** — how light bends, splits and interferes:
+
+| prism | rainbow | thin film | diffraction grating | caustics | interferometer |
+|---|---|---|---|---|---|
+| ![prism](docs/engine/prism.png) | ![rainbow](docs/engine/rainbow.png) | ![thin film](docs/engine/thin_film.png) | ![grating](docs/engine/diffraction_grating.png) | ![caustics](docs/engine/caustics.png) | ![interferometer](docs/engine/interferometer.png) |
+
+**States of matter & phase** — plasma, crystallisation, condensates, glass:
+
+| plasma arc | crystallization | ferrofluid | boiling | BEC | glass vs crystal |
+|---|---|---|---|---|---|
+| ![plasma](docs/engine/plasma_arc.png) | ![crystallization](docs/engine/crystallization.png) | ![ferrofluid](docs/engine/ferrofluid.png) | ![boiling](docs/engine/boiling.png) | ![bec](docs/engine/bose_einstein.png) | ![glass](docs/engine/glass_vs_crystal.png) |
+
+**Electromagnetism & fields** — the invisible forces drawn:
+
+| bar magnet | electric dipole | EM wave | solenoid | reconnection | cyclotron |
+|---|---|---|---|---|---|
+| ![magnet](docs/engine/bar_magnet.png) | ![dipole](docs/engine/electric_dipole.png) | ![em wave](docs/engine/em_wave.png) | ![solenoid](docs/engine/solenoid.png) | ![reconnection](docs/engine/magnetic_reconnection.png) | ![cyclotron](docs/engine/cyclotron.png) |
+
+**The cell up close** — the machinery of the living cell:
+
+| virus | mitochondrion | ribosome | bacterium | lipid bilayer | immune cell |
+|---|---|---|---|---|---|
+| ![virus](docs/engine/virus.png) | ![mitochondrion](docs/engine/mitochondrion.png) | ![ribosome](docs/engine/ribosome.png) | ![bacterium](docs/engine/bacterium.png) | ![bilayer](docs/engine/lipid_bilayer.png) | ![immune cell](docs/engine/immune_cell.png) |
+
+```bash
+python render.py --scene prism -o prism.png
+python render.py --scene virus --frames 60 --gif out/virus.gif
+python render.py --scene ferrofluid --frames 60 --gif out/ferro.gif
+```
+
 ## Elements — the stylized (non-realistic) aesthetic
 
 A deliberately artistic take on the atom: the iconic neon **Bohr-model** look —
