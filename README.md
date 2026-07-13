@@ -563,6 +563,12 @@ python render.py --scene lightning --frames 120 --gif out/lightning.gif
 python render.py --scene tesla_coil --frames 120 --gif out/tesla.gif
 ```
 
+A luminous exotic-particle study on the same glow toolkit — **`tachyon_v2`**: a ray
+climbing the axis with a central orb and two rays spiralling into a conic destination,
+the motion carried by pulses of glow racing up the beam and the spirals:
+
+![tachyon_v2](docs/engine/tachyon_v2.gif)
+
 ```bash
 python render.py --scene gpu_singularity --frames 180 --gif out/singularity.gif
 python render.py --scene memory_overflow --frames 120 --gif out/overflow.gif

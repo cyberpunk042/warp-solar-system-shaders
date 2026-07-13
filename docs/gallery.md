@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (278 scenes).
+`python render.py --list` for the full, current list (279 scenes).
 
 ## Engine showcase
 
@@ -714,6 +714,15 @@ breakdown). Every scene animates over `--frames`. See
 | transformer | power_grid |
 |---|---|
 | ![transformer](engine/transformer.png) | ![power_grid](engine/power_grid.png) |
+
+A luminous exotic-particle study built on the same glow toolkit — **`tachyon_v2`**: a ray
+climbing the axis with a central orb and two rays spiralling into a conic destination, the
+motion carried by pulses of glow racing up the beam and the spirals (a companion to the
+Cherenkov-cone `tachyon`).
+
+| tachyon_v2 |
+|---|
+| ![tachyon_v2](engine/tachyon_v2.png) |
 
 And one GDDR block up close — filling layer by layer, then a small mushroom off its roof:
 
