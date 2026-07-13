@@ -577,9 +577,9 @@ bleeds between surfaces, shadows go soft and contact-tight for free, and everyth
 consistently by whatever emits — the missing physics the single-bounce renderer couldn't
 fake. See [Research 39](docs/research/39-engine-leap.md).
 
-| cornell_box — real global illumination (colour bleed, soft shadows, one ceiling light) |
-|---|
-| ![cornell_box](docs/engine/cornell_box.png) |
+| cornell_box — global illumination | glass_box — reflection + refraction |
+|---|---|
+| ![cornell_box](docs/engine/cornell_box.png) | ![glass_box](docs/engine/glass_box.png) |
 
 ```bash
 python render.py --scene gpu_singularity --frames 180 --gif out/singularity.gif
