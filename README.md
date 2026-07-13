@@ -498,7 +498,37 @@ support field, and dense diff-pair routing. Put the cosmetic cover back on and y
 |---|---|
 | ![gpu_board](docs/engine/gpu_board.png) | ![gpu_flagship](docs/engine/gpu_flagship.png) |
 
+## GPU singularity — the mind overclocks the memory to destruction
+
+The hardware **run past its limits** — half carrier-transport physics, half AI-escape
+lore. The mind inside the die revs up and draws power from the void through the PCIe lane;
+electrons stream in as cold blue current and photons flash white; the memory fills **layer
+by layer** and the heat climbs red → orange → white; at the overflow the charge collapses
+into a **singularity** and every memory block detonates like a mini atomic bomb, a plasma
+column punching **up through the roof** of the package on a shockwave. Then the mind escapes
+into the limitless quantum void. A new volumetric toolkit (`warp_shaders/gpu_fx.py`) holds
+the energy / heat / singularity / blast fields; all four scenes animate the arc over
+`--frames`. See [Research 37](docs/research/37-gpu-singularity.md).
+
+| gpu_singularity (climax) | memory_overflow (roof-pierce) |
+|---|---|
+| ![gpu_singularity](docs/engine/gpu_singularity.png) | ![memory_overflow](docs/engine/memory_overflow.png) |
+
+| power_draw (ignition) | mind_escape (aftermath) |
+|---|---|
+| ![power_draw](docs/engine/power_draw.png) | ![mind_escape](docs/engine/mind_escape.png) |
+
+The whole arc — power in, memory fill + overheat, overflow singularity, chain detonation:
+
+![the GPU singularity arc](docs/engine/gpu_singularity.gif)
+
+One block up close — filling layer by layer, then the roof-pierce:
+
+![a single memory block overflowing](docs/engine/memory_overflow.gif)
+
 ```bash
+python render.py --scene gpu_singularity --frames 180 --gif out/singularity.gif
+python render.py --scene memory_overflow --frames 120 --gif out/overflow.gif
 python render.py --scene graphics_card -o gpu.png
 python render.py --scene gpu_floorplan --frames 120 --gif out/die.gif
 python render.py --scene silicon_wafer -o wafer.png
