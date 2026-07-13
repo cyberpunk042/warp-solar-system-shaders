@@ -529,6 +529,10 @@ white-hot at the centre feeding them.
 |---|
 | ![gpu_memory_nuke](docs/engine/gpu_memory_nuke.png) |
 
+The chain rolling across the memory ring, die surviving at the centre:
+
+![the memory-block chain detonation](docs/engine/gpu_memory_nuke.gif)
+
 The whole arc — electrons through the real board, memory overheat + block pops, overflow
 singularity, then the die going off in a mushroom cloud:
 
