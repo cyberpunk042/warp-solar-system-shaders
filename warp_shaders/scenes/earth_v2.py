@@ -149,7 +149,14 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
     # Scaled: full-strength in-scatter would flood the disk; this reads as haze
     # over the surface and a bright limb against space.
     atm = atmosphere(ro, rd, sun, vs, ls)
-    col = col + atm * 0.32
+    col = col + atm * 0.42
+    # a crisp scattering rim at the planet's edge (grazing view of the air shell)
+    if globe_t < 0.0:
+        gi = _rs(ro, rd, _RG + 90000.0)
+        if gi[0] > 0.0 and gi[0] < 1.0e29:
+            pr = wp.normalize(ro + rd * gi[0])
+            rim = wp.smoothstep(-0.25, 0.35, wp.dot(pr, sun))
+            col = col + wp.vec3(0.28, 0.5, 1.0) * rim * 0.5
 
     # volumetric cloud shell over the surface
     cl = _march_clouds_shell(ro, rd, sun, time, globe_t, 0.55, csteps, clsteps,
@@ -180,16 +187,19 @@ def _render(width, height, time, mouse, device):
     saz = az + 0.7
     sun = wp.vec3(math.cos(sel) * math.sin(saz), math.sin(sel), math.cos(sel) * math.cos(saz))
 
-    img = wp.zeros((height, width), dtype=wp.vec3, device=device)
-    wp.launch(render_kernel, dim=(height, width),
+    ss = 2                                            # 2×2 supersample for a crisp limb
+    W, H = int(width) * ss, int(height) * ss
+    cam = make_camera(eye, (0.0, 0.0, 0.0), fov_deg=40.0, aspect=W / H)
+    img = wp.zeros((H, W), dtype=wp.vec3, device=device)
+    wp.launch(render_kernel, dim=(H, W),
               inputs=[img, cam, sun, float(time), int(vs), int(ls), int(cs), int(cls),
-                      int(width), int(height)], device=device)
+                      int(W), int(H)], device=device)
     wp.synchronize_device(device)
-    hdr = img.numpy()
+    hdr = post.downsample(img.numpy().astype(np.float32), ss)
 
     r = max(3, int(min(width, height) * 0.02))
     hdr = post.bloom(hdr, threshold=2.0, strength=0.5, radius=r, passes=3)
-    return post.tonemap(hdr, mode="aces", exposure=1.1)
+    return post.tonemap(hdr, mode="aces", exposure=1.12, preserve_hue=True)
 
 
 SCENE = Scene(
