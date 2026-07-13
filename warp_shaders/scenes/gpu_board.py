@@ -135,7 +135,27 @@ def _power(q: wp.vec3) -> float:
 def _ctrl(q: wp.vec3) -> float:
     a = sd_box(q - wp.vec3(1.4, 0.12, -1.05), wp.vec3(0.22, 0.05, 0.18)) - 0.008   # VRM controller
     b = sd_box(q - wp.vec3(2.3, 0.11, -1.05), wp.vec3(0.14, 0.04, 0.12)) - 0.006   # BIOS / support
-    return wp.min(a, b)
+    dv = wp.clamp(wp.floor((q[0] - 0.7) / 0.4 + 0.5), 0.0, 6.0)                     # gate-driver ICs
+    drv = sd_box(q - wp.vec3(0.7 + 0.4 * dv, 0.1, 0.0), wp.vec3(0.06, 0.035, 0.09)) - 0.004
+    return wp.min(wp.min(a, b), drv)
+
+
+@wp.func
+def _smd(q: wp.vec3) -> float:
+    # dense field of tiny SMD resistors/caps filling the support-circuit strip on the left
+    inleft = q[0] > -3.55 and q[0] < -2.62 and wp.abs(q[2]) < 1.28
+    if not inleft:
+        return 1e9
+    xr = q[0] - 0.3 * wp.floor(q[0] / 0.3 + 0.5)
+    zr = q[2] - 0.34 * wp.floor(q[2] / 0.34 + 0.5)
+    return sd_box(wp.vec3(xr, q[1] - 0.09, zr), wp.vec3(0.05, 0.018, 0.1))
+
+
+@wp.func
+def _headers(q: wp.vec3) -> float:
+    fan = sd_box(q - wp.vec3(-3.0, 0.14, 1.18), wp.vec3(0.2, 0.09, 0.12)) - 0.01     # fan header
+    rgb = sd_box(q - wp.vec3(-3.0, 0.14, -1.18), wp.vec3(0.16, 0.08, 0.1)) - 0.01    # ARGB header
+    return wp.min(fan, rgb)
 
 
 @wp.func
@@ -149,7 +169,9 @@ def _map(p: wp.vec3, time: float) -> float:
     d = op_union(d, _poscap(q))
     d = op_union(d, _bulk(q))
     d = op_union(d, _power(q))
-    return op_union(d, _ctrl(q))
+    d = op_union(d, _ctrl(q))
+    d = op_union(d, _smd(q))
+    return op_union(d, _headers(q))
 
 
 @wp.func
@@ -271,10 +293,13 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
     dbk = _bulk(q)
     dpw = _power(q)
     dct = _ctrl(q)
+    dsm = _smd(q)
+    dhd = _headers(q)
     dpc = _pcb(q)
     m0 = wp.min(wp.min(dgpu, dmem), wp.min(dch, dmo))
     m1 = wp.min(wp.min(dml, dpo), wp.min(dbk, dpw))
-    mind = wp.min(wp.min(m0, m1), wp.min(dct, dpc))
+    m2 = wp.min(wp.min(dct, dsm), dhd)
+    mind = wp.min(wp.min(m0, m1), wp.min(m2, dpc))
     eps = 0.0009
 
     if dgpu <= mind + eps:
@@ -314,7 +339,22 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
                 col = col * 0.4
         img[i, j] = col
     elif dct <= mind + eps:
-        img[i, j] = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.85  # controller ICs
+        img[i, j] = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.85  # controller ICs / drivers
+    elif dsm <= mind + eps:
+        # tiny SMD field: alternate dark resistors and tan caps by cell hash
+        h = _dhash(wp.floor(q[0] / 0.3 + 0.5), wp.floor(q[2] / 0.34 + 0.5))
+        if h > 0.5:
+            img[i, j] = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.9   # SMD resistor
+        else:
+            col = ec.lit(n, rd, 6, ao, wp.vec3(0.0, 0.0, 0.0))
+            img[i, j] = wp.cw_mul(col, wp.vec3(0.85, 0.78, 0.62))            # SMD cap
+    elif dhd <= mind + eps:
+        col = ec.lit(n, rd, 5, ao, wp.vec3(0.0, 0.0, 0.0))
+        if q[1] > 0.2:
+            hx = q[0] / 0.08 - wp.floor(q[0] / 0.08)
+            if hx < 0.5:
+                col = col + wp.vec3(0.28, 0.2, 0.05)                        # header pins (gold)
+        img[i, j] = col
     else:
         # dark professional PCB: gold PCIe fingers on -z edge, dense routing elsewhere
         if q[2] < -1.28 and q[1] > -0.02:
