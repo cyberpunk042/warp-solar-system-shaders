@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (269 scenes).
+`python render.py --list` for the full, current list (270 scenes).
 
 ## Engine showcase
 
@@ -675,6 +675,15 @@ own nuclear-fireball model. Then the mind escapes into the quantum void. All ani
 | power_draw (electrons through the real board) | mind_escape (aftermath) |
 |---|---|
 | ![power_draw](engine/power_draw.png) | ![mind_escape](engine/mind_escape.png) |
+
+And the other way to blow it — **`gpu_memory_nuke`** keeps the die alive and sends the
+overload into the **memory**: each of the thirteen GDDR packages around the GPU detonates
+in its own mushroom cloud, one by one, a rolling chain sweeping across the memory ring while
+the die glows white-hot at the centre feeding them.
+
+| gpu_memory_nuke (the memory going off one by one) |
+|---|
+| ![gpu_memory_nuke](engine/gpu_memory_nuke.png) |
 
 The whole arc — electrons drawn through the real board, the memory overheating and the
 blocks popping, the overflow singularity, then the die going off in a mushroom cloud:

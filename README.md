@@ -520,6 +520,15 @@ over `--frames`. See [Research 37](docs/research/37-gpu-singularity.md).
 |---|---|
 | ![power_draw](docs/engine/power_draw.png) | ![mind_escape](docs/engine/mind_escape.png) |
 
+The other way to blow it — **`gpu_memory_nuke`** keeps the die alive and sends the overload
+into the **memory**: each of the thirteen GDDR packages around the GPU detonates in its own
+mushroom cloud, one by one, a rolling chain across the memory ring while the die glows
+white-hot at the centre feeding them.
+
+| gpu_memory_nuke (the memory going off one by one) |
+|---|
+| ![gpu_memory_nuke](docs/engine/gpu_memory_nuke.png) |
+
 The whole arc — electrons through the real board, memory overheat + block pops, overflow
 singularity, then the die going off in a mushroom cloud:
 

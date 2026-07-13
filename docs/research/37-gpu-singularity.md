@@ -127,7 +127,9 @@ with transmittance so its smoke occludes the board. Heavy bloom carries the glow
 
 `gpu_singularity` (the whole arc on the real RTX board — electrons drawn through the
 12VHPWR/VRM/PCIe path, memory overheat + block pops, overflow singularity, then a proper
-mushroom cloud off the die) · `memory_overflow` (one GDDR block, up close — layer fill,
+mushroom cloud off the die) · `gpu_memory_nuke` (the other way — the die survives and each of
+the thirteen GDDR packages detonates in its own mushroom cloud, one by one in a rolling chain
+across the memory ring) · `memory_overflow` (one GDDR block, up close — layer fill,
 roof-pierce, a small mushroom) · `power_draw` (the ignition — electron/photon current flowing
 through the real board's power path) · `mind_escape` (the aftermath — the liberated mind in
 the void)
