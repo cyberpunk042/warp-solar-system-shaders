@@ -108,6 +108,29 @@ def lit(n: wp.vec3, rd: wp.vec3, m: int, ao: float, emit: wp.vec3) -> wp.vec3:
     return c * ao + amb + alb * (rim * 0.15) + emit
 
 
+@wp.func
+def fan_shade(dx: float, dz: float, radius: float, time: float, spin: float) -> float:
+    """Procedural axial-fan look, painted on a flat well top.
+
+    Returns a grey level in [0,1] for a point (dx,dz) from the fan centre:
+    curved swept blades (leading edge bright, trailing dark), dark gaps between
+    them, a raised hub, and a frame rim. ``spin`` rotates the blades over time.
+    Caller should only invoke this where sqrt(dx*dx+dz*dz) < radius.
+    """
+    r = wp.sqrt(dx * dx + dz * dz) / radius
+    if r < 0.2:
+        return 0.28 + 0.12 * (0.2 - r)                 # hub cap
+    if r > 0.94:
+        return 0.55                                    # outer frame ring
+    ang = wp.atan2(dz, dx) + spin * time - (1.0 - r) * 1.6   # curved sweep
+    cell = ang * (9.0 / 6.28318)                       # 9 blades
+    frac = cell - wp.floor(cell)
+    if frac > 0.66:
+        return 0.06                                    # gap between blades (see-through)
+    lead = 1.0 - frac / 0.66                            # 1 at leading edge -> 0 at trailing
+    return 0.16 + 0.5 * lead + 0.12 * r                # blade, shaded along its chord
+
+
 def finish(hdr, width, height, exposure=1.05, threshold=1.3, strength=0.35):
     r = max(2, int(min(width, height) * 0.014))
     hdr = post.bloom(np.asarray(hdr, np.float32), threshold=threshold,
