@@ -597,6 +597,20 @@ buoyancy, vorticity confinement). See [Research 40](docs/research/40-physics-sim
 |---|---|
 | ![nbody](docs/engine/nbody.png) | ![fluid](docs/engine/fluid.png) |
 
+## Waves, resonance & interference
+
+One equation — `u_tt = c²∇²u` — and its eigenmodes, seen four ways: **cymatics** (sand banking
+on the nodal lines of a ringing plate), a two-source **ripple tank**, a drumhead singing its
+**Bessel** modes, and the **double-slit** experiment. Analytic eigenmodes for the plate and drum;
+a real finite-difference wave sim for the ripple tank and slits. See
+[Research 41](docs/research/41-waves-and-resonance.md).
+
+| chladni — cymatics on a vibrating plate | ripple_tank — two-source interference |
+|---|---|
+| ![chladni](docs/engine/chladni.png) | ![ripple_tank](docs/engine/ripple_tank.png) |
+| standing_membrane — a drumhead Bessel mode | double_slit — Young's fringes |
+| ![standing_membrane](docs/engine/standing_membrane.png) | ![double_slit](docs/engine/double_slit.png) |
+
 ```bash
 python render.py --scene gpu_singularity --frames 180 --gif out/singularity.gif
 python render.py --scene memory_overflow --frames 120 --gif out/overflow.gif
