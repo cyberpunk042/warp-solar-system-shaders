@@ -569,6 +569,19 @@ the motion carried by pulses of glow racing up the beam and the spirals:
 
 ![tachyon_v2](docs/engine/tachyon_v2.gif)
 
+## Gravitational lensing — a black hole, ray-traced for real
+
+`gargantua` treats every camera ray as a **photon** and integrates its path along a real **null
+geodesic** of the Schwarzschild metric — so light bends: past the horizon (the black shadow),
+around the photon sphere (the bright ring), and *over the top* of the hole onto the far side of
+the accretion disk (the Interstellar arc). Blackbody disk with relativistic Doppler beaming +
+gravitational redshift; the background starfield is lensed by the bending. Deterministic, so it
+orbits cleanly. See [Research 42](docs/research/42-gravitational-lensing.md).
+
+| gargantua — geodesic-traced black hole | orbiting the hole |
+|---|---|
+| ![gargantua](docs/engine/gargantua.png) | ![gargantua orbit](docs/engine/gargantua.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted

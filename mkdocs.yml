@@ -95,6 +95,7 @@ nav:
       - Engine leap (path tracing): research/39-engine-leap.md
       - Physics simulations (gravity, fluids): research/40-physics-sims.md
       - Waves, resonance & interference: research/41-waves-and-resonance.md
+      - Gravitational lensing (ray-traced black hole): research/42-gravitational-lensing.md
 
 markdown_extensions:
   - admonition
