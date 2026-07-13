@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (253 scenes).
+`python render.py --list` for the full, current list (263 scenes).
 
 ## Engine showcase
 
@@ -615,3 +615,27 @@ flash** floating-gate cell (the SSD bit), a **CMOS inverter** (the logic atom), 
 | dram_cell | nand_flash_cell | cmos_inverter | sram_cell |
 |---|---|---|---|
 | ![dram_cell](engine/dram_cell.png) | ![nand_flash_cell](engine/nand_flash_cell.png) | ![cmos_inverter](engine/cmos_inverter.png) | ![sram_cell](engine/sram_cell.png) |
+
+**Boards & memory blocks** — the actual boards a computer is made of, assembled from
+the components. A **RAM** stick (DRAM chips on a DIMM), an **NVMe SSD** (flash on M.2),
+a **CPU** under its heat spreader, and a finned **heatsink**.
+
+| ram_stick | nvme_ssd | cpu | heatsink |
+|---|---|---|---|
+| ![ram_stick](engine/ram_stick.png) | ![nvme_ssd](engine/nvme_ssd.png) | ![cpu](engine/cpu.png) | ![heatsink](engine/heatsink.png) |
+
+The **graphics card** and the platform — a bare **GPU package** (die + on-package
+memory), the full **graphics card** (shroud, fans, PCIe, power), the **motherboard**
+everything plugs into, and a look **inside the GPU die** at the shader-core grid.
+
+| gpu_package | graphics_card | motherboard | gpu_floorplan |
+|---|---|---|---|
+| ![gpu_package](engine/gpu_package.png) | ![graphics_card](engine/graphics_card.png) | ![motherboard](engine/motherboard.png) | ![gpu_floorplan](engine/gpu_floorplan.png) |
+
+**GPU cooling styles** — the same board, three coolers: a high-end **open-air**
+triple-fan card, a **blower** (induction-fan) card that exhausts out the back, and a
+**fanless / open** card with the guts (GPU, GDDR, VRM, traces) exposed.
+
+| graphics_card (open-air) | gpu_blower (blower) | gpu_open (fanless) |
+|---|---|---|
+| ![graphics_card](engine/graphics_card.png) | ![gpu_blower](engine/gpu_blower.png) | ![gpu_open](engine/gpu_open.png) |
