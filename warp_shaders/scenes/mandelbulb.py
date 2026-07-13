@@ -100,14 +100,18 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
         p = _roty(ro + rd * t, spin)
         v4 = mandelbulb_de(p, power, iters)
         d = v4[0]
-        glow = glow + wp.exp(-d * 24.0)                 # closest-approach halo
+        # closest-approach halo — weighted by the step size so it doesn't
+        # pile up on grazing rays (that was blowing the whole bulb to white)
+        step = wp.max(d * 0.82, 0.002)
+        glow = glow + wp.exp(-d * 40.0) * step
         if d < 0.0006 * t + 0.0004:
             hit = 1
             trap = v4[1]
             break
-        t += d * 0.82
+        t += step
         if t > 6.0:
             break
+    glow = wp.min(glow, 0.6)                             # hard cap the haze
 
     # dark-space background with a cool gradient
     up = wp.clamp(rd[1] * 0.5 + 0.5, 0.0, 1.0)
@@ -121,13 +125,18 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sun: wp.vec3,
         sh = _soft_shadow(p + n * 0.004, sun, power, iters, shadow_steps)
         ao = _ao(p, n, power, iters)
         rim = wp.pow(1.0 - wp.max(wp.dot(n, -rd), 0.0), 2.5)
-        col = wp.cw_mul(base, wp.vec3(0.14, 0.16, 0.22) * ao          # ambient
-                        + wp.vec3(1.0, 0.94, 0.82) * (ndl * sh))       # sun
-        col = col + base * (rim * 0.4)                                 # fresnel rim
+        # stronger key + AO so the fractal's crevices and shells read as detail
+        col = wp.cw_mul(base, wp.vec3(0.10, 0.12, 0.18) * ao          # ambient
+                        + wp.vec3(1.15, 1.05, 0.9) * (ndl * sh))       # sun
+        col = col + base * (rim * 0.5)                                 # fresnel rim
+        col = col * (0.35 + 0.65 * ao)                                 # deepen the pits
 
-    # glow — a luminous haze bathing the fractal (operator: "the bright one
-    # was spectacular"), tinted electric blue
-    col = col + wp.vec3(0.30, 0.45, 0.85) * (glow * 0.05)
+    # glow — a luminous haze bathing the fractal, tamed so it frames the bulb
+    # instead of drowning it; brightest where the ray grazes empty space
+    halo = wp.vec3(0.24, 0.42, 0.85) * (glow * 0.7)
+    if hit == 1:
+        halo = halo * 0.35                                            # not over the surface
+    col = col + halo
     img[i, j] = col
 
 
@@ -146,18 +155,20 @@ def _render(width, height, time, mouse, device):
     dist = 2.9
     eye = (dist * math.cos(el) * math.sin(az), dist * math.sin(el),
            dist * math.cos(el) * math.cos(az))
-    cam = make_camera(eye, (0.0, 0.0, 0.0), fov_deg=42.0, aspect=width / height)
     sun = wp.normalize(wp.vec3(0.6, 0.5, 0.4))
 
-    img = wp.zeros((height, width), dtype=wp.vec3, device=device)
-    wp.launch(render_kernel, dim=(height, width),
+    ssaa = 2                                            # fractals alias hard — SSAA
+    W, H = int(width) * ssaa, int(height) * ssaa
+    cam = make_camera(eye, (0.0, 0.0, 0.0), fov_deg=42.0, aspect=W / H)
+    img = wp.zeros((H, W), dtype=wp.vec3, device=device)
+    wp.launch(render_kernel, dim=(H, W),
               inputs=[img, cam, sun, float(power), int(iters), float(spin),
-                      int(ms), int(ss), int(width), int(height)], device=device)
+                      int(ms), int(ss), int(W), int(H)], device=device)
     wp.synchronize_device(device)
-    hdr = img.numpy()
+    hdr = post.downsample(img.numpy(), ssaa)
     r = max(2, int(min(width, height) * 0.014))
-    hdr = post.bloom(hdr, threshold=0.95, strength=0.5, radius=r, passes=3)
-    out = post.tonemap(hdr, mode="aces", exposure=1.15)
+    hdr = post.bloom(hdr, threshold=1.3, strength=0.4, radius=r, passes=3, octaves=3)
+    out = post.tonemap(hdr, mode="aces", exposure=1.0, preserve_hue=True)
     return post.vignette(out, 0.3)
 
 

@@ -31,24 +31,48 @@ def _slab(ro: wp.vec3, rd: wp.vec3) -> wp.vec2:
 
 
 @wp.func
-def _emit(p: wp.vec3, time: float) -> wp.vec3:
+def _field(p: wp.vec3, time: float) -> wp.vec4:
+    """Return (emission.rgb, dust_density) at a disk point."""
     r = wp.length(wp.vec2(p[0], p[2]))
     if r > _RD:
-        return wp.vec3(0.0, 0.0, 0.0)
+        return wp.vec4(0.0, 0.0, 0.0, 0.0)
     th = wp.atan2(p[2], p[0]) + time * 0.05
-    turb = fbm3(p * 2.5, 3)
-    arms = wp.sin(2.0 * th + 7.0 * wp.log(r + 0.25) + turb * 2.2)
-    arm = wp.pow(wp.max(arms, 0.0), 2.2)
-    vert = wp.exp(-(p[1] * p[1]) / 0.010)
-    rad = wp.exp(-r * 1.15)
-    core = wp.exp(-r * r * 9.0)
+    lr = wp.log(r + 0.22)
+    turb = fbm3(p * 2.6, 4)
+    fine = fbm3(p * 7.5 + wp.vec3(11.0, 3.0, 7.0), 3)
+    spark = fbm3(p * 22.0 + wp.vec3(4.0, 9.0, 2.0), 2)   # star-cluster granularity
 
-    disk = arm * rad * vert
-    arm_col = wp.vec3(0.6, 0.75, 1.0) * (disk * 1.8)
-    core_col = wp.vec3(1.0, 0.86, 0.55) * (core * 3.2)
-    hii = wp.smoothstep(0.7, 0.92, turb) * disk
-    hii_col = wp.vec3(1.0, 0.35, 0.6) * (hii * 3.5)
-    return (arm_col + core_col + hii_col) * (0.6 + 0.6 * turb)
+    vert = wp.exp(-(p[1] * p[1]) / 0.008)
+    rad = wp.exp(-r * 1.1)
+
+    # two-arm log spiral, tightened into sharp density-wave ridges
+    s = 2.0 * th + 6.5 * lr
+    arms = 0.5 + 0.5 * wp.sin(s + turb * 1.7)
+    arm = wp.pow(arms, 3.4) * rad * vert
+
+    # young blue-white stars, resolved into clumps + bright sparkle knots
+    clump = 0.4 + 1.1 * wp.smoothstep(0.35, 0.9, fine)
+    sparkle = wp.smoothstep(0.72, 0.95, spark)
+    arm_col = wp.vec3(0.55, 0.68, 1.0) * (arm * 2.2 * clump) \
+        + wp.vec3(0.8, 0.9, 1.0) * (arm * sparkle * 3.0)
+    # discrete pink/red HII star-forming knots strung along the arms
+    hii = wp.smoothstep(0.68, 0.9, fine) * wp.smoothstep(0.55, 0.85, spark) * arm
+    hii_col = wp.vec3(1.0, 0.28, 0.42) * (hii * 12.0)
+
+    # bulge: a broad warm glow plus a sharp brilliant nucleus
+    bulge = wp.exp(-r * r * 6.5)
+    nucleus = wp.exp(-r * r * 90.0)
+    core_col = wp.vec3(1.0, 0.85, 0.55) * (bulge * 2.4) \
+        + wp.vec3(1.0, 0.96, 0.82) * (nucleus * 8.0)
+
+    emit = arm_col + hii_col + core_col
+
+    # dust lanes: an offset spiral that ABSORBS (no emission) — the dark
+    # threads on the leading edge of each arm that make a spiral read
+    dusts = 0.5 + 0.5 * wp.sin(s - 0.6 + turb * 1.7)
+    dust = wp.pow(dusts, 4.0) * rad * vert * (0.6 + 0.7 * turb) \
+        * wp.smoothstep(0.12, 0.5, r)
+    return wp.vec4(emit[0], emit[1], emit[2], dust)
 
 
 @wp.kernel
@@ -61,6 +85,9 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, time: float,
     rd = camera_ray_dir(cam, u, v)
 
     col = stars(rd)
+    # a faint spherical halo of old stars around the bulge
+    d_core = wp.length(ro + rd * wp.max(wp.dot(-ro, rd), 0.0))
+    col = col + wp.vec3(0.9, 0.82, 0.7) * (0.06 * wp.exp(-d_core * d_core * 0.5))
     sb = _slab(ro, rd)
     t0 = wp.max(sb[0], 0.0)
     if sb[1] > t0:
@@ -70,11 +97,13 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, time: float,
         t = t0 + 0.5 * seg
         for _ in range(steps):
             p = ro + rd * t
-            e = _emit(p, time)
-            dens = (e[0] + e[1] + e[2]) * 0.2
-            acc += e * (seg * 1.4 * trans)
-            trans *= wp.exp(-dens * seg * 0.5)
-            if trans < 0.05:
+            f = _field(p, time)
+            e = wp.vec3(f[0], f[1], f[2])
+            edens = (e[0] + e[1] + e[2]) * 0.15
+            acc += e * (seg * 1.5 * trans)
+            # dust lanes absorb the light from stars + gas behind them
+            trans *= wp.exp(-(f[3] * 3.2 + edens * 0.4) * seg)
+            if trans < 0.04:
                 break
             t += seg
         col = col * trans + acc
@@ -94,17 +123,19 @@ def _render(width, height, time, mouse, device):
     dist = 6.5
     eye = (dist * math.cos(el) * math.sin(az), dist * math.sin(el),
            dist * math.cos(el) * math.cos(az))
-    cam = make_camera(eye, (0.0, 0.0, 0.0), fov_deg=40.0, aspect=width / height)
+    ss = 2                                             # SSAA for crisp arm stars
+    W, H = int(width) * ss, int(height) * ss
+    cam = make_camera(eye, (0.0, 0.0, 0.0), fov_deg=40.0, aspect=W / H)
 
-    img = wp.zeros((height, width), dtype=wp.vec3, device=device)
-    wp.launch(render_kernel, dim=(height, width),
-              inputs=[img, cam, float(time), int(steps), int(width), int(height)],
+    img = wp.zeros((H, W), dtype=wp.vec3, device=device)
+    wp.launch(render_kernel, dim=(H, W),
+              inputs=[img, cam, float(time), int(steps), int(W), int(H)],
               device=device)
     wp.synchronize_device(device)
-    hdr = img.numpy()
+    hdr = post.downsample(img.numpy(), ss)
     r = max(3, int(min(width, height) * 0.02))
-    hdr = post.bloom(hdr, threshold=0.7, strength=0.7, radius=r, passes=3)
-    return post.tonemap(hdr, mode="aces", exposure=1.2)
+    hdr = post.bloom(hdr, threshold=1.0, strength=0.5, radius=r, passes=3, octaves=3)
+    return post.tonemap(hdr, mode="aces", exposure=1.1, preserve_hue=True)
 
 
 SCENE = Scene(
