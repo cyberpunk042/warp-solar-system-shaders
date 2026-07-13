@@ -22,6 +22,7 @@ _SCENES = [
     ("electric_motor", 0.5),
     ("transformer", 0.4),
     ("power_grid", 1.0),
+    ("tachyon_v2", 0.6),
 ]
 
 
