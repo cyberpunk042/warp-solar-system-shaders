@@ -31,15 +31,45 @@ def _agx(x):
     return np.clip(x * (x * (x * 0.9 + 0.3) + 0.05) / (x * 0.9 + 0.35), 0.0, 1.0)
 
 
-def tonemap(frame, mode="aces", exposure=1.0, gamma=2.2):
+def tonemap(frame, mode="aces", exposure=1.0, gamma=2.2, preserve_hue=False):
+    """Tonemap an HDR buffer to display range and gamma-encode.
+
+    ``preserve_hue`` applies the curve to **luminance** and rescales the colour by
+    that ratio, so bright saturated emitters (stars, plasma, a hot disk) keep their
+    hue instead of desaturating toward yellow/white the way per-channel ACES does.
+    A gentle highlight desaturation is still folded in so the very brightest cores
+    can reach white."""
     c = np.clip(np.asarray(frame, np.float32) * exposure, 0.0, None)
-    if mode == "reinhard":
-        c = c / (1.0 + c)
-    elif mode == "agx":
-        c = _agx(c)
+
+    def _curve(v):
+        if mode == "reinhard":
+            return v / (1.0 + v)
+        if mode == "agx":
+            return _agx(v)
+        return aces(v)
+
+    if preserve_hue:
+        lum = np.maximum(0.2126 * c[..., 0] + 0.7152 * c[..., 1] + 0.0722 * c[..., 2], 1e-6)
+        tl = _curve(lum)
+        out = c * (tl / lum)[..., None]
+        # let the brightest cores bleach to white (highlight desaturation)
+        w = np.clip(tl - 0.85, 0.0, 0.15)[..., None] / 0.15
+        out = out * (1.0 - w) + tl[..., None] * w
+        c = out
     else:
-        c = aces(c)
+        c = _curve(c)
     return np.clip(c, 0.0, 1.0) ** (1.0 / gamma)
+
+
+def downsample(img, k):
+    """Average-pool an image by integer factor ``k`` (SSAA box downsample). The
+    image dims must be divisible by ``k`` — render at ``k×`` then call this."""
+    k = int(k)
+    if k <= 1:
+        return np.asarray(img, np.float32)
+    c = np.asarray(img, np.float32)
+    h, w = c.shape[0] // k, c.shape[1] // k
+    return c[:h * k, :w * k].reshape(h, k, w, k, -1).mean(axis=(1, 3))
 
 
 def _box_blur(img, r):
