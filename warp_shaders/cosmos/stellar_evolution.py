@@ -207,17 +207,24 @@ def _env_at(p: wp.vec3, ekind: int, radius: float, seed: float,
     dir = p * (1.0 / wp.max(r, 1e-4))
     turb = fbm3(dir * 5.0 + s + wp.vec3(time * 0.05, 0.0, 0.0), 5)
     fil = ridged3(dir * 10.0 + s, 4)
-    dens = gauss * wp.clamp(0.55 * turb + 0.85 * fil - 0.18, 0.0, 1.0)
     k = wp.clamp(0.5 + 0.5 * dd, 0.0, 1.0)           # 0 inside the shell .. 1 outside
     if ekind == ENV_PLANETARY:
+        dens = gauss * wp.clamp(0.55 * turb + 0.85 * fil - 0.18, 0.0, 1.0)
         inner = wp.vec3(0.15, 0.85, 0.78)            # O III teal (ionized inner)
         outer = wp.vec3(0.95, 0.26, 0.44)            # H-alpha rose (outer)
         col = inner * (1.0 - k) + outer * k
-    else:                                            # supernova: fire + a thin shock
-        interior = wp.vec3(1.0, 0.32, 0.09)          # incandescent orange-red ejecta
+    else:                                            # supernova: clumpy RT fingers + shock
+        # sharper, higher-contrast Rayleigh-Taylor fingers than a smooth shell
+        fine = ridged3(dir * 22.0 + s * 1.3, 4)
+        spike = fil * fil
+        dens = gauss * wp.clamp(0.4 * turb + 1.3 * spike + 0.5 * fine - 0.35, 0.0, 1.0)
+        interior = wp.vec3(1.0, 0.30, 0.08)          # incandescent orange-red ejecta
+        hot = wp.vec3(1.0, 0.74, 0.34)               # hotter inner ejecta (fresh)
         shock = wp.vec3(0.5, 0.72, 1.0)              # blue-white leading shock
-        kk = wp.smoothstep(0.6, 1.0, k)              # blue only at the very outer edge
-        col = interior * (1.0 - kk) + shock * kk
+        ki = wp.smoothstep(0.0, 0.45, k)             # inner is hottest
+        ejc = hot * (1.0 - ki) + interior * ki
+        kk = wp.smoothstep(0.62, 1.0, k)             # blue only at the very outer edge
+        col = ejc * (1.0 - kk) + shock * kk
     return wp.vec4(col[0], col[1], col[2], dens)
 
 
