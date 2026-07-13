@@ -22,14 +22,25 @@ from ..textures import sample3d
 _R = 1.3
 _vol_cache = {}
 
+# Hot young stars embedded in the cloud — they ionize the gas around them
+# (that is *why* an emission nebula glows). Positions + radiant colours.
+_S0 = wp.constant(wp.vec3(0.34, 0.10, -0.22))
+_S1 = wp.constant(wp.vec3(-0.42, -0.16, 0.26))
+_S2 = wp.constant(wp.vec3(0.02, 0.34, 0.12))
+_C0 = wp.constant(wp.vec3(0.55, 0.72, 1.0))     # blue O-star
+_C1 = wp.constant(wp.vec3(1.0, 0.72, 0.55))     # warmer B-star
+_C2 = wp.constant(wp.vec3(0.72, 0.86, 1.0))     # blue-white
+
 
 @wp.kernel
 def bake_nebula(vol: wp.array3d(dtype=float), size: int):
     iz, iy, ix = wp.tid()
     p = wp.vec3(float(ix), float(iy), float(iz)) / float(size)
-    base = fbm3(p * 3.0, 5)
-    fil = ridged3(p * 2.2 + wp.vec3(4.0, 4.0, 4.0), 5)
-    vol[iz, iy, ix] = base * 0.55 + fil * 0.55
+    # filaments dominate (ridged), warped by a low-frequency flow → tendrils
+    warp = fbm3(p * 1.5 + wp.vec3(9.0, 2.0, 5.0), 4)
+    fil = ridged3(p * 3.0 + wp.vec3(4.0 + warp * 0.6, 4.0 - warp * 0.5, 4.0 + warp * 0.4), 6)
+    base = fbm3(p * 3.6, 6)
+    vol[iz, iy, ix] = fil * 0.7 + base * 0.34
 
 
 @wp.func
@@ -45,14 +56,27 @@ def _box(ro: wp.vec3, rd: wp.vec3, r: float) -> wp.vec2:
 
 
 @wp.func
-def _palette(d: float, p: wp.vec3) -> wp.vec3:
-    # teal/blue <-> magenta/pink, varied by position; warm cores where densest
-    hue = 0.35 + 0.45 * wp.sin(p[0] * 2.3 + p[2] * 1.5 + p[1] * 0.8)
-    c_cool = wp.vec3(0.10, 0.45, 0.95)
-    c_warm = wp.vec3(1.0, 0.20, 0.5)
-    base = c_cool * (1.0 - hue) + c_warm * hue
-    hot = wp.vec3(1.0, 0.65, 0.3) * wp.pow(d, 4.0)
-    return base * (d * d) + hot
+def _starlight(p: wp.vec3) -> wp.vec3:
+    """Radiance reaching a gas point from the embedded ionizing stars."""
+    d0 = p - _S0
+    d1 = p - _S1
+    d2 = p - _S2
+    l0 = 1.0 / (wp.dot(d0, d0) + 0.03)
+    l1 = 1.0 / (wp.dot(d1, d1) + 0.03)
+    l2 = 1.0 / (wp.dot(d2, d2) + 0.03)
+    return _C0 * (l0 * 0.05) + _C1 * (l1 * 0.045) + _C2 * (l2 * 0.04)
+
+
+@wp.func
+def _star_core(p: wp.vec3) -> wp.vec3:
+    """The bright stars themselves (sharp cores)."""
+    d0 = p - _S0
+    d1 = p - _S1
+    d2 = p - _S2
+    c0 = wp.exp(-wp.dot(d0, d0) / 0.0007)
+    c1 = wp.exp(-wp.dot(d1, d1) / 0.0007)
+    c2 = wp.exp(-wp.dot(d2, d2) / 0.0007)
+    return _C0 * (c0 * 3.0) + _C1 * (c1 * 3.0) + _C2 * (c2 * 3.0)
 
 
 @wp.kernel
@@ -71,16 +95,26 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), vol: wp.array3d(dtype=float),
         seg = (bb[1] - t0) / float(steps)
         trans = float(1.0)
         acc = wp.vec3(0.0, 0.0, 0.0)
-        sigma = 2.4
         t = t0 + 0.5 * seg
         for _ in range(steps):
             p = ro + rd * t
             uvw = (p + wp.vec3(_R, _R, _R)) / (2.0 * _R)
             s = sample3d(vol, uvw[0], uvw[1], uvw[2], 0)
-            fall = wp.smoothstep(_R, 0.2, wp.length(p))
-            d = wp.clamp((s - 0.55) * 3.2, 0.0, 1.0) * fall
+            env = wp.exp(-wp.dot(p, p) * 0.85)               # soft envelope, fills the box
+            d = wp.clamp((s - 0.5) * 2.3, 0.0, 1.0) * env
+            # bright stars are always visible (attenuated by foreground dust)
+            acc += _star_core(p) * (trans * seg * 6.0)
             if d > 0.01:
-                emis = _palette(d, p)
+                light = _starlight(p)
+                lum = light[0] + light[1] + light[2]
+                # ionization colour: H-alpha pink near hot stars, OIII teal in
+                # the diffuse outskirts; densest cores redden (self-absorbed)
+                ion = wp.clamp(lum * 0.7, 0.0, 1.0)
+                gas = wp.vec3(0.22, 0.52, 0.55) * (1.0 - ion) \
+                    + wp.vec3(0.95, 0.28, 0.42) * ion
+                emis = gas * (d * (0.25 + 1.6 * lum))
+                # dense filaments are dusty: they absorb strongly → dark pillars
+                sigma = 2.0 + 6.0 * d
                 d_tr = wp.exp(-d * sigma * seg)
                 acc += emis * (trans * (1.0 - d_tr))
                 trans *= d_tr
@@ -118,15 +152,18 @@ def _render(width, height, time, mouse, device):
            dist * math.cos(el) * math.cos(az))
     cam = make_camera(eye, (0.0, 0.0, 0.0), fov_deg=44.0, aspect=width / height)
 
-    img = wp.zeros((height, width), dtype=wp.vec3, device=device)
-    wp.launch(render_kernel, dim=(height, width),
-              inputs=[img, vol, cam, int(steps), int(width), int(height)],
+    ss = 2
+    W, H = int(width) * ss, int(height) * ss
+    cam = make_camera(eye, (0.0, 0.0, 0.0), fov_deg=44.0, aspect=W / H)
+    img = wp.zeros((H, W), dtype=wp.vec3, device=device)
+    wp.launch(render_kernel, dim=(H, W),
+              inputs=[img, vol, cam, int(steps), int(W), int(H)],
               device=device)
     wp.synchronize_device(device)
-    hdr = img.numpy()
+    hdr = post.downsample(img.numpy(), ss)
     r = max(3, int(min(width, height) * 0.02))
-    hdr = post.bloom(hdr, threshold=0.8, strength=0.7, radius=r, passes=3)
-    return post.tonemap(hdr, mode="aces", exposure=1.2)
+    hdr = post.bloom(hdr, threshold=1.0, strength=0.55, radius=r, passes=3, octaves=3)
+    return post.tonemap(hdr, mode="aces", exposure=1.05, preserve_hue=True)
 
 
 SCENE = Scene(
