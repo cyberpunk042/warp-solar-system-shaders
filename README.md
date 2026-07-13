@@ -376,6 +376,41 @@ python render.py --scene neural_net --frames 60 --gif out/mind.gif
 python render.py --scene big_bang --frames 60 --gif out/bang.gif
 ```
 
+## Four more frontiers — the machine, mathematics, the deep ocean, the far future
+
+A second massive four-strand round (see
+[Research 26](docs/research/26-the-machine.md)–[29](docs/research/29-megastructures-and-far-future.md)):
+
+**The machine** — technology & computation, bottom-up from the switch to the mind:
+
+| transistor | logic gate (NAND) | CPU die | data flow | internet | quantum computer | AI training |
+|---|---|---|---|---|---|---|
+| ![transistor](docs/engine/transistor.png) | ![logic gates](docs/engine/logic_gates.png) | ![cpu die](docs/engine/cpu_die.png) | ![data flow](docs/engine/data_flow.png) | ![internet](docs/engine/internet.png) | ![qubit](docs/engine/quantum_computer.png) | ![ai training](docs/engine/ai_training.png) |
+
+**Mathematics made visible** — chaos, topology, four dimensions, aperiodic order:
+
+| strange attractor | torus knot | Klein bottle | tesseract | Penrose tiling | domain colouring |
+|---|---|---|---|---|---|
+| ![lorenz](docs/engine/strange_attractor.png) | ![torus knot](docs/engine/torus_knot.png) | ![klein](docs/engine/klein_bottle.png) | ![tesseract](docs/engine/tesseract.png) | ![penrose](docs/engine/penrose_tiling.png) | ![domain colouring](docs/engine/domain_coloring.png) |
+
+**The deep ocean** — the midnight zone and life that makes its own light:
+
+| jellyfish | hydrothermal vent | bioluminescence | coral reef | Mariana trench | whale fall |
+|---|---|---|---|---|---|
+| ![jellyfish](docs/engine/jellyfish.png) | ![vent](docs/engine/hydrothermal_vent.png) | ![bioluminescent](docs/engine/bioluminescent.png) | ![coral reef](docs/engine/coral_reef.png) | ![trench](docs/engine/mariana_trench.png) | ![whale fall](docs/engine/whale_fall.png) |
+
+**Megastructures & the far future** — the engineering of Kardashev II–III:
+
+| Dyson sphere | ringworld | O'Neill cylinder | space elevator | generation ship | Matrioshka brain |
+|---|---|---|---|---|---|
+| ![dyson](docs/engine/dyson_sphere.png) | ![ringworld](docs/engine/ringworld.png) | ![oneill](docs/engine/oneill_cylinder.png) | ![elevator](docs/engine/space_elevator.png) | ![gen ship](docs/engine/generation_ship.png) | ![matrioshka](docs/engine/matrioshka_brain.png) |
+
+```bash
+python render.py --scene matrioshka_brain --frames 60 --gif out/brain.gif
+python render.py --scene strange_attractor -o lorenz.png
+python render.py --scene space_elevator -o elevator.png
+```
+
 ## Elements — the stylized (non-realistic) aesthetic
 
 A deliberately artistic take on the atom: the iconic neon **Bohr-model** look —
