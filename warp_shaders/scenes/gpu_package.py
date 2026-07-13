@@ -54,7 +54,11 @@ def _caps(q: wp.vec3) -> float:
     cx = 0.34 * xi
     f = sd_box(q - wp.vec3(cx, 0.12, 1.4), wp.vec3(0.06, 0.03, 0.09))
     b = sd_box(q - wp.vec3(cx, 0.12, -1.4), wp.vec3(0.06, 0.03, 0.09))
-    return wp.min(f, b)
+    zi = wp.clamp(wp.floor(q[2] / 0.34 + 0.5), -3.0, 3.0)
+    cz = 0.34 * zi
+    lft = sd_box(q - wp.vec3(-2.0, 0.12, cz), wp.vec3(0.09, 0.03, 0.06))
+    rgt = sd_box(q - wp.vec3(2.0, 0.12, cz), wp.vec3(0.09, 0.03, 0.06))
+    return wp.min(wp.min(f, b), wp.min(lft, rgt))
 
 
 @wp.func
@@ -135,13 +139,29 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
         img[i, j] = col
     elif dhbm <= mind + eps:
         col = ec.lit(n, rd, 0, ao, wp.vec3(0.0, 0.0, 0.0))
-        img[i, j] = wp.cw_mul(col, wp.vec3(1.15, 1.15, 1.25))       # memory stacks
+        col = wp.cw_mul(col, wp.vec3(1.15, 1.15, 1.25))            # memory stacks
+        if q[1] > 0.28:
+            mx = q[0] / 0.11 - wp.floor(q[0] / 0.11)               # stacked-die layer lines
+            if mx < 0.14:
+                col = col * 0.7
+        img[i, j] = col
     elif dcaps <= mind + eps:
         col = ec.lit(n, rd, 6, ao, wp.vec3(0.0, 0.0, 0.0))
         img[i, j] = wp.cw_mul(col, wp.vec3(1.1, 0.85, 0.6))         # tan caps
     else:
-        col = ec.lit(n, rd, 4, ao, wp.vec3(0.0, 0.0, 0.0))
-        img[i, j] = col * 0.7                                       # dark green substrate
+        # dark green substrate with gold traces fanning die -> memory
+        col = ec.lit(n, rd, 4, ao, wp.vec3(0.0, 0.0, 0.0)) * 0.7
+        if q[1] > 0.06 and n[1] > 0.5:
+            tz = q[2] / 0.09 - wp.floor(q[2] / 0.09)
+            tx = q[0] / 0.09 - wp.floor(q[0] / 0.09)
+            on = float(0.0)
+            if wp.abs(q[0]) > 1.0 and tz < 0.32:
+                on = 1.0                                            # horizontal buses to L/R memory
+            if wp.abs(q[2]) > 0.85 and tx < 0.32:
+                on = 1.0                                            # vertical buses to F/B
+            if on > 0.5:
+                col = ec.lit(n, rd, 2, ao, wp.vec3(0.0, 0.0, 0.0))  # gold trace
+        img[i, j] = col
 
 
 def _render(width, height, time, mouse, device):
