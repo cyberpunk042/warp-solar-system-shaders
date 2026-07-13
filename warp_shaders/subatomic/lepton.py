@@ -38,7 +38,7 @@ def _gen_color(gen: int) -> wp.vec3:
 @wp.kernel
 def lepton_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, charged: int,
                   fcol: wp.vec3, core_r: float, core_i: float, time: float,
-                  osc: float, width: int, height: int):
+                  osc: float, anti: int, width: int, height: int):
     i, j = wp.tid()
     u = (2.0 * (float(j) + 0.5) / float(width)) - 1.0
     v = (2.0 * (float(height - 1 - i) + 0.5) / float(height)) - 1.0
@@ -61,10 +61,14 @@ def lepton_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, charged: int,
         r = wp.length(p) + 1.0e-4
         dir = p / r
         if charged == 1:
-            # radial EM field filaments + outgoing Coulomb ripples
+            # radial EM field filaments + Coulomb ripples; antimatter runs the
+            # ripples the other way (charge conjugation cue)
             fil = fbm3(dir * 4.0 + wp.vec3(0.0, 0.0, time * 0.4), 4)
             streak = wp.pow(wp.max(fil, 0.0), 2.5)
-            ripple = 0.45 + 0.55 * wp.sin(r * 6.5 - time * 3.0)
+            rdir = r * 6.5 - time * 3.0
+            if anti == 1:
+                rdir = r * 6.5 + time * 3.0
+            ripple = 0.45 + 0.55 * wp.sin(rdir)
             fall = wp.exp(-r * 1.15)
             col = col + fcol * (streak * ripple * fall * 0.9 * dt)
         else:
@@ -88,7 +92,7 @@ def lepton_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, charged: int,
     img[i, j] = col + void(rd)
 
 
-def render_lepton(width, height, time, mouse, device, kind=0):
+def render_lepton(width, height, time, mouse, device, kind=0, anti=False):
     name, mass, gen = _LEP[kind]
     charged = 1 if kind < 3 else 0
     # neutrino flavour oscillation: blend the generation colour toward its
@@ -98,6 +102,9 @@ def render_lepton(width, height, time, mouse, device, kind=0):
         c = base[gen]
         core_r = 0.1 + 0.02 * math.log10(mass * 1000.0)     # mass → core size
         core_i = 1.4 + 0.25 * math.log10(mass / 0.5)
+        # antimatter (e⁺): a warm positive-charge field instead of the cool e⁻
+        if anti:
+            c = (0.95, 0.55, 0.22)
         fcol = wp.vec3(*c)
     else:
         ph = (time * 0.25 + float(gen)) % 3.0
@@ -113,7 +120,8 @@ def render_lepton(width, height, time, mouse, device, kind=0):
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(lepton_kernel, dim=(height, width),
               inputs=[img, cam, int(charged), fcol, float(core_r), float(core_i),
-                      float(time), 0.0, int(width), int(height)], device=device)
+                      float(time), 0.0, int(1 if anti else 0), int(width), int(height)],
+              device=device)
     wp.synchronize_device(device)
     hdr = img.numpy().astype(np.float32)
     thr = 1.4 if charged else 1.0

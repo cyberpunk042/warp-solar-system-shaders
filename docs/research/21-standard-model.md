@@ -124,3 +124,105 @@ intact for the elements' Bohr atoms.
   lattice-QCD flux tube + string tension κ ≈ 1 GeV/fm.
 - A. Chodos et al., *New extended model of hadrons* (MIT bag model), Phys. Rev. D9
   (1974) — the confinement "bag".
+
+---
+
+# Beyond the first table — mesons, antimatter, exotic atoms, and the hypothetical
+
+The Standard-Model chart above (quarks, leptons, bosons) plus the proton, neutron,
+atom and orbitals were the first pass. This section adds the **composite** hadrons
+beyond the nucleon, **antimatter**, **charged/exotic atoms**, and the particles
+that theory predicts but no experiment has yet seen.
+
+## Mesons — quark + antiquark
+
+A meson is the two-body strong bound state: **one quark and one antiquark**, carrying
+colour + anti-colour (e.g. red + anti-red = colour-neutral), held by a single QCD
+gluon flux string. Rendered by `subatomic/meson.py: render_meson` (the nucleon's
+emission primitives with two centres instead of three).
+
+| Scene | Content | Mass | Note |
+|---|---|---|---|
+| `pion` | π⁺ = u d̄ | 139.6 MeV | the lightest hadron; Yukawa's carrier of the nuclear force |
+| `kaon` | K⁺ = u s̄ | 493.7 MeV | first "strange" particle; long-lived (weak decay) |
+| `jpsi` | J/ψ = c c̄ | 3096.9 MeV | charmonium; the 1974 "November Revolution" confirmed charm |
+| `upsilon` | Υ = b b̄ | 9460.3 MeV | bottomonium; tightly bound heavy quark pair |
+
+Heavier quarkonia (c c̄, b b̄) sit deeper in the confining potential, so they are
+drawn more compact and brighter. Flavour tints follow `field.flavor_color`.
+
+## Antimatter — same mass, opposite charge
+
+Every particle has an antiparticle (Dirac 1928; the positron found by Anderson 1932,
+the antiproton at the Bevatron 1955). Rendered by extending the existing lepton and
+nucleon renderers with an `anti` flag (`subatomic/annihilation.py` for the event):
+
+| Scene | What | Note |
+|---|---|---|
+| `positron` | e⁺ | the electron's antiparticle — warm positive-charge field, charge-conjugated (reversed) Coulomb ripples |
+| `antiproton` | p̄ = ū ū d̄ | anti-colour antiquarks in a violet confinement bag |
+| `annihilation` | e⁻ + e⁺ → γ γ | rest mass → two **back-to-back** 511 keV gamma photons (energy + momentum conservation) |
+
+## Exotic / charged atoms
+
+| Scene | What | Note |
+|---|---|---|
+| `ion` | a cation | an atom that has lost an electron — depleted electron cloud, the ejected electron streaking away, a net-positive charge halo |
+| `positronium` | (e⁻ e⁺) | a hydrogen-like atom of matter + antimatter orbiting their common centre; annihilates in ~0.1 ns (para-Ps) to ~140 ns (ortho-Ps) |
+
+## Hypothetical particles — predicted, never observed
+
+| Scene | What | Status |
+|---|---|---|
+| `tachyon` | imaginary-mass, faster-than-light particle | drags a **Cherenkov shock cone** of blueshifted light; almost certainly non-physical (violates causality), a useful teaching foil |
+| `graviton` | spin-2 quantum of gravity | required if gravity is quantised; ripples a spacetime grid by its **quadrupole** (plus-polarisation) strain — the same strain LIGO measures for classical waves |
+| `magnetic_monopole` | isolated magnetic charge | predicted by Dirac (1931, explains charge quantisation) and by GUTs; would give **radial** B-field lines. None found — the field always loops (∇·B = 0 so far) |
+| `axion` | ultralight pseudoscalar | proposed by Peccei–Quinn to solve the strong-CP problem; a leading cold-dark-matter candidate. Detectable via the **Primakoff effect** — axion ↔ photon conversion in a magnetic field (ADMX, CAST) |
+| `dark_matter` | a WIMP | ~27% of the universe's energy; non-luminous, seen only gravitationally — here through the **lensing** of background starlight into arcs |
+
+## Additional citations
+
+- **C. D. Anderson**, *The Positive Electron*, Phys. Rev. 43 (1933) — the positron.
+- **O. Chamberlain, E. Segrè et al.**, *Observation of Antiprotons*, Phys. Rev. 100
+  (1955) — the antiproton.
+- **J. J. Aubert et al.** & **J.-E. Augustin et al.**, Phys. Rev. Lett. 33 (1974) —
+  the J/ψ (charm).
+- **P. A. M. Dirac**, *Quantised Singularities in the Electromagnetic Field*, Proc.
+  R. Soc. A 133 (1931) — the magnetic monopole + charge quantisation.
+- **R. D. Peccei, H. Quinn**, Phys. Rev. Lett. 38 (1977); **F. Wilczek**,
+  **S. Weinberg**, PRL 40 (1978) — the axion.
+- **G. Feinberg**, *Possibility of Faster-Than-Light Particles*, Phys. Rev. 159
+  (1967) — tachyons.
+- **Planck Collaboration**, *Cosmological parameters*, A&A 641 (2020) — the dark-matter
+  density Ω_c h².
+
+## Baryons beyond the nucleon — the hyperons
+
+Replace the proton/neutron's up and down quarks with **strange** quarks and the
+**hyperon** family appears (`subatomic/baryon.py: render_baryon` — the nucleon
+field with each quark tinted by flavour as well as colour charge):
+
+| Scene | Content | Mass | Note |
+|---|---|---|---|
+| `lambda` | Λ⁰ = u d s | 1115.7 MeV | the lightest hyperon |
+| `sigma` | Σ⁺ = u u s | 1189.4 MeV | a charged strange baryon |
+| `xi` | Ξ⁰ = u s s | 1314.9 MeV | the "cascade", decays in a chain |
+| `omega` | Ω⁻ = s s s | 1672.5 MeV | three strange quarks — **predicted** by the quark model's SU(3) decuplet in 1962 and found in 1964, confirming the scheme |
+| `delta` | Δ⁺⁺ = u u u | 1232 MeV | a spin-3/2 resonance; three identical up quarks in the same state demanded a new three-valued quantum number — **colour** |
+
+## In the detector — how we actually see particles
+
+| Scene | What | Note |
+|---|---|---|
+| `bubble_chamber` | curved tracks in superheated liquid | a charged particle boils a trail of bubbles; a magnetic field bends it (radius ∝ momentum, sign ∝ charge). Neutral particles are invisible until they decay into a **V** of charged tracks. (Glaser 1952) |
+| `particle_collision` | a collider event display | two beams meet and the energy sprays out as a fan of tracks reconstructed by the detector — the modern successor to the bubble chamber (LHC, etc.) |
+
+## Further citations
+
+- **M. Gell-Mann**, *A Schematic Model of Baryons and Mesons*, Phys. Lett. 8 (1964);
+  **G. Zweig**, CERN preprint (1964) — the quark model + the Ω⁻ prediction.
+- **V. E. Barnes et al.**, *Observation of a Hyperon with Strangeness Minus Three*,
+  Phys. Rev. Lett. 12 (1964) — the Ω⁻.
+- **O. W. Greenberg**, Phys. Rev. Lett. 13 (1964) — colour, from the Δ⁺⁺ paradox.
+- **D. A. Glaser**, *Some Effects of Ionizing Radiation on the Formation of Bubbles
+  in Liquids*, Phys. Rev. 87 (1952) — the bubble chamber.
