@@ -585,6 +585,18 @@ blur** (a random shutter instant per ray). See [Research 39](docs/research/39-en
 | subsurface — translucent random walk | motion_blur — distributed temporal sampling |
 | ![subsurface](docs/engine/subsurface.png) | ![motion_blur](docs/engine/motion_blur.png) |
 
+## Physics simulations
+
+Not physics *drawn* — physics **run**. A state stepped forward in time by the governing
+equations on Warp; the image is whatever the dynamics produce. A real O(N²) **N-body gravity**
+sim (two star clouds colliding, tidal tails, a merged core) and a 2-D incompressible
+**Navier–Stokes** fluid (Stam's Stable Fluids — semi-Lagrangian advection, pressure projection,
+buoyancy, vorticity confinement). See [Research 40](docs/research/40-physics-sims.md).
+
+| nbody — O(N²) gravity, two clouds colliding | fluid — Navier–Stokes smoke plume |
+|---|---|
+| ![nbody](docs/engine/nbody.png) | ![fluid](docs/engine/fluid.png) |
+
 ```bash
 python render.py --scene gpu_singularity --frames 180 --gif out/singularity.gif
 python render.py --scene memory_overflow --frames 120 --gif out/overflow.gif

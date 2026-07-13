@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (283 scenes).
+`python render.py --list` for the full, current list (285 scenes).
 
 ## Engine showcase
 
@@ -743,3 +743,17 @@ translucent solid), and **motion blur** (a random instant sampled per ray). See
 And one GDDR block up close — filling layer by layer, then a small mushroom off its roof:
 
 ![a single memory block overflowing](engine/memory_overflow.gif)
+
+## Physics simulations
+
+Not physics *drawn* — physics **run**. A state stepped forward in time by the governing
+equations on Warp, the image is whatever the dynamics produce. See
+[research 40](research/40-physics-sims.md).
+
+| nbody (O(N²) gravity — two star clouds colliding) | fluid (2-D Navier–Stokes smoke plume) |
+|---|---|
+| ![nbody](engine/nbody.png) | ![fluid](engine/fluid.png) |
+
+The fluid plume rising and rolling — buoyancy, vorticity confinement, pressure projection every step:
+
+![a rising Navier–Stokes smoke plume](engine/fluid.gif)
