@@ -58,15 +58,40 @@ def _box_blur(img, r):
     return (s / area).astype(np.float32)
 
 
-def bloom(hdr, threshold=1.0, strength=0.6, radius=6, passes=3):
-    """Threshold the bright parts, blur, and add back (on the HDR buffer)."""
-    c = np.asarray(hdr, np.float32)
+def _soft_bright(c, threshold, knee):
+    """Extract the bright parts with a smooth **soft knee** around `threshold`
+    (Unreal-style) instead of a hard cut — no ringing at the threshold edge."""
     lum = c.max(axis=2, keepdims=True)
-    bright = c * np.clip((lum - threshold) / max(threshold, 1e-3), 0.0, 1.0)
+    knee = max(knee, 1e-4)
+    soft = np.clip(lum - threshold + knee, 0.0, 2.0 * knee)
+    soft = soft * soft / (4.0 * knee)
+    contrib = np.maximum(soft, lum - threshold) / np.maximum(lum, 1e-4)
+    return c * np.clip(contrib, 0.0, 1.0)
+
+
+def bloom(hdr, threshold=1.0, strength=0.6, radius=6, passes=3, knee=0.5, octaves=4):
+    """Soft-knee, **multi-scale** bloom on the HDR buffer.
+
+    The bright parts (soft-knee-thresholded) are blurred at a pyramid of growing
+    radii and summed with halving weights, giving a wide, smooth HDR glow with a
+    tight bright core and a soft falloff — instead of a single box-blur halo. The
+    weighted blend is energy-normalised, so `strength` keeps the same overall
+    magnitude as the old single-scale bloom. `knee` softens the threshold;
+    `octaves` sets how many doublings of the blur radius contribute."""
+    c = np.asarray(hdr, np.float32)
+    bright = _soft_bright(c, threshold, knee * max(threshold, 1e-3))
+    acc = np.zeros_like(c)
+    wsum = 0.0
     b = bright
-    for _ in range(passes):
-        b = _box_blur(b, radius)
-    return c + b * strength
+    r = max(1, int(radius))
+    for o in range(max(1, octaves)):
+        for _ in range(passes):
+            b = _box_blur(b, r)
+        w = 0.5 ** o
+        acc += b * w
+        wsum += w
+        r = max(1, r * 2)               # pyramid: each octave doubles the radius
+    return c + (acc / max(wsum, 1e-6)) * strength
 
 
 def godrays(hdr, cx, cy, samples=28, density=0.9, decay=0.95, weight=0.6,
