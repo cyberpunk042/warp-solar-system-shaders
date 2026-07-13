@@ -48,6 +48,7 @@ nav:
       - super-earth: api/superearth.md
       - cosmos (solar system): api/cosmos.md
       - subatomic (Standard Model): api/subatomic.md
+      - molecules (chemistry): api/molecules.md
       - blast (nuclear): api/blast.md
       - buildings: api/buildings.md
   - Gallery: gallery.md
@@ -74,6 +75,10 @@ nav:
       - Extraordinary cosmos: research/19-extraordinary-cosmos.md
       - More cosmos, worlds & cross-strand: research/20-more-cosmos-worlds-crossstrand.md
       - The Standard Model: research/21-standard-model.md
+      - Chemistry & molecules: research/22-chemistry-and-molecules.md
+      - Origin & large-scale universe: research/23-origin-and-large-scale-universe.md
+      - The living body: research/24-the-living-body.md
+      - Earth & weather: research/25-earth-and-weather.md
 
 markdown_extensions:
   - admonition
