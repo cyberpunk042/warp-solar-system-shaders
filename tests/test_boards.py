@@ -15,7 +15,7 @@ import warp_shaders as ws
 _SCENES = [
     "ram_stick", "nvme_ssd", "cpu", "heatsink",
     "gpu_package", "graphics_card", "gpu_blower", "gpu_open",
-    "motherboard", "gpu_floorplan",
+    "gpu_board", "gpu_flagship", "motherboard", "gpu_floorplan",
 ]
 
 
