@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (161 scenes).
+`python render.py --list` for the full, current list (186 scenes).
 
 ## Engine showcase
 
@@ -464,3 +464,41 @@ their colour, so the tidal debris stays legible. See
 python render.py --scene galaxy_collision  --frames 64 --fps 6 --video out/tails.mp4
 python render.py --scene galaxy_retrograde --frames 64 --fps 6 --video out/retro.mp4
 ```
+
+## Four more frontiers — the machine, mathematics, the deep ocean, the far future
+
+A second four-strand round (see [Research 26](research/26-the-machine.md)–[29](research/29-megastructures-and-far-future.md)).
+
+**The machine** — computation bottom-up: a **MOSFET** switching on and off, a
+universal **NAND** gate cycling its truth table, a **CPU die** as an aerial city of
+logic, a **memory** array streaming its bitstream, the **internet** as a packet mesh,
+a **qubit** on the Bloch sphere, and **gradient descent** rolling down a loss landscape.
+
+| transistor | logic_gates | cpu_die | data_flow | internet | quantum_computer | ai_training |
+|---|---|---|---|---|---|---|
+| ![transistor](engine/transistor.png) | ![logic_gates](engine/logic_gates.png) | ![cpu_die](engine/cpu_die.png) | ![data_flow](engine/data_flow.png) | ![internet](engine/internet.png) | ![quantum_computer](engine/quantum_computer.png) | ![ai_training](engine/ai_training.png) |
+
+**Mathematics made visible** — the **Lorenz** attractor (deterministic chaos), a
+**trefoil** torus knot, a **Klein bottle** (figure-8 immersion), a **tesseract**
+rotating in 4D, a **Penrose** tiling (aperiodic five-fold order), and **domain
+colouring** of a complex function.
+
+| strange_attractor | torus_knot | klein_bottle | tesseract | penrose_tiling | domain_coloring |
+|---|---|---|---|---|---|
+| ![strange_attractor](engine/strange_attractor.png) | ![torus_knot](engine/torus_knot.png) | ![klein_bottle](engine/klein_bottle.png) | ![tesseract](engine/tesseract.png) | ![penrose_tiling](engine/penrose_tiling.png) | ![domain_coloring](engine/domain_coloring.png) |
+
+**The deep ocean** — a bioluminescent **jellyfish**, a **black-smoker** vent with tube
+worms, a drifting cloud of **living light**, a sunlit **coral reef**, the **Mariana
+Trench** descent, and a **whale fall** feeding the abyss.
+
+| jellyfish | hydrothermal_vent | bioluminescent | coral_reef | mariana_trench | whale_fall |
+|---|---|---|---|---|---|
+| ![jellyfish](engine/jellyfish.png) | ![hydrothermal_vent](engine/hydrothermal_vent.png) | ![bioluminescent](engine/bioluminescent.png) | ![coral_reef](engine/coral_reef.png) | ![mariana_trench](engine/mariana_trench.png) | ![whale_fall](engine/whale_fall.png) |
+
+**Megastructures & the far future** — a **Dyson sphere** caging a star, a **ringworld**,
+the interior of an **O'Neill cylinder**, a **space elevator**, a **generation ship**,
+and a **Matrioshka brain** turning a star into computation.
+
+| dyson_sphere | ringworld | oneill_cylinder | space_elevator | generation_ship | matrioshka_brain |
+|---|---|---|---|---|---|
+| ![dyson_sphere](engine/dyson_sphere.png) | ![ringworld](engine/ringworld.png) | ![oneill_cylinder](engine/oneill_cylinder.png) | ![space_elevator](engine/space_elevator.png) | ![generation_ship](engine/generation_ship.png) | ![matrioshka_brain](engine/matrioshka_brain.png) |
