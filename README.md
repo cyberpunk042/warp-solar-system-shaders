@@ -462,7 +462,20 @@ that a RAM, an SSD, or a processor is tiled from:
 |---|---|---|---|
 | ![dram_cell](docs/engine/dram_cell.png) | ![nand_flash_cell](docs/engine/nand_flash_cell.png) | ![cmos_inverter](docs/engine/cmos_inverter.png) | ![sram_cell](docs/engine/sram_cell.png) |
 
+**Boards & memory blocks** — the components assembled into the actual boards a
+computer is made of (see [Research 36](docs/research/36-boards-and-memory-blocks.md)):
+a **RAM** stick and an **NVMe SSD** (the memory cells tiled into modules), a **CPU**
+and a **heatsink**, a bare **GPU package**, the full **graphics card**, the
+**motherboard** they all plug into — and a look **inside the GPU die** at the
+shader-core compute fabric (the target of a "virtual graphics card"):
+
+| graphics_card | gpu_package | motherboard | gpu_floorplan |
+|---|---|---|---|
+| ![graphics_card](docs/engine/graphics_card.png) | ![gpu_package](docs/engine/gpu_package.png) | ![motherboard](docs/engine/motherboard.png) | ![gpu_floorplan](docs/engine/gpu_floorplan.png) |
+
 ```bash
+python render.py --scene graphics_card -o gpu.png
+python render.py --scene gpu_floorplan --frames 120 --gif out/die.gif
 python render.py --scene silicon_wafer -o wafer.png
 python render.py --scene bga -o bga.png
 python render.py --scene prism -o prism.png

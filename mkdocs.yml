@@ -88,6 +88,7 @@ nav:
       - Electromagnetism & fields: research/32-electromagnetism-and-fields.md
       - The cell up close: research/33-the-cell-up-close.md
       - Electronics components: research/35-electronics-components.md
+      - Boards & memory blocks: research/36-boards-and-memory-blocks.md
 
 markdown_extensions:
   - admonition
