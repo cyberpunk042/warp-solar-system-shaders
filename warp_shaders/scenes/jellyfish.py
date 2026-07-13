@@ -70,18 +70,19 @@ def _render(width, height, time, mouse, device):
     pulse = math.sin(time * 2.2)
     ry = 0.62 * (1.0 + 0.16 * pulse)
     rx = 0.92 * (1.0 - 0.10 * pulse)
-    cam = orbit_camera(width, height, time, mouse, dist=4.2, fov=42.0, el0=0.12,
-                       auto=0.12)
-    img = wp.zeros((height, width), dtype=wp.vec3, device=device)
-    wp.launch(jelly_kernel, dim=(height, width),
-              inputs=[img, cam, float(rx), float(ry), float(time), int(width), int(height)],
+    ss = 2
+    W, H = int(width) * ss, int(height) * ss
+    cam = orbit_camera(W, H, time, mouse, dist=4.2, fov=42.0, el0=0.12, auto=0.12)
+    img = wp.zeros((H, W), dtype=wp.vec3, device=device)
+    wp.launch(jelly_kernel, dim=(H, W),
+              inputs=[img, cam, float(rx), float(ry), float(time), int(W), int(H)],
               device=device)
     wp.synchronize_device(device)
-    hdr = img.numpy().astype(np.float32)
+    hdr = post.downsample(img.numpy().astype(np.float32), ss)
     hdr += np.array([0.004, 0.010, 0.020], np.float32)      # deep-water base
     r = max(2, int(min(width, height) * 0.012))
-    hdr = post.bloom(hdr, threshold=0.8, strength=0.6, radius=r, passes=3)
-    return post.tonemap(hdr, mode="aces", exposure=1.08)
+    hdr = post.bloom(hdr, threshold=0.8, strength=0.6, radius=r, passes=3, octaves=3)
+    return post.tonemap(hdr, mode="aces", exposure=1.08, preserve_hue=True)
 
 
 SCENE = Scene(

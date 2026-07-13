@@ -217,8 +217,9 @@ Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with
 | Function | Signature |
 |---|---|
 | `exposure` / `auto_exposure` | `(hdr, ev=0.0)` / `(hdr, key=0.18, max_gain=8.0)` — photographic stops / geometric-mean-luminance auto key (before tonemap) |
-| `tonemap` | `(frame, mode="aces", exposure=1.0, gamma=2.2) -> ndarray` — `mode` ∈ `aces` / `agx` / `reinhard`; maps HDR → `[0, 1]` |
-| `bloom` | `(hdr, threshold=1.0, strength=0.6, radius=6, passes=3) -> ndarray` — bright-pass + blur bleed |
+| `tonemap` | `(frame, mode="aces", exposure=1.0, gamma=2.2, preserve_hue=False) -> ndarray` — `mode` ∈ `aces` / `agx` / `reinhard`; maps HDR → `[0, 1]`. `preserve_hue=True` tone-maps luminance and rescales chroma by the ratio, so saturated emitters (a red disk, a blue jet) keep their hue instead of desaturating to yellow, with bright cores still bleaching to white |
+| `bloom` | `(hdr, threshold=1.0, strength=0.6, radius=6, passes=3, knee=0.5, octaves=4) -> ndarray` — soft-knee bright-pass + **multi-scale** blur bleed. `knee` softens the threshold (no hard clip edge); `octaves` sums a pyramid of doubling radii (energy-normalized, so `strength` matches the old single-scale bloom) for a wide, physical glow. Fewer octaves = tighter glow |
+| `downsample` | `(img, k) -> ndarray` — integer `k×k` average-pool; render at `k×` then downsample for cheap SSAA anti-aliasing of thin features |
 | `godrays` | `(hdr, cx, cy, samples=28, density=0.9, decay=0.95, weight=0.6, ...) -> ndarray` — radial light scattering from screen point `(cx, cy)` |
 | `chromatic_aberration` | `(frame, amount=0.004) -> ndarray` — radial red-out / blue-in lens dispersion |
 | `sharpen` | `(frame, amount=0.5, radius=2) -> ndarray` — unsharp mask |
