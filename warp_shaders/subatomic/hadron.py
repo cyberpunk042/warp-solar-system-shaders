@@ -34,7 +34,7 @@ def _qpos(k: int, time: float) -> wp.vec3:
 @wp.kernel
 def nucleon_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera,
                    b0: float, b1: float, b2: float, warm: float,
-                   time: float, width: int, height: int):
+                   anti: int, time: float, width: int, height: int):
     i, j = wp.tid()
     u = (2.0 * (float(j) + 0.5) / float(width)) - 1.0
     v = (2.0 * (float(height - 1 - i) + 0.5) / float(height)) - 1.0
@@ -52,8 +52,14 @@ def nucleon_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera,
     c0 = color_charge(0)
     c1 = color_charge(1)
     c2 = color_charge(2)
+    if anti == 1:                                    # antiquarks carry anti-colour
+        c0 = wp.vec3(1.0, 1.0, 1.0) - c0
+        c1 = wp.vec3(1.0, 1.0, 1.0) - c1
+        c2 = wp.vec3(1.0, 1.0, 1.0) - c2
     gcol = wp.vec3(0.8, 0.92, 1.0)                    # gluon tube tint
     tint = wp.vec3(1.0, 0.9, 0.75) * warm + wp.vec3(0.8, 0.9, 1.0) * (1.0 - warm)
+    if anti == 1:
+        tint = wp.vec3(0.75, 0.6, 1.0)               # violet anti-matter bag
 
     t0 = wp.max(g[0], 0.0)
     t1 = g[1]
@@ -76,9 +82,10 @@ def nucleon_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera,
     img[i, j] = col * 1.9 + void(rd)
 
 
-def render_nucleon(width, height, time, mouse, device, is_proton=True):
+def render_nucleon(width, height, time, mouse, device, is_proton=True, anti=False):
     """Render a proton (uud) or neutron (udd). Down quarks render dimmer; the
     confinement bag is warm for the charged proton, cool for the neutral neutron.
+    ``anti=True`` renders the antiparticle (anti-colour quarks, violet bag).
     """
     cam = _render_mod.orbit_camera(width, height, time, mouse, dist=4.2, fov=40.0,
                                    el0=0.72)
@@ -89,7 +96,8 @@ def render_nucleon(width, height, time, mouse, device, is_proton=True):
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(nucleon_kernel, dim=(height, width),
               inputs=[img, cam, float(b0), float(b1), float(b2), float(warm),
-                      float(time), int(width), int(height)], device=device)
+                      int(1 if anti else 0), float(time), int(width), int(height)],
+              device=device)
     wp.synchronize_device(device)
     hdr = img.numpy().astype(np.float32)
     return _render_mod.finish(hdr, width, height, threshold=1.4, strength=0.42,
