@@ -14,8 +14,10 @@ The surface still animates over time through the noise term. Original GLSL is
 kept at ``reference/sun.frag``.
 """
 
+import numpy as np
 import warp as wp
 
+from ..engine import post
 from ..scene import Scene
 from ..sdf import fract, noise2d
 
@@ -144,6 +146,7 @@ def render_kernel(
     f = (1.0 - wp.sqrt(wp.abs(1.0 - r))) / (r + 1.0e-6) + brightness * 0.5
 
     star_sphere = wp.vec3(0.0, 0.0, 0.0)
+    limb = float(1.0)
     if dist < radius:
         corona *= wp.pow(dist * inv_radius, 24.0)
         nux = spx * f + tt
@@ -151,16 +154,36 @@ def render_kernel(
         tex_g = sun_tex(nux, nuy)[1]
         u_off = tex_g * brightness * 4.5 + tt
         star_sphere = sun_tex(nux + u_off, nuy)
+        # photospheric limb darkening: I(μ) = 0.35 + 0.65·μ, μ = cos(view angle)
+        mu = wp.sqrt(wp.max(1.0 - (dist * inv_radius) * (dist * inv_radius), 0.0))
+        limb = 0.32 + 0.68 * mu
+        # a bright-white hot core under the warm surface (bleaches out via bloom)
+        star_sphere = star_sphere * limb + wp.vec3(1.0, 0.9, 0.62) * (limb * limb) * 0.13
 
     star_glow = wp.clamp(1.0 - dist * (1.0 - brightness), 0.0, 1.0)
 
-    col = orange * (f * (0.75 + brightness * 0.3))
+    col = orange * (f * (0.75 + brightness * 0.3) * limb)
     col = col + star_sphere + orange * corona + orange_red * star_glow
-    img[i, j] = col
+    img[i, j] = col * 1.08                              # mild HDR for the host bloom/tonemap
+
+
+def _render(width, height, time, mouse, device):
+    ss = 2
+    W, H = int(width) * ss, int(height) * ss
+    img = wp.zeros((H, W), dtype=wp.vec3, device=device)
+    wp.launch(render_kernel, dim=(H, W),
+              inputs=[img, int(W), int(H), float(time), wp.vec2(0.0, 0.0)], device=device)
+    wp.synchronize_device(device)
+    hdr = post.downsample(img.numpy().astype(np.float32), ss)
+    r = max(2, int(min(width, height) * 0.02))
+    hdr = post.bloom(hdr, threshold=1.35, strength=0.5, radius=r, passes=4)
+    return post.tonemap(hdr, mode="aces", exposure=0.92, preserve_hue=True)
 
 
 SCENE = Scene(
     name="sun",
-    kernel=render_kernel,
-    description="Turbulent star with a flaring corona (trisomie21). Texture->procedural; no audio.",
+    renderer=_render,
+    description="A turbulent star with a flaring corona and photospheric limb darkening, "
+                "a hot white core bleaching through the warm granular surface, HDR through "
+                "the engine bloom + hue-preserving tonemap, 2×2 supersampled.",
 )

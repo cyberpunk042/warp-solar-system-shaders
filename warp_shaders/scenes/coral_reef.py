@@ -97,14 +97,19 @@ def reef_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, time: float,
             _map(hitp + wp.vec3(0.0, 0.0, e)) - _map(hitp - wp.vec3(0.0, 0.0, e))))
         sun = wp.normalize(wp.vec3(0.25, 1.0, 0.3))
         dif = wp.max(wp.dot(n, sun), 0.0)
-        amb = 0.3 + 0.2 * n[1]
+        amb = 0.26 + 0.22 * n[1]
         base = _shade_col(hitp)
-        col = base * (amb + 0.9 * dif)
-        # caustic ripples brighten the lit tops
-        caus = 0.5 + 0.5 * wp.sin(hitp[0] * 8.0 + time) * wp.sin(hitp[2] * 8.0 - time * 0.7)
-        col = col + base * caus * dif * 0.3
+        # glossy wet-coral specular + coloured subsurface rim (corals glow at edges)
+        hlf = wp.normalize(sun - rd)
+        spec = wp.pow(wp.max(wp.dot(n, hlf), 0.0), 44.0)
+        rim = wp.pow(1.0 - wp.max(wp.dot(n, -rd), 0.0), 3.0)
+        col = base * (amb + 1.05 * dif) + base * rim * 0.5 \
+            + wp.vec3(0.8, 0.95, 1.0) * spec * 0.5
+        # sharper animated caustics rippling over the lit tops
+        caus = wp.abs(wp.sin(hitp[0] * 7.0 + time)) * wp.abs(wp.sin(hitp[2] * 7.0 - time * 0.7))
+        col = col + base * wp.pow(caus, 0.4) * dif * 0.55
         # blue water absorption with distance (mild, to keep corals vivid)
-        fog = 1.0 - wp.exp(-t * 0.10)
+        fog = 1.0 - wp.exp(-t * 0.09)
         col = col * (1.0 - fog) + water * fog
     else:
         col = water
@@ -112,7 +117,7 @@ def reef_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, time: float,
     # sun shafts + a few fish motes (screen additive along the ray)
     shaft = wp.pow(wp.max(rd[1], 0.0), 2.0) * (0.4 + 0.6 * fbm3(
         wp.vec3(rd[0] * 5.0 + time * 0.2, rd[1] * 3.0, rd[2] * 5.0), 3))
-    col = col + wp.vec3(0.4, 0.7, 0.8) * shaft * 0.3
+    col = col + wp.vec3(0.4, 0.72, 0.85) * shaft * 0.45
     for k in range(6):
         a = time * 0.5 + float(k) * 1.05
         fp = wp.vec3(0.9 * wp.sin(a * 1.3 + float(k)), -0.2 + 0.3 * wp.sin(a),
@@ -127,16 +132,17 @@ def reef_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, time: float,
 
 
 def _render(width, height, time, mouse, device):
-    cam = orbit_camera(width, height, time, mouse, dist=4.0, fov=46.0, el0=0.16,
-                       auto=0.1)
-    img = wp.zeros((height, width), dtype=wp.vec3, device=device)
-    wp.launch(reef_kernel, dim=(height, width),
-              inputs=[img, cam, float(time), int(width), int(height)], device=device)
+    ss = 2
+    W, H = int(width) * ss, int(height) * ss
+    cam = orbit_camera(W, H, time, mouse, dist=4.0, fov=46.0, el0=0.16, auto=0.1)
+    img = wp.zeros((H, W), dtype=wp.vec3, device=device)
+    wp.launch(reef_kernel, dim=(H, W),
+              inputs=[img, cam, float(time), int(W), int(H)], device=device)
     wp.synchronize_device(device)
-    hdr = img.numpy().astype(np.float32)
+    hdr = post.downsample(img.numpy().astype(np.float32), ss)
     r = max(2, int(min(width, height) * 0.01))
-    hdr = post.bloom(hdr, threshold=1.0, strength=0.3, radius=r, passes=3)
-    return post.tonemap(hdr, mode="aces", exposure=1.05)
+    hdr = post.bloom(hdr, threshold=1.1, strength=0.35, radius=r, passes=3)
+    return post.tonemap(hdr, mode="aces", exposure=1.06, preserve_hue=True)
 
 
 SCENE = Scene(

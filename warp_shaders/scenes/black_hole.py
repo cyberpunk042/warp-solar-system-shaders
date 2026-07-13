@@ -11,9 +11,12 @@ the scene needs no assets. ``iMouse`` drives zoom (x) and pitch (y).
 Original GLSL kept at ``reference/black-hole.frag``.
 """
 
+import numpy as np
 import warp as wp
 
 from ..sdf import fract
+from ..engine import post
+from ..engine.color import kelvin_to_rgb
 from ..scene import Scene
 
 # Scene constants (the GLSL #defines).
@@ -136,14 +139,17 @@ def raymarch_disk(ray: wp.vec3, zero_pos: wp.vec3, time: float):
     parallel = ray[0] * delta[0] + ray[2] * delta[1]
     parallel /= wp.sqrt(length_pos)
     parallel *= 0.5
-    red_shift = parallel + 0.3
+    doppler = wp.clamp(parallel, -0.9, 0.9)          # + approaching, - receding
+    # relativistic Doppler beaming — the side rotating toward us is much brighter
+    beam = wp.clamp(1.0 + 2.4 * doppler, 0.12, 3.2)
+    red_shift = wp.clamp(parallel + 0.3, 0.0, 1.0)
     red_shift *= red_shift
-    red_shift = wp.clamp(red_shift, 0.0, 1.0)
 
-    dis_mix = wp.clamp((length_pos - size * 2.0) * (1.0 / size) * 0.24, 0.0, 1.0)
-    inside = mix3(wp.vec3(1.0, 0.8, 0.0), wp.vec3(0.1, 0.026, 0.004), dis_mix)
-    inside = cmul3(inside, mix3(wp.vec3(0.4, 0.2, 0.1), wp.vec3(1.6, 2.4, 4.0), red_shift))
-    inside = inside * 1.25
+    # blackbody temperature falls with radius (thin-disk T ~ r^-3/4); the
+    # approaching side is blueshifted (hotter), the receding side redshifted
+    rn = wp.max(length_pos / size, 0.75)
+    temp = 12000.0 * wp.pow(rn / 0.75, -0.75) * (1.0 + 0.45 * doppler)
+    inside = kelvin_to_rgb(wp.clamp(temp, 1800.0, 22000.0)) * (1.4 * beam)
     red_shift += 0.12
     red_shift *= red_shift
 
@@ -174,22 +180,19 @@ def raymarch_disk(ray: wp.vec3, zero_pos: wp.vec3, time: float):
         alpha = wp.clamp(noise * (intensity + extra_width) * ((1.0 / size) * 10.0 + 0.01) * dist * dist_mult, 0.0, 1.0)
 
         col = mix3(cmul3(wp.vec3(0.3, 0.2, 0.15), inside), inside, wp.min(1.0, intensity * 2.0)) * 2.0
+        # HDR alpha-composite (no upper clamp — the hot inner disk can exceed 1)
         o_rgb = wp.vec3(
-            wp.clamp(col[0] * alpha + o_rgb[0] * (1.0 - alpha), 0.0, 1.0),
-            wp.clamp(col[1] * alpha + o_rgb[1] * (1.0 - alpha), 0.0, 1.0),
-            wp.clamp(col[2] * alpha + o_rgb[2] * (1.0 - alpha), 0.0, 1.0),
+            wp.max(col[0] * alpha + o_rgb[0] * (1.0 - alpha), 0.0),
+            wp.max(col[1] * alpha + o_rgb[1] * (1.0 - alpha), 0.0),
+            wp.max(col[2] * alpha + o_rgb[2] * (1.0 - alpha), 0.0),
         )
         o_a = wp.clamp(o_a * (1.0 - alpha) + alpha, 0.0, 1.0)
 
         length_pos *= (1.0 / size)
         add = red_shift * (intensity + 0.5) * (1.0 / steps) * 100.0 * dist_mult / (length_pos * length_pos)
-        o_rgb = o_rgb + wp.vec3(add, add, add)
+        o_rgb = o_rgb + inside * add                 # blackbody-tinted inner glow (HDR)
 
-    o_rgb = wp.vec3(
-        wp.clamp(o_rgb[0] - 0.005, 0.0, 1.0),
-        wp.clamp(o_rgb[1] - 0.005, 0.0, 1.0),
-        wp.clamp(o_rgb[2] - 0.005, 0.0, 1.0),
-    )
+    o_rgb = wp.vec3(wp.max(o_rgb[0], 0.0), wp.max(o_rgb[1], 0.0), wp.max(o_rgb[2], 0.0))
     return o_rgb, o_a
 
 
@@ -274,16 +277,30 @@ def render_kernel(
     if escaped == 0:
         out_rgb = col_rgb + glow_rgb * (col_a + glow_a)
 
-    out_rgb = wp.vec3(
-        wp.pow(wp.max(out_rgb[0], 0.0), 0.6),
-        wp.pow(wp.max(out_rgb[1], 0.0), 0.6),
-        wp.pow(wp.max(out_rgb[2], 0.0), 0.6),
-    )
-    img[i, j] = out_rgb
+    # tint the photon-ring / lensing glow warm, and keep everything HDR for the
+    # host post pipeline (bloom + tonemap) rather than baking a gamma here
+    img[i, j] = wp.vec3(wp.max(out_rgb[0], 0.0), wp.max(out_rgb[1], 0.0), wp.max(out_rgb[2], 0.0))
+
+
+def _render(width, height, time, mouse, device):
+    ss = 2                                            # 2×2 supersample for clean lensing
+    W, H = int(width) * ss, int(height) * ss
+    img = wp.zeros((H, W), dtype=wp.vec3, device=device)
+    wp.launch(render_kernel, dim=(H, W),
+              inputs=[img, int(W), int(H), float(time), wp.vec2(0.0, 0.0)], device=device)
+    wp.synchronize_device(device)
+    hdr = post.downsample(img.numpy().astype(np.float32), ss)
+    r = max(2, int(min(width, height) * 0.014))
+    hdr = post.bloom(hdr, threshold=1.1, strength=0.55, radius=r, passes=3)
+    return post.tonemap(hdr, mode="aces", exposure=1.15, preserve_hue=True)
 
 
 SCENE = Scene(
     name="black_hole",
-    kernel=render_kernel,
-    description="Gravitationally-lensed black hole with a raymarched accretion disk. iMouse: zoom (x) / pitch (y).",
+    renderer=_render,
+    description="A gravitationally-lensed black hole with a raymarched accretion disk — a "
+                "blackbody temperature gradient (hot blue-white inner edge to cool orange "
+                "rim), relativistic Doppler beaming (the approaching side far brighter and "
+                "bluer), a photon ring, and a procedural star/nebula background. HDR "
+                "through the engine bloom + hue-preserving tonemap, 2×2 supersampled.",
 )
