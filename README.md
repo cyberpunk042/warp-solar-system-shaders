@@ -303,6 +303,8 @@ and the electron's actual probability cloud with real orbital shapes.
 | ![pion](docs/engine/pion.png) | ![positron](docs/engine/positron.png) | ![antiproton](docs/engine/antiproton.png) | ![positronium](docs/engine/positronium.png) |
 | tachyon (Cherenkov cone) | graviton (spacetime ripple) | magnetic monopole | dark matter (lensing) |
 | ![tachyon](docs/engine/tachyon.png) | ![graviton](docs/engine/graviton.png) | ![monopole](docs/engine/magnetic_monopole.png) | ![dark matter](docs/engine/dark_matter.png) |
+| lambda (uds) | omega (sss) | bubble chamber | particle collision |
+| ![lambda](docs/engine/lambda.png) | ![omega](docs/engine/omega.png) | ![bubble chamber](docs/engine/bubble_chamber.png) | ![collision](docs/engine/particle_collision.png) |
 
 **Quarks** — all six flavours, size ∝ log(mass); **leptons** — charged (EM fields)
 + neutrinos (faint, oscillating).

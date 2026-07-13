@@ -195,3 +195,34 @@ nucleon renderers with an `anti` flag (`subatomic/annihilation.py` for the event
   (1967) — tachyons.
 - **Planck Collaboration**, *Cosmological parameters*, A&A 641 (2020) — the dark-matter
   density Ω_c h².
+
+## Baryons beyond the nucleon — the hyperons
+
+Replace the proton/neutron's up and down quarks with **strange** quarks and the
+**hyperon** family appears (`subatomic/baryon.py: render_baryon` — the nucleon
+field with each quark tinted by flavour as well as colour charge):
+
+| Scene | Content | Mass | Note |
+|---|---|---|---|
+| `lambda` | Λ⁰ = u d s | 1115.7 MeV | the lightest hyperon |
+| `sigma` | Σ⁺ = u u s | 1189.4 MeV | a charged strange baryon |
+| `xi` | Ξ⁰ = u s s | 1314.9 MeV | the "cascade", decays in a chain |
+| `omega` | Ω⁻ = s s s | 1672.5 MeV | three strange quarks — **predicted** by the quark model's SU(3) decuplet in 1962 and found in 1964, confirming the scheme |
+| `delta` | Δ⁺⁺ = u u u | 1232 MeV | a spin-3/2 resonance; three identical up quarks in the same state demanded a new three-valued quantum number — **colour** |
+
+## In the detector — how we actually see particles
+
+| Scene | What | Note |
+|---|---|---|
+| `bubble_chamber` | curved tracks in superheated liquid | a charged particle boils a trail of bubbles; a magnetic field bends it (radius ∝ momentum, sign ∝ charge). Neutral particles are invisible until they decay into a **V** of charged tracks. (Glaser 1952) |
+| `particle_collision` | a collider event display | two beams meet and the energy sprays out as a fan of tracks reconstructed by the detector — the modern successor to the bubble chamber (LHC, etc.) |
+
+## Further citations
+
+- **M. Gell-Mann**, *A Schematic Model of Baryons and Mesons*, Phys. Lett. 8 (1964);
+  **G. Zweig**, CERN preprint (1964) — the quark model + the Ω⁻ prediction.
+- **V. E. Barnes et al.**, *Observation of a Hyperon with Strangeness Minus Three*,
+  Phys. Rev. Lett. 12 (1964) — the Ω⁻.
+- **O. W. Greenberg**, Phys. Rev. Lett. 13 (1964) — colour, from the Δ⁺⁺ paradox.
+- **D. A. Glaser**, *Some Effects of Ionizing Radiation on the Formation of Bubbles
+  in Liquids*, Phys. Rev. 87 (1952) — the bubble chamber.
