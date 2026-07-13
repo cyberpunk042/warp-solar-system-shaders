@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (229 scenes).
+`python render.py --list` for the full, current list (236 scenes).
 
 ## Engine showcase
 
@@ -289,6 +289,12 @@ confinement bag, and the electron's real probability cloud.
 |---|---|---|---|
 | **pion** (u d̄)<br>![pion](engine/pion.png) | **kaon** (u s̄)<br>![kaon](engine/kaon.png) | **J/ψ** (c c̄)<br>![jpsi](engine/jpsi.png) | **Υ upsilon** (b b̄)<br>![upsilon](engine/upsilon.png) |
 
+**Baryons beyond the nucleon** — the hyperons + the Δ resonance (three quarks, flavour-tinted).
+
+| | | | | |
+|---|---|---|---|---|
+| **Λ lambda** (u d s)<br>![lambda](engine/lambda.png) | **Σ sigma** (u u s)<br>![sigma](engine/sigma.png) | **Ξ xi** (u s s)<br>![xi](engine/xi.png) | **Ω omega** (s s s)<br>![omega](engine/omega.png) | **Δ delta** (u u u)<br>![delta](engine/delta.png) |
+
 **Antimatter** — same mass, opposite charge.
 
 | | | |
@@ -306,6 +312,12 @@ confinement bag, and the electron's real probability cloud.
 | | | | | |
 |---|---|---|---|---|
 | **tachyon** (Cherenkov cone)<br>![tachyon](engine/tachyon.png) | **graviton** (spacetime ripple)<br>![graviton](engine/graviton.png) | **magnetic monopole** (radial B)<br>![monopole](engine/magnetic_monopole.png) | **axion** (Primakoff flashes)<br>![axion](engine/axion.png) | **dark matter** (lensing)<br>![dark_matter](engine/dark_matter.png) |
+
+**In the detector** — how we actually see them.
+
+| | |
+|---|---|
+| **bubble chamber** — charged tracks curling in a magnetic field, radiating from a vertex<br>![bubble_chamber](engine/bubble_chamber.png) | **particle collision** — a collider event display, a spray of tracks from the vertex<br>![particle_collision](engine/particle_collision.png) |
 
 ## Chemistry — atoms into molecules
 

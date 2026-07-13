@@ -15,7 +15,9 @@ import warp_shaders as ws
 _NEW = ["pion", "kaon", "jpsi", "upsilon",
         "positron", "antiproton", "annihilation",
         "ion", "positronium",
-        "tachyon", "graviton", "magnetic_monopole", "axion", "dark_matter"]
+        "tachyon", "graviton", "magnetic_monopole", "axion", "dark_matter",
+        "lambda", "sigma", "xi", "omega", "delta",
+        "bubble_chamber", "particle_collision"]
 
 
 def _check(name, time):
