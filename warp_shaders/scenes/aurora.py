@@ -32,15 +32,21 @@ def _height(x: float, z: float) -> float:
 @wp.func
 def _aurora(p: wp.vec3, time: float) -> wp.vec3:
     hf = wp.clamp((p[1] - _AH0) / (_AH1 - _AH0), 0.0, 1.0)
-    warp = fbm3(wp.vec3(p[0] * 0.02, p[2] * 0.02, time * 0.15), 3)
-    fil = ridged3(wp.vec3(p[0] * 0.03 + warp * 2.5, hf * 0.6, p[2] * 0.03), 4)
-    curtain = wp.smoothstep(0.63, 0.92, fil)
-    rays = wp.pow(0.5 + 0.5 * wp.sin(p[0] * 0.5 + p[2] * 0.3 + hf * 9.0), 1.5)
-    vprof = wp.exp(-hf * 1.7) * rays
-    green = wp.vec3(0.15, 1.0, 0.45)
-    magenta = wp.vec3(0.7, 0.25, 1.0)
-    col = green * (1.0 - hf) + magenta * hf
-    return col * (curtain * vprof * 0.55)
+    # slow horizontal flow folds the curtain sheets
+    flow = fbm3(wp.vec3(p[0] * 0.008, time * 0.08, p[2] * 0.008), 4)
+    s = p[0] * 0.045 + p[2] * 0.008 + flow * 3.2
+    # two folded sheets (thin bright folds) — coherent curtains, not noise
+    sheet = wp.pow(0.5 + 0.5 * wp.sin(s * 2.6), 7.0) \
+        + 0.4 * wp.pow(0.5 + 0.5 * wp.sin(s * 1.3 + 2.0), 6.0)
+    # fine vertical striations along the field lines
+    stri = 0.4 + 0.6 * wp.sin(p[0] * 0.5 + p[2] * 0.3 + flow * 5.0)
+    base = wp.exp(-hf * 1.6)                      # brightest along the lower edge
+    dens = sheet * base * stri
+    # 557 nm green low, red/magenta ionised tops
+    green = wp.vec3(0.15, 1.0, 0.5)
+    red = wp.vec3(1.0, 0.22, 0.4)
+    col = green * (1.0 - hf) + red * hf
+    return col * dens
 
 
 @wp.kernel
@@ -65,10 +71,25 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, time: float,
             break
 
     if hit == 1:
-        col = wp.vec3(0.02, 0.03, 0.06)     # dark ground
+        # snowy ground that REFLECTS the aurora glow overhead (the iconic bit).
+        pg = ro + rd * t
+        snow = wp.vec3(0.05, 0.07, 0.12)
+        te = _AH0 - pg[1]
+        tx = _AH1 - pg[1]
+        refl = wp.vec3(0.0, 0.0, 0.0)
+        seg = (tx - te) / 8.0
+        tt = te + 0.5 * seg
+        for _ in range(8):
+            refl += _aurora(wp.vec3(pg[0], pg[1] + tt, pg[2]), time) * seg
+            tt += seg
+        # closer ground reflects more; distant ground fades to night haze
+        fade = wp.exp(-t * 0.02)
+        col = snow * 0.6 + refl * (0.05 * fade)
+        col = col * fade + wp.vec3(0.015, 0.02, 0.05) * (1.0 - fade)
     else:
         col = stars(rd)
-        # accumulate aurora through the altitude band (upward rays only)
+        # accumulate aurora through the altitude band (upward rays only),
+        # attenuating the stars behind the bright curtains (occlusion)
         if rd[1] > 0.001:
             te = (_AH0 - ro[1]) / rd[1]
             tx = (_AH1 - ro[1]) / rd[1]
@@ -77,10 +98,14 @@ def render_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, time: float,
                 seg = (tx - te) / float(aur_steps)
                 tt = te + 0.5 * seg
                 acc = wp.vec3(0.0, 0.0, 0.0)
+                trans = float(1.0)
                 for _ in range(aur_steps):
-                    acc += _aurora(ro + rd * tt, time) * seg
+                    a = _aurora(ro + rd * tt, time)
+                    dv = (a[0] + a[1] + a[2]) * 0.6
+                    acc += a * (seg * trans)
+                    trans *= wp.exp(-dv * seg * 0.02)
                     tt += seg
-                col = col + acc * 0.035
+                col = col * trans + acc * 0.032
     img[i, j] = col
 
 
@@ -98,17 +123,18 @@ def _render(width, height, time, mouse, device):
     fwd = (math.sin(az) * math.cos(pitch), math.sin(pitch), math.cos(az) * math.cos(pitch))
     eye = (0.0, 6.0, 0.0)
     target = (eye[0] + fwd[0], eye[1] + fwd[1], eye[2] + fwd[2])
-    cam = make_camera(eye, target, fov_deg=70.0, aspect=width / height)
-
-    img = wp.zeros((height, width), dtype=wp.vec3, device=device)
-    wp.launch(render_kernel, dim=(height, width),
-              inputs=[img, cam, float(time), int(gs), int(as_), int(width), int(height)],
+    ssaa = 2
+    W, H = int(width) * ssaa, int(height) * ssaa
+    cam = make_camera(eye, target, fov_deg=70.0, aspect=W / H)
+    img = wp.zeros((H, W), dtype=wp.vec3, device=device)
+    wp.launch(render_kernel, dim=(H, W),
+              inputs=[img, cam, float(time), int(gs), int(as_), int(W), int(H)],
               device=device)
     wp.synchronize_device(device)
-    hdr = img.numpy()
+    hdr = post.downsample(img.numpy(), ssaa)
     r = max(3, int(min(width, height) * 0.02))
-    hdr = post.bloom(hdr, threshold=0.85, strength=0.4, radius=r, passes=3)
-    return post.tonemap(hdr, mode="aces", exposure=1.0)
+    hdr = post.bloom(hdr, threshold=0.9, strength=0.45, radius=r, passes=3, octaves=3)
+    return post.tonemap(hdr, mode="aces", exposure=1.02, preserve_hue=True)
 
 
 SCENE = Scene(
