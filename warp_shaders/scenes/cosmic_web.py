@@ -41,14 +41,18 @@ def web_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sharp: float,
     trans = float(1.0)
     for _ in range(72):
         p = ro + rd * t
-        w = worley3_f2(p * 0.42 + wp.vec3(2.0, 5.0, 1.0))
+        w = worley3_f2(p * 0.32 + wp.vec3(2.0, 5.0, 1.0))
+        f1 = w[0]
         edge = w[1] - w[0]                             # small on Voronoi edges (filaments)
         fil = wp.exp(-edge * sharp)                    # ~1 on a filament, ~0 in a void
+        node = wp.exp(-f1 * f1 * 46.0)                 # bright cluster cores (cell seeds)
         gasfade = 0.45 + 0.55 * fbm3(p * 2.2 + wp.vec3(0.0, time * 0.1, 0.0), 3)
-        dens = fil * fil * gasfade
-        ecol = wp.vec3(0.4, 0.55, 1.0) * fil + wp.vec3(1.0, 0.82, 0.5) * (fil * fil * fil * 0.5)
-        acc = acc + ecol * (dens * trans * dt * 2.0)
-        trans = trans * wp.exp(-dens * dt * 3.6)
+        dens = (fil * fil * 0.34 + node * 1.7) * gasfade
+        # cool blue-violet filaments, hot white-gold cluster knots
+        ecol = wp.vec3(0.34, 0.44, 0.92) * (fil * fil) \
+            + wp.vec3(1.0, 0.9, 0.68) * (node * 2.2)
+        acc = acc + ecol * (dens * trans * dt * 2.2)
+        trans = trans * wp.exp(-dens * dt * 3.4)
         if trans < 0.02:
             t = 1.0e30
         t += dt
@@ -57,7 +61,7 @@ def web_kernel(img: wp.array2d(dtype=wp.vec3), cam: Camera, sharp: float,
 
 def _render(width, height, time, mouse, device, period=14.0):
     prog = (time % period) / period
-    sharp = 16.0 + 24.0 * prog                         # filaments sharpen over time
+    sharp = 11.0 + 15.0 * prog                         # filaments sharpen over time
     az = 0.3 + time * 0.05 + float(mouse[0]) * 0.01
     el = 0.35 + float(mouse[1]) * 0.01
     dist = 8.5
@@ -71,8 +75,8 @@ def _render(width, height, time, mouse, device, period=14.0):
     wp.synchronize_device(device)
     hdr = img.numpy().astype(np.float32)
     r = max(3, int(min(width, height) * 0.02))
-    hdr = post.bloom(hdr, threshold=1.0, strength=0.35, radius=r, passes=3)
-    return post.tonemap(hdr, mode="aces", exposure=1.05)
+    hdr = post.bloom(hdr, threshold=1.0, strength=0.4, radius=r, passes=3, octaves=3)
+    return post.tonemap(hdr, mode="aces", exposure=1.05, preserve_hue=True)
 
 
 SCENE = Scene(

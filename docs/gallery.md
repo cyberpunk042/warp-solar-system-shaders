@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (213 scenes).
+`python render.py --list` for the full, current list (215 scenes).
 
 ## Engine showcase
 
@@ -28,6 +28,7 @@ a procedural sky body, so the drama is where you'd actually stand and look up.
 | | | |
 |---|---|---|
 | **ringed vista**<br>a huge ringed gas giant over a rust dune sea, rings crossing behind + in front of the disk<br>![ringed_vista](engine/ringed_vista.png) | **binary sea**<br>two suns setting over a wave-rippled Fresnel ocean, twin glitter paths<br>![binary_sea](engine/binary_sea.png) | **comet**<br>a great comet — blue ion + curved dust tail over a night ridge<br>![comet](engine/comet.png) |
+| **volcano**<br>a stratovolcano erupting at night — lava flows, summit fountain, ash plume<br>![volcano](engine/volcano.png) | **crystal cave**<br>translucent gem shards glowing amethyst, cyan and teal in the dark<br>![crystal_cave](engine/crystal_cave.png) | |
 
 ## 3D fractals
 
