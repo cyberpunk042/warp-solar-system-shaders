@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (264 scenes).
+`python render.py --list` for the full, current list (265 scenes).
 
 ## Engine showcase
 
@@ -647,3 +647,12 @@ a dense multi-phase VRM, capacitor arrays, a 12VHPWR connector, and PCIe fingers
 | gpu_board |
 |---|
 | ![gpu_board](engine/gpu_board.png) |
+
+`gpu_board` opened up in detail — the exposed die is a real **die-shot floorplan**
+(SM/GPC compute clusters, an L2-cache spine, memory-controller PHYs), ringed by GDDR7,
+a dense multi-phase VRM, capacitor and SMD fields, white **silkscreen**, and diff-pair
+routing. And **`gpu_flagship`** dresses that same board in a premium metal cooler.
+
+| gpu_board (bare, detailed) | gpu_flagship (premium cover) |
+|---|---|
+| ![gpu_board](engine/gpu_board.png) | ![gpu_flagship](engine/gpu_flagship.png) |

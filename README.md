@@ -489,6 +489,15 @@ The hardware, no cosmetics.
 
 ![gpu_board](docs/engine/gpu_board.png)
 
+The exposed die is a real **die-shot floorplan** (SM/GPC compute clusters, L2-cache
+spine, memory-controller PHYs), and the board carries white **silkscreen**, an SMD
+support field, and dense diff-pair routing. Put the cosmetic cover back on and you get
+**`gpu_flagship`** — the same board under a premium brushed-metal cooler:
+
+| gpu_board (bare, detailed) | gpu_flagship (premium cover) |
+|---|---|
+| ![gpu_board](docs/engine/gpu_board.png) | ![gpu_flagship](docs/engine/gpu_flagship.png) |
+
 ```bash
 python render.py --scene graphics_card -o gpu.png
 python render.py --scene gpu_floorplan --frames 120 --gif out/die.gif
