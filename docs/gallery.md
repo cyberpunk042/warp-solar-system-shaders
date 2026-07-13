@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (261 scenes).
+`python render.py --list` for the full, current list (263 scenes).
 
 ## Engine showcase
 
@@ -631,3 +631,11 @@ everything plugs into, and a look **inside the GPU die** at the shader-core grid
 | gpu_package | graphics_card | motherboard | gpu_floorplan |
 |---|---|---|---|
 | ![gpu_package](engine/gpu_package.png) | ![graphics_card](engine/graphics_card.png) | ![motherboard](engine/motherboard.png) | ![gpu_floorplan](engine/gpu_floorplan.png) |
+
+**GPU cooling styles** — the same board, three coolers: a high-end **open-air**
+triple-fan card, a **blower** (induction-fan) card that exhausts out the back, and a
+**fanless / open** card with the guts (GPU, GDDR, VRM, traces) exposed.
+
+| graphics_card (open-air) | gpu_blower (blower) | gpu_open (fanless) |
+|---|---|---|
+| ![graphics_card](engine/graphics_card.png) | ![gpu_blower](engine/gpu_blower.png) | ![gpu_open](engine/gpu_open.png) |
