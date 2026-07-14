@@ -25,8 +25,9 @@ idioms → sentences → concepts, and a semantic lossy tier folds near-synonyms
 compressing *meaning*, not just bytes.
 """
 
+from . import cardfold  # noqa: F401  (card→cube fold-and-merge: cardfold.compress / .decompress)
 from . import fold  # noqa: F401  (submodule: warp_compress.fold.fold / .unfold)
-from . import wrapfold  # noqa: F401  (the fold-and-merge codec: wrapfold.compress / .decompress)
+from . import wrapfold  # noqa: F401  (strand→chromosome fold-and-merge: wrapfold.compress / ...)
 from .chromosome import Chromosome, coil, coil_snapshots, symbol_metrics, uncoil
 from .codec import compress, decompress, describe
 

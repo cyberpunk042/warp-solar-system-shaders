@@ -70,25 +70,29 @@ Diving through the throat — the far universe swelling from a coin to the whole
 
 ![wormhole fly-through](engine/wormhole_dive.gif)
 
-## Warp compression — watch the chromosome fold in time
+## Warp compression — folding *is* the compression, watched in time
 
 Not a picture of a shader, but of an *algorithm*. The `warp_compress` codec
-([Research 44](research/44-warp-compression.md)) compresses data by folding it into a lattice and
-**coiling it layer by layer into a chromosome**, the way DNA packs a strand. These scenes render
-that process **over time**, not before/after: a strand of symbols (each a glowing bead, coloured by
-value; nucleosomes coloured by coil-depth, sized by mass) winds tighter every time the coiler wraps
-a frequent pair — condensing into a supercoiled chromosome, then **unwinding** on decompression.
+([Research 44](research/44-warp-compression.md)) compresses data by **folding** it — a card into a
+cube, a strand into a chromosome — so that where the folded layers land on each other and **match**,
+they merge and are stored once (lossless keeps the differences; lossy drops the small ones;
+unfolding reverses it). Because folding is a *process*, these scenes render the real fold schedule
+**in time** — the fold *and* the unwind — for more than one kind of data.
 
-![warp_chromosome — a strand coiling into a chromosome](engine/warp_chromosome.png)
+**Card → cube** (`warp_card`): a flat card of glowing cells folds in half again and again; matching
+cells flash green and merge into the layer below, condensing to a bright cube core, then unfolds.
 
-Compression → decompression as one loop (DNA-like data):
+![warp_card — folding a card into a cube](engine/warp_card.png)
 
-![the chromosome folding and unfolding](engine/warp_chromosome.gif)
+![the card folding into a cube and back](engine/warp_card.gif)
 
-The same coiling, watched on text instead of DNA — `warp_fold_text` (and `warp_fold_bytes` for a
-noisy byte signal):
+**Strand → chromosome** (`warp_fold`, `warp_fold_words`): a strand wraps onto the period the codec
+found; cells that match the coil below flash green and telescope up into one bright template ring —
+the repeating unit — then unwrap on decompression.
 
-![text folding into a chromosome](engine/warp_fold_text.gif)
+![warp_fold — a strand wrapping into a chromosome](engine/warp_fold.png)
+
+![the strand wrapping and unwrapping](engine/warp_fold.gif)
 
 ## Alien skies — ground-level vistas
 
