@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (296 scenes).
+`python render.py --list` for the full, current list (295 scenes).
 
 ## Engine showcase
 
@@ -70,29 +70,27 @@ Diving through the throat — the far universe swelling from a coin to the whole
 
 ![wormhole fly-through](engine/wormhole_dive.gif)
 
-## Warp compression — folding *is* the compression, watched in time
+## Warp compression — folding the card into a cube and a chromosome
 
-Not a picture of a shader, but of an *algorithm*. The `warp_compress` codec
-([Research 44](research/44-warp-compression.md)) compresses data by **folding** it — a card into a
-cube, a strand into a chromosome — so that where the folded layers land on each other and **match**,
-they merge and are stored once (lossless keeps the differences; lossy drops the small ones;
-unfolding reverses it). Because folding is a *process*, these scenes render the real fold schedule
-**in time** — the fold *and* the unwind — for more than one kind of data.
+Warp compression applied to the **actual card**: the real RTX 6000 Pro board (`gpu_board` — exposed
+GPU die, GDDR7, VRM, PCIe edge) is rendered, then its domain is **folded** — the long card
+accordion-folds and stacks in layers — condensing the whole graphics card into a compact form built
+from its own silicon and copper, then unfolding back flat. Two forms, one fold, each reversible and
+animated **in time** ([Research 44](research/44-warp-compression.md)).
 
-**Card → cube** (`warp_card`): a flat card of glowing cells folds in half again and again; matching
-cells flash green and merge into the layer below, condensing to a bright cube core, then unfolds.
+**Card → mini-cube** (`warp_fold_card`): the board folds and layer-stacks into a glowing mini-cube
+of PCB.
 
-![warp_card — folding a card into a cube](engine/warp_card.png)
+![warp_fold_card — the RTX board folded into a mini-cube](engine/warp_fold_card.png)
 
-![the card folding into a cube and back](engine/warp_card.gif)
+![the card folding into a cube and back](engine/warp_fold_card.gif)
 
-**Strand → chromosome** (`warp_fold`, `warp_fold_words`): a strand wraps onto the period the codec
-found; cells that match the coil below flash green and telescope up into one bright template ring —
-the repeating unit — then unwrap on decompression.
+**Card → chromosome** (`warp_fold_chromo`): the same fold, bounded into the **X** of a metaphase
+chromosome — two crossing arms of the board's own stacked layers, pinched at a centromere.
 
-![warp_fold — a strand wrapping into a chromosome](engine/warp_fold.png)
+![warp_fold_chromo — the RTX board folded into an X chromosome](engine/warp_fold_chromo.png)
 
-![the strand wrapping and unwrapping](engine/warp_fold.gif)
+![the card folding into a chromosome and back](engine/warp_fold_chromo.gif)
 
 ## Alien skies — ground-level vistas
 

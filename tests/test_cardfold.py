@@ -57,15 +57,15 @@ def main():
     assert len(b_ly) <= len(b_ll), "lossy did not shrink"
     print(f"  lossy dial: OK  (lossless {len(b_ll)} -> lossy {len(b_ly)})")
 
-    # 5. scenes render finite and animate (fold -> cube -> unfold)
+    # 5. the RTX-board fold scenes render finite and animate (flat board -> cube / X -> unfold)
     import warp as wp
     import warp_shaders as ws
     wp.init()
-    for name in ("warp_card", "warp_fold", "warp_fold_words"):
-        a = np.asarray(ws.render(name, width=110, height=84, time=0.3), np.float32)
-        b = np.asarray(ws.render(name, width=110, height=84, time=5.0), np.float32)
+    for name in ("warp_fold_card", "warp_fold_chromo"):
+        a = np.asarray(ws.render(name, width=110, height=90, time=0.0), np.float32)   # flat board
+        b = np.asarray(ws.render(name, width=110, height=90, time=5.0), np.float32)   # folded
         assert np.all(np.isfinite(a)) and a.max() > 0.1 and a.std() > 0.01, f"{name}: bad frame"
-        assert np.abs(a - b).mean() > 1e-3, f"{name}: did not animate"
+        assert np.abs(a - b).mean() > 1e-3, f"{name}: did not animate (fold)"
         print(f"  scene {name}: OK")
 
     print("ALL PASSED")

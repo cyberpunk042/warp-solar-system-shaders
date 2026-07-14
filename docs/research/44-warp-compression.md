@@ -8,7 +8,17 @@
 > kind of data. The north star is *words and meaning*; the mechanism is built and verified on
 > bytes and cards first.
 
-## The one idea, two shapes
+## Folding the actual card (the RTX board → cube / chromosome)
+
+The headline scenes fold the **real graphics card**. `gpu_board` (the RTX 6000 Pro Blackwell board)
+is a raymarched SDF; warp compression folds its **domain**: the long card is accordion-folded in x
+and z and layer-stacked in y, then the folded material is bounded into a shape — a **mini-cube**
+(`warp_fold_card`) or the **X of a chromosome** (`warp_fold_chromo`). The board's own materials —
+green solder mask, gold routing, GDDR7, the die floorplan — fold and stack with it, so the whole
+card condenses into a compact glowing form built from its own silicon and copper, then unfolds flat
+again. `time` drives compress → decompress. This is the fold, applied to a thing you recognise.
+
+## The one idea, two shapes (the underlying byte/card codec)
 
 Folding brings distant parts of the data into **contact**. Wherever the parts that touch are the
 same, one copy suffices — that is the compression. Do it in layers and the data condenses into a
