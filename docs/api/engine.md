@@ -208,6 +208,19 @@ The shared analytic ray tests (miss on a sphere/box returns `(1e30, -1e30)`).
 | `starfield` | `(rd) -> vec3` — two star-size layers + colour temperature across the sky |
 | `milky_way` | `(rd, axis, intensity) -> vec3` — fBm galactic-plane glow band |
 
+## Relativistic black holes — `engine.blackhole`
+
+Shared physics for the geodesic-traced black-hole scenes (`gargantua`, `kerr`, `binary_bh`,
+`wormhole_dive`). The per-scene *metric* (Schwarzschild / Kerr frame-dragging / two-body /
+Ellis throat) lives in each scene's integrator; these `@wp.func`s are what a ray *sees* once
+it hits the disk or escapes. Units are geometric with `r_s = 1`. See
+[Research 43](../research/43-relativistic-masterpieces.md).
+
+| Function | Signature |
+|---|---|
+| `disk_emission` | `(cp, pdir, time, r_in, r_out, temp0, bright) -> vec3` — thin equatorial accretion disk: Shakura–Sunyaev `T ∝ r^-3/4` blackbody, relativistic Doppler beaming (`∝ D³`), gravitational redshift, Keplerian banding; black outside `[r_in, r_out]` |
+| `cosmic_background` | `(rd, mw) -> vec3` — lensed starfield read in the ray's bent direction, plus an optional Milky-Way band (`mw` intensity; 0 = plain starfield) |
+
 ## Post — `engine.post`
 
 Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with
