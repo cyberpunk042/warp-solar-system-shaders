@@ -134,8 +134,16 @@ Three algorithms compress **the item** (the card / its visual-information conten
   dictionary/dedup point on R(D) at D=0.
 - **Prototype in repo.** `warp_compress/wrapfold.py` + `cardfold.py` already merge matching cells and
   keep a "same/different" bitmap; C1 sharpens this to explicit **identity-merge + location-index**.
-- **Hard requirement (to confirm/refine).** Lossless exact round-trip; the core = unique elements only;
-  the index encodes all locations; the whole reads as a **cube** (dense core + growing index shell).
+- **Built and verified (`warp_compress/mergecube.py`, `tests/test_mergecube.py`).** The real board is
+  sampled to a 3-D occupancy grid, cut into `block`-sized cubes, and every **identical block is merged
+  to one stored copy** (a dictionary of unique pieces); a 3-D grid of **digits** — the location index —
+  records which unique piece sits at each block position. Reconstruction places `dictionary[index[p]]`
+  everywhere: **exact, lossless** (`decompress(compress(x)) == x` verified on the real board). On the
+  board (block 5) 1008 blocks merge to **144 unique pieces** + a **28×3×12 index cube** → **4.8× lossless**;
+  on a repetitive card (one tile repeated) 96 blocks merge to **1 unique** → **54×**. The index grid is
+  literally "the cube part": a compact cube of digits that **grows** with the number of distinct pieces
+  while the merged dictionary stays small. Lossless throughout — the merge is by identity, not by
+  collision.
 
 ### C2 — Fold → cube (the folding one, **20×**, built in the process)
 
