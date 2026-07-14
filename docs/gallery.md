@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (297 scenes).
+`python render.py --list` for the full, current list (298 scenes).
 
 ## Engine showcase
 
@@ -122,6 +122,18 @@ matches the analytic **Γ = (Z_L−Z₀)/(Z_L+Z₀)** exactly (open 1.999, short
 ![trace_signal — a real voltage pulse ringing down a trace on the RTX board](engine/trace_signal.png)
 
 ![the pulse travelling down the trace and reflecting off the mismatched ends](engine/trace_signal.gif)
+
+**`vrm_power`** (layer B3 — the VRM): the board's **12-phase buck converter** (`sim/vrm.py`) solved
+to steady state, its real per-phase **inductor currents** pulsing the choke bank. Because the phases
+are **interleaved** (phase k fires at offset k/12), the current sweeps across the chokes as a running
+"chaser" and glows into the die as the ~1 V rail it drinks. Verified in `tests/test_vrm.py`: steady
+state converges to **V_out = D·Vin** exactly (3.000 / 6.001 / 9.001 V at D=0.25/0.5/0.75), the ripple
+matches **ΔI_L = (Vin−V_out)·D/(L·f_sw)**, the L–C tank conserves energy (symplectic), and 6
+interleaved phases cut output ripple **40×**.
+
+![vrm_power — the 12-phase VRM pulsing current into the die](engine/vrm_power.png)
+
+![the interleaved phase currents chasing across the VRM choke bank](engine/vrm_power.gif)
 
 ## Alien skies — ground-level vistas
 
