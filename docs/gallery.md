@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (290 scenes).
+`python render.py --list` for the full, current list (293 scenes).
 
 ## Engine showcase
 
@@ -35,6 +35,40 @@ orbits cleanly. See [Research 42](research/42-gravitational-lensing.md).
 The camera orbiting the hole — the lensed disk and Einstein ring shifting as the geometry turns:
 
 ![orbiting Gargantua](engine/gargantua.gif)
+
+### Relativity masterpieces — spinning, binary & wormhole
+
+Three more geometries traced by the *same* honest geodesic core ([`engine/blackhole.py`](engine.md),
+[Research 43](research/43-relativistic-masterpieces.md)) — no analytic lensing trick, every ray a
+photon marched through curved spacetime.
+
+`kerr` — a **spinning** black hole. A Lense–Thirring gravitomagnetic force (`a = κ·v×B_g`) is added
+to the geodesic, so the shadow skews into the asymmetric **"D"** of a rotating hole and the closer,
+faster prograde disk edge is Doppler-beamed into a blue-white blade against warm receding gold.
+
+![kerr — a spinning black hole](engine/kerr.png)
+
+`binary_bh` — two Schwarzschild holes, photons integrated through the **superposed** gravity of
+both. Each shadow lenses the starfield *and its companion* ("eyeholes"), rimmed by an Einstein
+photon-ring; a quadrupole gravitational-wave shear ripples the lensed sky as the pair inspirals.
+
+![binary_bh — two black holes lensing each other](engine/binary_bh.png)
+
+The inspiral — the two shadows wheeling together toward merger, the background shearing with the
+gravitational wave:
+
+![binary black hole inspiral](engine/binary_bh.gif)
+
+`wormhole_dive` — a real geodesic fly-through of an **Ellis (Morris–Thorne)** throat. Rays that
+thread the throat show a second amber universe fish-eyed through the mouth; grazing rays lens our
+blue sky into an Einstein ring. Over frames the camera dives across the throat and the universes
+swap.
+
+![wormhole_dive — a geodesic Ellis throat](engine/wormhole_dive.png)
+
+Diving through the throat — the far universe swelling from a coin to the whole sky:
+
+![wormhole fly-through](engine/wormhole_dive.gif)
 
 ## Alien skies — ground-level vistas
 

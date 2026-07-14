@@ -96,6 +96,7 @@ nav:
       - Physics simulations (gravity, fluids): research/40-physics-sims.md
       - Waves, resonance & interference: research/41-waves-and-resonance.md
       - Gravitational lensing (ray-traced black hole): research/42-gravitational-lensing.md
+      - Relativity masterpieces (spinning, binary, wormhole): research/43-relativistic-masterpieces.md
 
 markdown_extensions:
   - admonition

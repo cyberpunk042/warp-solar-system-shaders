@@ -22,7 +22,7 @@ import numpy as np
 import warp as wp
 
 from ..engine import post
-from ..engine.color import kelvin_to_rgb
+from ..engine.blackhole import disk_emission
 from ..engine.pathtrace import camera_basis, tanfov
 from ..engine.sky import starfield
 from ..scene import Scene
@@ -35,32 +35,9 @@ _MAXSTEP = 520
 
 @wp.func
 def _disk(cp: wp.vec3, pdir: wp.vec3, time: float) -> wp.vec3:
-    rc = wp.sqrt(cp[0] * cp[0] + cp[2] * cp[2])
-    if rc < _R_IN or rc > _R_OUT:
-        return wp.vec3(0.0, 0.0, 0.0)
-
-    # Shakura-Sunyaev temperature gradient (warm-biased for the Gargantua gold look)
-    temp = 4300.0 * wp.pow(_R_IN / rc, 0.6)
-    # Keplerian orbital speed (GM = r_s/2 = 0.5) and prograde tangent direction
-    beta = wp.min(wp.sqrt(0.5 / rc), 0.62)
-    cph = cp / wp.length(cp)
-    tang = wp.normalize(wp.cross(wp.vec3(0.0, 1.0, 0.0), cph))      # orbital velocity direction
-    # Doppler: material moving toward the incoming photon (−pdir) beams + blueshifts
-    approach = wp.dot(tang, -pdir)
-    dopp = 1.0 / wp.max(1.0 - beta * approach, 0.2)
-    # gravitational redshift factor (r_s = 1)
-    grav = wp.sqrt(wp.max(1.0 - 1.0 / rc, 0.02))
-
-    col = kelvin_to_rgb(wp.clamp(temp * dopp * grav, 1200.0, 40000.0))
-
-    # turbulent Keplerian bands (inner rotates faster) + inner-edge brightening
-    ang = wp.atan2(cp[2], cp[0]) + time * (2.4 / wp.pow(rc, 1.5))
-    tex = 0.62 + 0.30 * wp.sin(ang * 5.0 + rc * 2.6) + 0.16 * wp.sin(ang * 13.0 - rc * 1.7)
-    fall = wp.pow(_R_IN / rc, 1.3)
-    edge = 1.0 + 1.8 * wp.exp(-(rc - _R_IN) * 1.3)                  # bright inner rim
-    beam = wp.min(dopp * dopp * dopp, 6.0)                          # cap relativistic beaming
-    bright = fall * edge * wp.max(tex, 0.0) * beam * grav
-    return col * (bright * 0.3)
+    # shared relativistic accretion-disk model (engine.blackhole); the Gargantua
+    # gold look = warm base temperature 4300 K, brightness 0.3
+    return disk_emission(cp, pdir, time, _R_IN, _R_OUT, 4300.0, 0.3)
 
 
 @wp.kernel

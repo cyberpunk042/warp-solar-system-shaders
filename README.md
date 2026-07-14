@@ -582,6 +582,17 @@ orbits cleanly. See [Research 42](docs/research/42-gravitational-lensing.md).
 |---|---|
 | ![gargantua](docs/engine/gargantua.png) | ![gargantua orbit](docs/engine/gargantua.gif) |
 
+Three more relativistic **masterpieces** share that same geodesic core ([Research 43](docs/research/43-relativistic-masterpieces.md)):
+`kerr` — a **spinning** hole whose shadow skews into the asymmetric "D" of frame-dragging while the
+prograde disk edge Doppler-beams blue-white; `binary_bh` — **two** holes lensing the starfield and
+each other ("eyeholes") as they inspiral toward merger with a gravitational-wave shear; and
+`wormhole_dive` — a geodesic fly-through of an **Ellis throat** into a second universe fish-eyed
+through the mouth.
+
+| kerr — spinning (frame-dragging) | binary_bh — inspiral to merger | wormhole_dive — through the throat |
+|---|---|---|
+| ![kerr](docs/engine/kerr.png) | ![binary black holes](docs/engine/binary_bh.gif) | ![wormhole dive](docs/engine/wormhole_dive.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
