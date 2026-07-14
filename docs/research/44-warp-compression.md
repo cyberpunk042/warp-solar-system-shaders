@@ -75,6 +75,18 @@ becomes linguistic:
   the *meaning* while discarding only surface form. Lossy on words, ~lossless on sense. This is the
   literal reading of "wrapping so much words and meaning layer by layer, forming the chromosome."
 
+## Seeing it happen — compression as animation
+
+A compressor is usually shown as before/after. But folding and coiling is a *process*, so the
+engine renders it **in time**. The coiler exposes its history (`coil_snapshots` returns the strand
+after every pass; `symbol_metrics` gives each nucleosome's mass and coil-depth), and the
+`warp_chromosome` / `warp_fold_text` / `warp_fold_bytes` scenes replay it: a strand of glowing
+beads laid on a curve that winds tighter with every wrapped pair, condensing into a supercoiled
+chromosome and then unwinding on decompression. Beads are coloured by *what they are* — literal
+symbols by value (the four DNA letters land on four hues), nucleosomes by how many layers deep they
+sit — and sized by how much they unwrap to. It is the algorithm made visible: you watch redundancy
+get folded away, layer by layer, and restored. See the gallery's *Warp compression* section.
+
 ## Sources & lineage
 
 - N. J. Larsson & A. Moffat, *"Offline dictionary-based compression"* (Re-Pair), Proc. IEEE 88

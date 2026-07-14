@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (293 scenes).
+`python render.py --list` for the full, current list (296 scenes).
 
 ## Engine showcase
 
@@ -69,6 +69,26 @@ swap.
 Diving through the throat — the far universe swelling from a coin to the whole sky:
 
 ![wormhole fly-through](engine/wormhole_dive.gif)
+
+## Warp compression — watch the chromosome fold in time
+
+Not a picture of a shader, but of an *algorithm*. The `warp_compress` codec
+([Research 44](research/44-warp-compression.md)) compresses data by folding it into a lattice and
+**coiling it layer by layer into a chromosome**, the way DNA packs a strand. These scenes render
+that process **over time**, not before/after: a strand of symbols (each a glowing bead, coloured by
+value; nucleosomes coloured by coil-depth, sized by mass) winds tighter every time the coiler wraps
+a frequent pair — condensing into a supercoiled chromosome, then **unwinding** on decompression.
+
+![warp_chromosome — a strand coiling into a chromosome](engine/warp_chromosome.png)
+
+Compression → decompression as one loop (DNA-like data):
+
+![the chromosome folding and unfolding](engine/warp_chromosome.gif)
+
+The same coiling, watched on text instead of DNA — `warp_fold_text` (and `warp_fold_bytes` for a
+noisy byte signal):
+
+![text folding into a chromosome](engine/warp_fold_text.gif)
 
 ## Alien skies — ground-level vistas
 

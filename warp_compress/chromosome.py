@@ -93,6 +93,88 @@ def coil(seq: List[int], base: int = 256, min_count: int = 2, max_rules: int = 1
     return Chromosome(base=base, rules=rules, top=work)
 
 
+def coil_snapshots(seq: List[int], base: int = 256, min_count: int = 2,
+                   max_rules: int = 1 << 20, max_snaps: int = 80):
+    """Coil like :func:`coil`, but also return the strand **after every pass**.
+
+    Returns ``(snapshots, chromosome)`` where ``snapshots[0]`` is the raw strand and each later
+    entry is the strand one nucleosome further coiled (subsampled to at most ``max_snaps`` frames,
+    always keeping the first and last). This is what an animation replays to *watch* the folding
+    happen layer by layer instead of only seeing before/after."""
+    work: List[int] = list(seq)
+    rules: List[Tuple[int, int]] = []
+    next_id = base
+    snaps: List[List[int]] = [list(work)]
+
+    while len(rules) < max_rules and len(work) >= 2:
+        counts: Counter = Counter()
+        i = 0
+        while i < len(work) - 1:
+            counts[(work[i], work[i + 1])] += 1
+            i += 1
+        if not counts:
+            break
+        (a, b), c = counts.most_common(1)[0]
+        if c < min_count:
+            break
+        rules.append((a, b))
+        rid = next_id
+        next_id += 1
+        out: List[int] = []
+        i = 0
+        n = len(work)
+        while i < n:
+            if i < n - 1 and work[i] == a and work[i + 1] == b:
+                out.append(rid)
+                i += 2
+            else:
+                out.append(work[i])
+                i += 1
+        work = out
+        snaps.append(list(work))
+
+    chrom = Chromosome(base=base, rules=rules, top=work)
+
+    if max_snaps and len(snaps) > max_snaps:
+        keep = sorted({round(k * (len(snaps) - 1) / (max_snaps - 1)) for k in range(max_snaps)})
+        snaps = [snaps[k] for k in keep]
+    return snaps, chrom
+
+
+def symbol_metrics(chrom: Chromosome):
+    """Per-symbol ``(expanded_length, coil_depth)`` maps for every rule id in ``chrom``.
+
+    ``expanded_length`` = how many literal symbols a nucleosome ultimately unwraps to (its mass);
+    ``coil_depth`` = how many wrapping layers deep it sits. Literals (``< base``) are length 1,
+    depth 0."""
+    base = chrom.base
+    size: Dict[int, int] = {}
+    depth: Dict[int, int] = {}
+
+    def sz(s: int) -> int:
+        if s < base:
+            return 1
+        if s in size:
+            return size[s]
+        a, b = chrom.rules[s - base]
+        size[s] = sz(a) + sz(b)
+        return size[s]
+
+    def dp(s: int) -> int:
+        if s < base:
+            return 0
+        if s in depth:
+            return depth[s]
+        a, b = chrom.rules[s - base]
+        depth[s] = 1 + max(dp(a), dp(b))
+        return depth[s]
+
+    for i in range(len(chrom.rules)):
+        sz(base + i)
+        dp(base + i)
+    return size, depth
+
+
 def uncoil(chrom: Chromosome) -> List[int]:
     """Expand a :class:`Chromosome` back to its literal symbol sequence (exact inverse of coil)."""
     base = chrom.base

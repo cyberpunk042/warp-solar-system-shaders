@@ -26,7 +26,7 @@ compressing *meaning*, not just bytes.
 """
 
 from . import fold  # noqa: F401  (submodule: warp_compress.fold.fold / .unfold)
-from .chromosome import Chromosome, coil, uncoil
+from .chromosome import Chromosome, coil, coil_snapshots, symbol_metrics, uncoil
 from .codec import compress, decompress, describe
 
 __all__ = [
@@ -34,6 +34,8 @@ __all__ = [
     "decompress",
     "describe",
     "coil",
+    "coil_snapshots",
+    "symbol_metrics",
     "uncoil",
     "Chromosome",
     "fold",

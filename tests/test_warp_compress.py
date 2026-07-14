@@ -77,6 +77,25 @@ def main():
         prev = size
     print("  lossy rate/distortion dial: OK  (error <= q, size shrinks with q)")
 
+    # 6. coil history: first snapshot is the raw strand, last is the coiled top, and the strand
+    #    length is non-increasing across passes (the animation's monotonic wind-up)
+    seq = list(b"ABABAB" * 40 + b"CDCD" * 20)
+    snaps, chrom = wc.coil_snapshots(seq, base=256, max_snaps=100)
+    assert snaps[0] == seq, "first snapshot is not the raw strand"
+    assert snaps[-1] == chrom.top, "last snapshot is not the coiled top strand"
+    assert all(len(snaps[i + 1]) <= len(snaps[i]) for i in range(len(snaps) - 1)), \
+        "strand length increased during coiling"
+    size_map, depth_map = wc.symbol_metrics(chrom)
+    for i in range(len(chrom.rules)):
+        rid = 256 + i
+        assert size_map[rid] >= 2 and depth_map[rid] >= 1, "rule metrics look wrong"
+    # a rule's expanded length equals the sum of its members' lengths (mass conserved)
+    for i, (a, b) in enumerate(chrom.rules):
+        la = 1 if a < 256 else size_map[a]
+        lb = 1 if b < 256 else size_map[b]
+        assert size_map[256 + i] == la + lb, "expanded length not conserved"
+    print(f"  coil history + metrics: OK  ({len(snaps)} snapshots, {len(chrom.rules)} rules)")
+
     print("ALL PASSED")
 
 
