@@ -178,10 +178,18 @@ Three algorithms compress **the item** (the card / its visual-information conten
   tokens step is where *meaning* enters (repeated substructures become repeated tokens → repeated
   phrases → merged coils). Prototype: `warp_compress/chromosome.py` (Re-Pair coil) + the strand→chromosome
   fold; C3 adds the **per-atom tokenization into a value-web** as the front end.
-- **Hard requirement (to confirm/refine).** Every atom maps to a token; the web carries values
-  (embeddings / weights); the token sequence compresses via the chromosome coil with a real ratio; the
-  process is reversible enough to reconstruct the item (lossless tokens; the *semantic* tier may merge
-  near-identical tokens — a lossy dial).
+- **Built and verified (`warp_compress/tokenchromo.py`, `tests/test_tokenchromo.py`).** The card is
+  broken into atoms (blocks) and each unique block becomes a **token** — the C1 dedup *is* the atom→word
+  step, and the dictionary of unique pieces *is* the "web that gives values". Reading the tokens in scan
+  order is the **DNA-equivalent sequence** (a genome of the card), compressed through the **whole
+  chromosome process** — the Re-Pair coil, where repeated token-*phrases* wrap into nucleosome rules layer
+  by layer. On the real board (block 4): 1575 atoms over a 202-word vocabulary coil into a chromosome of
+  **114 nucleosomes, 14 layers deep** → **5.4× lossless**, and — because the coil catches repeated
+  *phrases* (a whole row of identical memory, a repeated VRM motif) that C1's flat index cannot — it
+  **beats flat C1 by 1.41×**. Lossless end to end (uncoil → the DNA → place the vocabulary pieces back →
+  the exact card). The animated strand→chromosome fold is the `warp_fold_chromo` scene.
+- **Future — the semantic lossy tier.** Merge near-synonym tokens (blocks that agree *within tolerance*)
+  before coiling — compressing the card's *sense*, not just its exact bytes. The lossy dial noted below.
 
 **Open spec questions (for the operator to steer — flagged, not assumed):**
 - What is **"the item"** precisely — the card's 3-D geometry (voxels), its rendered visual output
