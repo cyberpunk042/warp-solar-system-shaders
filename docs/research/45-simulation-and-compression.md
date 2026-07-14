@@ -148,6 +148,17 @@ Three algorithms compress **the item** (the card / its visual-information conten
   step (not a before/after). Collision-agnostic (unlike C1's identity-merge). Prototype: the
   `warp_fold_card` fold-in-half-into-a-cube scene — now bound to the **20× / fold-right / squish-right**
   requirement and the **compress-in-the-process** rule.
+- **Built and verified (`warp_compress/foldcube.py`, `tests/test_foldcube.py`).** The real board is
+  sampled to a 3-D occupancy grid (from `gpu_board.board_map`), then folded in half on its longest axis
+  repeatedly, **merging the two halves on collision** (logical OR — "don't care about the collision").
+  That merge is what beats the lossless folding limit (a thin sheet folds only ~2–3× by surface losslessly)
+  and squishes the card down to a **cube 20.3× smaller by total surface** (surface = exposed-face count
+  Σ6·occ − 2·shared): a 140×12×58 board (surface 22398) folds in **5 collision-agnostic folds** (x,x,z,x,z)
+  to a 17×12×14 cube (surface 1102). The result is cube-ish (max/min dim 1.42), the squish concentrates
+  the material (occupancy density 0.469 → 0.813), and the compressed image is built **in the process**
+  (each fold overlays onto the growing block, Docker-layer style). It is **lossy** at the merges — as the
+  spec directs ("don't care about the collision"). Metric used: **total surface** (the operator's words);
+  say the word to re-target by volume or byte-count.
 
 ### C3 — Tokenize → web → DNA → chromosome
 
