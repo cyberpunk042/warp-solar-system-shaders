@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (298 scenes).
+`python render.py --list` for the full, current list (299 scenes).
 
 ## Engine showcase
 
@@ -134,6 +134,18 @@ interleaved phases cut output ripple **40×**.
 ![vrm_power — the 12-phase VRM pulsing current into the die](engine/vrm_power.png)
 
 ![the interleaved phase currents chasing across the VRM choke bank](engine/vrm_power.gif)
+
+**`heat_die`** (layer B5 — heat): almost all the power becomes heat at the die, so a real
+**heat-diffusion** simulation (`sim/heat.py`) runs on the board with the **die floorplan as its power
+source**. From cold, a **hotspot** forms over the compute die and the heat **spreads** into the PCB and
+memory before the cooler bounds it — then it cools on idle — glowing as a blackbody heat ramp. Verified
+in `tests/test_heat.py`: the steady state matches the analytic **linear** profile to 0.000 error, a
+Fourier mode decays at exactly **α·k²**, and the mean temperature rises at exactly **q/(ρc_p)** (the
+discrete first law).
+
+![heat_die — the RTX board's die heating up by the real heat equation](engine/heat_die.png)
+
+![the hotspot forming and spreading, then cooling on idle](engine/heat_die.gif)
 
 ## Alien skies — ground-level vistas
 
