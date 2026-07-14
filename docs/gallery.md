@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (296 scenes).
+`python render.py --list` for the full, current list (297 scenes).
 
 ## Engine showcase
 
@@ -110,6 +110,18 @@ not a cosmetic shimmer.
 ![em_board — a real Maxwell wave radiating from the die across the RTX board](engine/em_board.png)
 
 ![the EM wave propagating across the board and reflecting off the copper](engine/em_board.gif)
+
+**`trace_signal`** (layer B2 — signals as transmission lines): a voltage pulse launched from the
+**PCIe edge** rings down a copper trace toward the die, a live solution of the **telegrapher's
+equations** (`sim/tline.py`) — the 1-D reduction of the Maxwell field above. The mismatched (open)
+ends **reflect** the pulse, so it travels back and forth, ringing, the voltage V(z) glowing along the
+trace. Verified in `tests/test_tline.py`: the reflection at open / short / matched / resistive loads
+matches the analytic **Γ = (Z_L−Z₀)/(Z_L+Z₀)** exactly (open 1.999, short 0.000, matched 1.000, 3·Z₀
+→ 1.499), and the wave travels at **1/√(LC)**.
+
+![trace_signal — a real voltage pulse ringing down a trace on the RTX board](engine/trace_signal.png)
+
+![the pulse travelling down the trace and reflecting off the mismatched ends](engine/trace_signal.gif)
 
 ## Alien skies — ground-level vistas
 
