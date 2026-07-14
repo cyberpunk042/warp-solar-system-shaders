@@ -44,6 +44,17 @@ def main():
     assert rep_size < rnd_size, f"repetition not exploited (rep {rep_size} vs random {rnd_size})"
     print(f"  repetition condenses: OK  (repetitive -> {rep_size} symbols, random -> {rnd_size})")
 
+    # 5. the warp_tokenize_chromo scene (C3 as a process) renders on the real board and animates
+    #    across card -> web of token-words -> DNA helix -> chromosome
+    import warp as wp
+    import warp_shaders as ws
+    wp.init()
+    web = np.asarray(ws.render("warp_tokenize_chromo", width=120, height=90, time=4.0), np.float32)   # web
+    chromo = np.asarray(ws.render("warp_tokenize_chromo", width=120, height=90, time=11.8), np.float32)  # X
+    assert np.all(np.isfinite(web)) and web.max() > 0.1 and web.std() > 0.01, "tokenize_chromo: bad frame"
+    assert np.abs(web - chromo).mean() > 1e-3, "tokenize_chromo: web/chromosome did not animate"
+    print("  scene warp_tokenize_chromo: OK")
+
     print("ALL PASSED")
 
 

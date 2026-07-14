@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (300 scenes).
+`python render.py --list` for the full, current list (301 scenes).
 
 ## Engine showcase
 
@@ -70,24 +70,43 @@ Diving through the throat — the far universe swelling from a coin to the whole
 
 ![wormhole fly-through](engine/wormhole_dive.gif)
 
-## Warp compression — folding the card into a cube and a chromosome
+## Warp compression — three compressions of the card's visual information
 
-Warp compression applied to the **actual card**: the real RTX 6000 Pro board (`gpu_board` — exposed
-GPU die, GDDR7, VRM, PCIe edge) is rendered, then **folded** — condensing the whole graphics card
-into a compact form built from its own silicon and copper, then unfolding back flat. Two forms, one
-fold, each reversible and animated **in time** ([Research 44](research/44-warp-compression.md)).
+Virtual compression of the **actual card**: the real RTX 6000 Pro board (`gpu_board`) is compressed
+three different ways, each a **watchable process on the real board**, reversible and animated **in
+time** ([Research 45](research/45-simulation-and-compression.md), Part II). Each obeys reality: the
+only thing ever ignored is *self-collision*.
 
-**Card → cube** (`warp_fold_card`): the board is folded **in half, then in half again, then again**
-— three folds (x → z → x), each a visible hinge where one half swings over and lands stacked on the
-other — condensing the long card into a compact **cube of eight stacked layers** of its own board.
+**C1 — merge** (`warp_scan_merge`): a scan wave sweeps the board and **classifies** every element —
+identical pieces glow the **same colour** (the same `warp_compress.mergecube` token: the GDDR7
+packages, the VRM chokes, repeated die cells). Then the duplicates **merge to one** while a **digit
+cube** of their locations **grows** beside the board — merge the same thing together, and keep the
+digits that say where every copy was.
 
-![warp_fold_card — the RTX board folded in half three times into a cube](engine/warp_fold_card.png)
+![warp_scan_merge — a scan classifies the card, duplicates merge, a location cube grows](engine/warp_scan_merge.png)
 
-![the card folding in half three times into a cube and back](engine/warp_fold_card.gif)
+![the scan reading the card, duplicates merging, the digit cube growing](engine/warp_scan_merge.gif)
 
-**Card → chromosome** (`warp_fold_chromo`): the card wraps into a **metaphase chromosome** — four
-plump rounded arms joined at a pinched **centromere**, the classic X, filled with the card's own
-folded board material.
+**C2 — fold** (`warp_fold_card`): the card is **folded** — one connected sheet creased in half **five
+times** (never cut; each far half swings about its crease and stays joined), layers fusing as
+collision is ignored — squishing into a compact cube **~20× smaller by total surface** (22398 → 1102
+exposed faces, measured by the codec).
+
+![warp_fold_card — the RTX board folded into a 20x cube](engine/warp_fold_card.png)
+
+![the card folding in half five times into a 20x cube and back](engine/warp_fold_card.gif)
+
+**C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the card **breaks into a web of token-words**
+(each element a glowing node = its `warp_compress` token/value), the web is read out as a **DNA double
+helix**, and the helix **coils** into the four arms of a metaphase **chromosome** — the coiled genome
+is the compressed card (`tokenchromo` codec, lossless).
+
+![warp_tokenize_chromo — the card as a web of token-words](engine/warp_tokenize_chromo.png)
+
+![the card breaking into a web, read as DNA, coiled into a chromosome](engine/warp_tokenize_chromo.gif)
+
+**Bonus — card → X** (`warp_fold_chromo`): the card wraps directly into the metaphase-chromosome X
+shape, four plump arms at a pinched centromere, filled with its own folded board material.
 
 ![warp_fold_chromo — the RTX board wrapped into an X chromosome](engine/warp_fold_chromo.png)
 
