@@ -48,6 +48,16 @@ def main():
     assert len(u2) <= 2 and r2 > r, f"repetition not exploited (unique {len(u2)}, ratio {r2:.1f})"
     print(f"  repetition -> better ratio: OK  (1 unique of {i2.size}, {r2:.0f}x)")
 
+    # 5. the warp_scan_merge scene (C1 as a process) renders on the real board and animates
+    import warp as wp
+    import warp_shaders as ws
+    wp.init()
+    a = np.asarray(ws.render("warp_scan_merge", width=120, height=96, time=2.0), np.float32)  # scanning
+    b = np.asarray(ws.render("warp_scan_merge", width=120, height=96, time=7.5), np.float32)  # merged
+    assert np.all(np.isfinite(a)) and a.max() > 0.1 and a.std() > 0.01, "warp_scan_merge: bad frame"
+    assert np.abs(a - b).mean() > 1e-3, "warp_scan_merge: scan/merge did not animate"
+    print("  scene warp_scan_merge: OK")
+
     print("ALL PASSED")
 
 

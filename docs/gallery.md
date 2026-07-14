@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (299 scenes).
+`python render.py --list` for the full, current list (300 scenes).
 
 ## Engine showcase
 
