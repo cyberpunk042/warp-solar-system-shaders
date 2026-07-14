@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (295 scenes).
+`python render.py --list` for the full, current list (296 scenes).
 
 ## Engine showcase
 
@@ -92,6 +92,24 @@ folded board material.
 ![warp_fold_chromo — the RTX board wrapped into an X chromosome](engine/warp_fold_chromo.png)
 
 ![the card folding into a chromosome and back](engine/warp_fold_chromo.gif)
+
+## Simulation of reality — the card, by real physics
+
+The graphics card taken seriously: simulated by *respecting the physics of the world it is made of*,
+building bottom-up from the real substrate. The laws are **not facultative** — every layer carries a
+conservation test that proves the step is not lying ([Research 45](research/45-simulation-and-compression.md)).
+
+**`em_board`** (layer B1 — the electromagnetic substrate): a real **2-D FDTD solution of Maxwell's
+equations** runs on the board plane. A signal is launched from the **GPU die** and propagates across
+the board as a genuine EM wave, **reflecting off the copper** (the GDDR7 memory ring and the VRM), its
+electric field glowing on the card's own silicon. The solved field is verified in `tests/test_em.py`:
+energy is conserved in a lossless cavity (3.2% bounded, 0.74% drift / 3000 steps), a vacuum pulse
+travels at **0.984c**, and FR-4 slows it to **0.474c** (analytic 0.482c). This is the field, solved —
+not a cosmetic shimmer.
+
+![em_board — a real Maxwell wave radiating from the die across the RTX board](engine/em_board.png)
+
+![the EM wave propagating across the board and reflecting off the copper](engine/em_board.gif)
 
 ## Alien skies — ground-level vistas
 

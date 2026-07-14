@@ -91,6 +91,16 @@ def main():
     assert left > right, f"copper trace did not reflect (left {left:.3g} <= right {right:.3g})"
     print(f"  copper reflects: OK  (energy left {left:.3g} > right {right:.3g})")
 
+    # 5. the em_board scene renders the solved field on the real board, and animates
+    import warp as wp
+    import warp_shaders as ws
+    wp.init()
+    a = np.asarray(ws.render("em_board", width=120, height=96, time=3.0), np.float32)
+    b = np.asarray(ws.render("em_board", width=120, height=96, time=7.0), np.float32)
+    assert np.all(np.isfinite(a)) and a.max() > 0.1 and a.std() > 0.01, "em_board: bad frame"
+    assert np.abs(a - b).mean() > 1e-3, "em_board: field did not animate"
+    print("  scene em_board: OK")
+
     print("ALL PASSED")
 
 
