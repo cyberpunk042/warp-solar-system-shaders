@@ -1,10 +1,11 @@
-"""warp_fold_chromo — the RTX 6000 Pro board folded into an X-shaped chromosome, in time.
+"""warp_fold_chromo — the RTX 6000 Pro board folded into a metaphase chromosome (the X), in time.
 
-The chromosome sibling of ``warp_fold_card``. The real `gpu_board` card is folded (its domain
-accordion-folded and layer-stacked, exactly as for the cube) but the folded material is bounded
-into the **X of a metaphase chromosome** — two crossing arms meeting at a centromere — instead of a
-cube. So the whole graphics card condenses into a glowing X built from its own silicon and copper,
-then unfolds back into the flat board. `time` drives compress → decompress.
+The chromosome sibling of ``warp_fold_card``. The real `gpu_board` card lifts off the bench and
+**wraps into the X of a metaphase chromosome** — two sister chromatids, four plump rounded arms
+joined at a pinched **centromere**, exactly the classic textbook shape. The arms are fat rounded
+capsules blended at a narrow waist with a centromere bead; the card's own board material (green
+solder mask, gold routing, GDDR7) fills them, folded and packed. `time` drives the wrap forward
+(compress) and back (decompress) — the flat board and the chromosome are the two ends of one fold.
 """
 
 import math
@@ -13,62 +14,83 @@ import warp as wp
 
 from .. import electronics_common as ec
 from ..engine import post
-from ..procedural.sdf import sd_box
+from ..procedural.sdf import op_smooth_union, sd_capsule, sd_round_box, sd_sphere
 from ..scene import Scene
 from .gpu_board import board_map, board_shade
-from .warp_fold_card import _warp
 
 _MAXD = 40.0
 _CYCLE = 10.0
 
 
 @wp.func
-def _orient(p: wp.vec3, time: float) -> wp.vec3:
-    """Gentle rock (not a full spin) so the X keeps facing the camera as it forms."""
-    a = 0.25 * wp.sin(time * 0.5)
-    ca = wp.cos(a); sa = wp.sin(a)
-    return wp.vec3(ca * p[0] + sa * p[2], p[1], -sa * p[0] + ca * p[2])
+def _tri(a: float, f: float) -> float:
+    """Accordion fold: reflect any coordinate into ``[0, f]`` at each ``f`` so the long board tiles."""
+    a = wp.abs(a)
+    a = a - 2.0 * f * wp.floor(a / (2.0 * f))
+    if a > f:
+        a = 2.0 * f - a
+    return a
+
+
+@wp.func
+def _fill(p: wp.vec3, fold: float) -> wp.vec3:
+    """Map a point in the chromosome frame back to board-local coords: stand the flat board up into
+    the X's plane (rotate about x by fold*90 deg) and accordion-fold so the card packs the arms."""
+    ang = fold * 1.5708
+    ca = wp.cos(ang)
+    sa = wp.sin(ang)
+    q = wp.vec3(p[0], ca * p[1] - sa * p[2], sa * p[1] + ca * p[2])   # Rx: flat (x,z) -> standing (x,y)
+    per = 6.0 * (1.0 - fold) + 1.15 * fold
+    qx = _tri(q[0] + 3.7 * fold, per) - 0.5 * per * fold
+    qz = _tri(q[2] + 1.5 * fold, per) - 0.5 * per * fold
+    lh = 100.0 * (1.0 - fold) + 0.5 * fold
+    qy = q[1] - lh * wp.round(q[1] / lh)
+    return wp.vec3(qx, qy, qz)
 
 
 @wp.func
 def _xshape(p: wp.vec3, fold: float) -> float:
-    """The X of a chromosome: two crossing arms (±45° in the x-y plane), pinched at a centromere."""
-    L = 10.0 * (1.0 - fold) + 1.75 * fold
-    w = 10.0 * (1.0 - fold) + 0.42 * fold
-    c = 0.7071
-    s = 0.7071
-    p1 = wp.vec3(c * p[0] + s * p[1], -s * p[0] + c * p[1], p[2])
-    p2 = wp.vec3(c * p[0] - s * p[1], s * p[0] + c * p[1], p[2])
-    # centromere constriction: arms narrow near the centre
-    pinch = w * (0.55 + 0.45 * wp.min(wp.abs(p1[0]) + wp.abs(p2[0]), 1.0))
-    a1 = sd_box(p1, wp.vec3(L, pinch, w))
-    a2 = sd_box(p2, wp.vec3(L, pinch, w))
-    return wp.min(a1, a2)
+    """The metaphase chromosome: four fat rounded arms (capsules) blended into a pinched centromere,
+    plus a centromere bead — the classic X. At fold=0 it opens out to a flat slab over the board."""
+    L = 1.55                                   # arm length
+    r = 0.5                                    # arm fatness (round caps -> plump lobes)
+    a0 = 0.26                                  # gap left near the centre -> the waist
+    dx = 0.60
+    dy = 0.80                                  # arm direction (a touch taller than wide)
+    ur = sd_capsule(p, wp.vec3(a0 * dx, a0 * dy, 0.0), wp.vec3(L * dx, L * dy, 0.0), r)
+    ul = sd_capsule(p, wp.vec3(-a0 * dx, a0 * dy, 0.0), wp.vec3(-L * dx, L * dy, 0.0), r)
+    lr = sd_capsule(p, wp.vec3(a0 * dx, -a0 * dy, 0.0), wp.vec3(L * dx, -L * dy, 0.0), r)
+    ll = sd_capsule(p, wp.vec3(-a0 * dx, -a0 * dy, 0.0), wp.vec3(-L * dx, -L * dy, 0.0), r)
+    x = op_smooth_union(ur, ul, 0.28)
+    x = op_smooth_union(x, lr, 0.28)
+    x = op_smooth_union(x, ll, 0.28)
+    x = op_smooth_union(x, sd_sphere(p, 0.34), 0.22)          # centromere bead
+    slab = sd_round_box(p, wp.vec3(3.7, 0.32, 1.5), 0.1)      # the un-wrapped flat card
+    e = fold * fold * (3.0 - 2.0 * fold)
+    return slab * (1.0 - e) + x * e
 
 
 @wp.func
-def _fmap(p: wp.vec3, time: float, fold: float) -> float:
-    sp = _orient(p, time)
-    board = board_map(_warp(sp, fold))
-    return wp.max(board, _xshape(sp, fold))
+def _fmap(p: wp.vec3, fold: float) -> float:
+    return wp.max(board_map(_fill(p, fold)), _xshape(p, fold))
 
 
 @wp.func
-def _fnormal(p: wp.vec3, time: float, fold: float) -> wp.vec3:
-    e = 0.0012
-    dx = _fmap(p + wp.vec3(e, 0.0, 0.0), time, fold) - _fmap(p - wp.vec3(e, 0.0, 0.0), time, fold)
-    dy = _fmap(p + wp.vec3(0.0, e, 0.0), time, fold) - _fmap(p - wp.vec3(0.0, e, 0.0), time, fold)
-    dz = _fmap(p + wp.vec3(0.0, 0.0, e), time, fold) - _fmap(p - wp.vec3(0.0, 0.0, e), time, fold)
+def _fnormal(p: wp.vec3, fold: float) -> wp.vec3:
+    e = 0.0013
+    dx = _fmap(p + wp.vec3(e, 0.0, 0.0), fold) - _fmap(p - wp.vec3(e, 0.0, 0.0), fold)
+    dy = _fmap(p + wp.vec3(0.0, e, 0.0), fold) - _fmap(p - wp.vec3(0.0, e, 0.0), fold)
+    dz = _fmap(p + wp.vec3(0.0, 0.0, e), fold) - _fmap(p - wp.vec3(0.0, 0.0, e), fold)
     return wp.normalize(wp.vec3(dx, dy, dz))
 
 
 @wp.func
-def _fao(p: wp.vec3, n: wp.vec3, time: float, fold: float) -> float:
+def _fao(p: wp.vec3, n: wp.vec3, fold: float) -> float:
     occ = float(0.0)
     sca = float(1.0)
     for k in range(5):
         hr = 0.012 + 0.06 * float(k)
-        d = _fmap(p + n * hr, time, fold)
+        d = _fmap(p + n * hr, fold)
         occ += (hr - d) * sca
         sca *= 0.85
     return wp.clamp(1.0 - 2.0 * occ, 0.0, 1.0)
@@ -85,13 +107,13 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3, r
 
     t = float(0.0)
     hit = int(0)
-    for _ in range(260):
+    for _ in range(300):
         p = eye + rd * t
-        d = _fmap(p, time, fold)
-        if d < 0.0007 * t + 0.0004:
+        d = _fmap(p, fold)
+        if d < 0.0006 * t + 0.0004:
             hit = 1
             break
-        t += d * 0.8
+        t += d * 0.7
         if t > _MAXD:
             break
 
@@ -100,12 +122,12 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3, r
         return
 
     p = eye + rd * t
-    n = _fnormal(p, time, fold)
-    ao = _fao(p, n, time, fold)
-    q = _warp(_orient(p, time), fold)
+    n = _fnormal(p, fold)
+    ao = _fao(p, n, fold)
+    q = _fill(p, fold)
     col = board_shade(q, n, rd, ao, time)
     seam = wp.pow(wp.clamp(1.0 - wp.abs(wp.dot(n, -rd)), 0.0, 1.0), 3.0)
-    col = col + wp.vec3(0.3, 0.7, 1.0) * (seam * fold * 0.7)     # cool rim glow on the X
+    col = col + wp.vec3(0.3, 0.7, 1.0) * (seam * fold * 0.6)     # cool rim glow on the X
     img[i, j] = col
 
 
@@ -116,12 +138,12 @@ def _progress(time):
 
 def _render(width, height, time, mouse, device):
     fold = _progress(time)
-    az = 0.2 + float(mouse[0]) * 0.006
-    el = 0.16 + 0.3 * (1.0 - fold)                  # start looking down at the flat board, rise to face the X
-    dist = 8.6 * (1.0 - fold) + 6.2 * fold
-    eye = wp.vec3(dist * math.cos(el) * math.sin(az), dist * math.sin(el) + 0.1,
+    az = 0.15 + float(mouse[0]) * 0.006
+    el = 0.14 + 0.42 * (1.0 - fold)                 # look down at the flat board, rise to face the X
+    dist = 9.0 * (1.0 - fold) + 5.4 * fold
+    eye = wp.vec3(dist * math.cos(el) * math.sin(az), dist * math.sin(el),
                   dist * math.cos(el) * math.cos(az))
-    tgt = wp.vec3(0.0, 0.05, 0.0)
+    tgt = wp.vec3(0.0, 0.0, 0.0)
     fwd = wp.normalize(tgt - eye)
     right = wp.normalize(wp.cross(fwd, wp.vec3(0.0, 1.0, 0.0)))
     up = wp.cross(right, fwd)
@@ -137,8 +159,8 @@ def _render(width, height, time, mouse, device):
 
 SCENE = Scene(
     name="warp_fold_chromo",
-    description="the real RTX 6000 Pro board folded into an X-shaped chromosome — the card's domain "
-                "is folded and layer-stacked, then bounded into the two crossing arms of a metaphase "
-                "chromosome built from its own silicon and copper, then unfolds flat again.",
+    description="the real RTX 6000 Pro board (gpu_board) wrapped into a metaphase chromosome — four "
+                "plump rounded arms joined at a pinched centromere, the classic X, filled with the "
+                "card's own folded board material, then unwrapping back to the flat board.",
     renderer=_render,
 )

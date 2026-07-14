@@ -73,22 +73,23 @@ Diving through the throat — the far universe swelling from a coin to the whole
 ## Warp compression — folding the card into a cube and a chromosome
 
 Warp compression applied to the **actual card**: the real RTX 6000 Pro board (`gpu_board` — exposed
-GPU die, GDDR7, VRM, PCIe edge) is rendered, then its domain is **folded** — the long card
-accordion-folds and stacks in layers — condensing the whole graphics card into a compact form built
-from its own silicon and copper, then unfolding back flat. Two forms, one fold, each reversible and
-animated **in time** ([Research 44](research/44-warp-compression.md)).
+GPU die, GDDR7, VRM, PCIe edge) is rendered, then **folded** — condensing the whole graphics card
+into a compact form built from its own silicon and copper, then unfolding back flat. Two forms, one
+fold, each reversible and animated **in time** ([Research 44](research/44-warp-compression.md)).
 
-**Card → mini-cube** (`warp_fold_card`): the board folds and layer-stacks into a glowing mini-cube
-of PCB.
+**Card → cube** (`warp_fold_card`): the board is folded **in half, then in half again, then again**
+— three folds (x → z → x), each a visible hinge where one half swings over and lands stacked on the
+other — condensing the long card into a compact **cube of eight stacked layers** of its own board.
 
-![warp_fold_card — the RTX board folded into a mini-cube](engine/warp_fold_card.png)
+![warp_fold_card — the RTX board folded in half three times into a cube](engine/warp_fold_card.png)
 
-![the card folding into a cube and back](engine/warp_fold_card.gif)
+![the card folding in half three times into a cube and back](engine/warp_fold_card.gif)
 
-**Card → chromosome** (`warp_fold_chromo`): the same fold, bounded into the **X** of a metaphase
-chromosome — two crossing arms of the board's own stacked layers, pinched at a centromere.
+**Card → chromosome** (`warp_fold_chromo`): the card wraps into a **metaphase chromosome** — four
+plump rounded arms joined at a pinched **centromere**, the classic X, filled with the card's own
+folded board material.
 
-![warp_fold_chromo — the RTX board folded into an X chromosome](engine/warp_fold_chromo.png)
+![warp_fold_chromo — the RTX board wrapped into an X chromosome](engine/warp_fold_chromo.png)
 
 ![the card folding into a chromosome and back](engine/warp_fold_chromo.gif)
 

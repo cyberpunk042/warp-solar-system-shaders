@@ -11,12 +11,22 @@
 ## Folding the actual card (the RTX board → cube / chromosome)
 
 The headline scenes fold the **real graphics card**. `gpu_board` (the RTX 6000 Pro Blackwell board)
-is a raymarched SDF; warp compression folds its **domain**: the long card is accordion-folded in x
-and z and layer-stacked in y, then the folded material is bounded into a shape — a **mini-cube**
-(`warp_fold_card`) or the **X of a chromosome** (`warp_fold_chromo`). The board's own materials —
-green solder mask, gold routing, GDDR7, the die floorplan — fold and stack with it, so the whole
-card condenses into a compact glowing form built from its own silicon and copper, then unfolds flat
-again. `time` drives compress → decompress. This is the fold, applied to a thing you recognise.
+is a raymarched SDF; warp compression folds it and its own materials — green solder mask, gold
+routing, GDDR7, the die floorplan — into a compact shape, then unfolds flat again. `time` drives
+compress → decompress. This is the fold, applied to a thing you recognise.
+
+**Card → cube (`warp_fold_card`).** The board is folded the way you fold paper: **in half, then in
+half again on the other axis, then again** — three folds (x → z → x). Each fold is a real hinge —
+one half of the card lifts, swings over, and lands stacked on the other half, doubling the thickness
+and halving the footprint — so the long card condenses into a compact **cube of eight stacked
+layers** of its own board. The completed folds are a static reflected stack (a domain unfold); the
+fold currently in progress is a rigid hinge (`board_map` sampled on the point rotated back about the
+crease), so what lifts and stacks is the real board.
+
+**Card → chromosome (`warp_fold_chromo`).** The card wraps into a **metaphase chromosome** — four
+plump rounded arms (fat capsules blended at a pinched **centromere**, with a centromere bead) making
+the classic X, filled with the card's own folded board material. The flat board stands up and coils
+into the X; unwrapping lays it flat again.
 
 ## The one idea, two shapes (the underlying byte/card codec)
 
