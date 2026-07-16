@@ -199,10 +199,13 @@ Three algorithms compress **the item** (the card / its visual-information conten
   *phrases* (a whole row of identical memory, a repeated VRM motif) that C1's flat index cannot — it
   **beats flat C1 by 1.41×**. Lossless end to end (uncoil → the DNA → place the vocabulary pieces back →
   the exact card). **Watchable process (the on-screen animation):** the `warp_tokenize_chromo` scene runs
-  the whole C3 on the real board — the card breaks into a **web of token-words** (each element a glowing
-  node = its token/value), the web reads out as a **vertical DNA double helix** (bright backbone strands +
-  token-coloured base-pair rungs), and the helix **coils into the chromosome X**. (`warp_fold_chromo` is
-  the simpler card→X-shape sibling.)
+  the whole C3 on the real board, physically — the board is read as a **web of token-words** (each element
+  a glowing node = its token/value), the web reads out as a **DNA double helix** rising off the card, and
+  then the **card's OWN board material coils in place** into the four arms of a metaphase **chromosome**
+  (the real green mask / gold routing / GDDR7 / die, wrapped through the coil via `board_map(_fill(p,fold))`
+  — like DNA condensing into chromatin). No abstract dots teleporting into empty space: the chromosome is
+  the real card, coiled, where the card is — the same honesty as the C2 fold. (`warp_fold_chromo` is the
+  card→X-shape sibling without the token/DNA front-end.)
 - **Future — the semantic lossy tier.** Merge near-synonym tokens (blocks that agree *within tolerance*)
   before coiling — compressing the card's *sense*, not just its exact bytes. The lossy dial noted below.
 

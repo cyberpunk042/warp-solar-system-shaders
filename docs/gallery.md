@@ -99,10 +99,12 @@ exposed faces).
 
 ![the card folding in half five times into a 20x cube and back](engine/warp_fold_card.gif)
 
-**C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the card **breaks into a web of token-words**
-(each element a glowing node = its `warp_compress` token/value), the web is read out as a **DNA double
-helix**, and the helix **coils** into the four arms of a metaphase **chromosome** — the coiled genome
-is the compressed card (`tokenchromo` codec, lossless).
+**C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the real board is **read as a web of
+token-words** (each element a glowing node = its `warp_compress` token/value), the web reads out as a
+**DNA double helix** rising off the card, and then the **card's own board material coils in place** into
+the four arms of a metaphase **chromosome** (the real green mask / gold routing / GDDR7 / die, wrapped
+through the coil — like DNA condensing into chromatin). The coiled card *is* the compressed genome
+(`tokenchromo` codec, lossless). No abstract dots: the chromosome is the real card, coiled.
 
 ![warp_tokenize_chromo — the card as a web of token-words](engine/warp_tokenize_chromo.png)
 
