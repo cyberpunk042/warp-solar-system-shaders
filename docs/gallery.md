@@ -78,11 +78,11 @@ time** ([Research 45](research/45-simulation-and-compression.md), Part II). Each
 only thing ever ignored is *self-collision*.
 
 **C1 — merge** (`warp_scan_merge`): a scan wave sweeps the board and **classifies** every element by its
-`warp_compress.mergecube` token colour (identical pieces share a colour). Then the card is **absorbed**
-— it dissolves as each element becomes an atomic **mini-cube**, and all the mini-cubes **pack into one
-dense cube** (grouped by colour) above where the card is: the whole card compressed to a small dense
-store. The GIF runs the **whole cycle including the reverse** — compress, hold, then decompress and the
-card re-forms.
+`warp_compress.mergecube` token colour (identical pieces share a colour). Then each repeated element's
+copies **merge in place — where the card is** — into a **digit-cube that grows right there on the
+board**, its size set by how many copies merged; the redundant copies fade to ghosts. Those atomic
+mini-cubes then **gather into one dense storage cube** on the board, and the animation runs the whole
+thing forward **and in reverse** — decompress back to the card — never a floating cube beside it.
 
 ![warp_scan_merge — a scan classifies the card, duplicates merge, a location cube grows](engine/warp_scan_merge.png)
 

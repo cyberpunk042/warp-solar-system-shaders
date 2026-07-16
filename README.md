@@ -552,8 +552,10 @@ verification: [Research 45](docs/research/45-simulation-and-compression.md), and
 **C1 — merge** (`warp_scan_merge`): a scan sweeps the board and classifies every element
 (identical pieces glow the **same colour** = the same token); each repeated element's copies
 then **merge in place — where the card is** — into a **digit-cube that grows right there on the
-board**, sized by how many copies merged, while the redundant copies fade to ghosts. The
-compression happens on the card, not in a floating cube beside it. Codec 4.8× lossless.
+board**, sized by how many copies merged, while the redundant copies fade to ghosts. Once the
+card's elements are absorbed into those atomic mini-cubes, they **gather into one dense storage
+cube** resting on the board. The whole process plays forward **and in reverse** (decompress back
+to the card) — never a floating cube beside it. Codec 4.8× lossless.
 
 ![the scan classifying the card, duplicates merging, the digit cube growing](docs/engine/warp_scan_merge.gif)
 

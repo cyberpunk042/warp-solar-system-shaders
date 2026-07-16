@@ -148,9 +148,12 @@ Three algorithms compress **the item** (the card / its visual-information conten
   — a scan wave sweeps and **classifies** every element (identical pieces glow the **same colour** = the
   same token), then each repeated element's copies **merge in place, where the card is** — at that
   element's own canonical location — growing a **digit-cube right there on the board**, its size set by
-  how many copies merged (the count = the digits/locations); the redundant copies fade to ghosts. The
-  merge respects physics: the compression forms **on the card**, never in a fabricated cube floating
-  beside it. The scan is the read; the in-place merge + growing cubes are the compress.
+  how many copies merged (the count = the digits/locations); the redundant copies fade to ghosts. Once
+  the card's elements are absorbed into those atomic mini-cubes, they **gather into one dense storage
+  cube** resting on the board — and the scene runs the whole process forward **and in reverse**
+  (decompress back to the card), so you see the full round-trip, never stopped halfway. The merge
+  respects physics: the compression forms **on the card**, never in a fabricated cube floating beside
+  it. The scan is the read; the in-place merge, gather, and one cube are the compress.
 
 ### C2 — Fold → cube (the folding one, **20×**, built in the process)
 
