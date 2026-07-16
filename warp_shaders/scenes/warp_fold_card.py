@@ -299,7 +299,7 @@ def _render(width, height, time, mouse, device):
     # follow the growing stack, then orbit the squished cube
     az = 0.62 + 0.7 * sA * math.sin(time * 0.4) + float(mouse[0]) * 0.006
     el = 0.40 * (1.0 - sA) + 0.52 * sA
-    dist = (9.6 * (1.0 - foldfrac) + 11.5 * foldfrac) * (1.0 - sA) + 4.9 * sA
+    dist = (8.4 * (1.0 - foldfrac) + 7.4 * foldfrac) * (1.0 - sA) + 4.7 * sA   # closer -> the fold fills the frame
     cx = -0.05 * (1.0 - foldfrac) + _CX * foldfrac
     cz = -0.05 * (1.0 - foldfrac) + _CZ * foldfrac
     cy = _CY * sq * foldfrac
