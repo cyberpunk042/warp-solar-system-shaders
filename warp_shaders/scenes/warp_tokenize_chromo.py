@@ -264,15 +264,15 @@ def _stage(time):
     if u < 0.36:                                    # break into the web of words
         f = (u - 0.14) / 0.22
         return 0, 0.0, 1.0 - 0.85 * _smooth(f), _smooth(f), _smooth(f), 0.0
-    if u < 0.60:                                    # read out into the DNA helix
+    if u < 0.60:                                    # read out into the DNA helix (still over the card)
         f = (u - 0.36) / 0.24
-        return 1, _smooth(f), 0.15 * (1.0 - _smooth(f)), 1.0, 1.0 - _smooth(f), _smooth(f)
-    if u < 0.85:                                    # coil into the chromosome
+        return 1, _smooth(f), 0.30 - 0.12 * _smooth(f), 1.0, 1.0 - _smooth(f), _smooth(f)
+    if u < 0.85:                                    # coil into the chromosome — the card stays under it
         f = (u - 0.60) / 0.25
-        return 2, _smooth(f), 0.0, 1.0, 0.0, 1.0
+        return 2, _smooth(f), 0.18, 1.0, 0.0, 1.0
     # unwind back to the card
     f = (u - 0.85) / 0.15
-    return 2, 1.0 - _smooth(f), _smooth(f) * 0.9, 1.0 - 0.6 * _smooth(f), 0.0, 1.0 - _smooth(f)
+    return 2, 1.0 - _smooth(f), 0.18 + 0.72 * _smooth(f), 1.0 - 0.6 * _smooth(f), 0.0, 1.0 - _smooth(f)
 
 
 def _render(width, height, time, mouse, device):
