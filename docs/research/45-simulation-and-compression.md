@@ -144,6 +144,11 @@ Three algorithms compress **the item** (the card / its visual-information conten
   literally "the cube part": a compact cube of digits that **grows** with the number of distinct pieces
   while the merged dictionary stays small. Lossless throughout — the merge is by identity, not by
   collision.
+- **Watchable process (the on-screen animation):** the `warp_scan_merge` scene runs C1 on the real board
+  — a scan wave sweeps and **classifies** every element (identical pieces glow the **same colour** = the
+  same token), then the **duplicates empty out** of the board (their slots darken — the copy is gone) while
+  a **digit cube of their locations grows** beside it. The scan is the read; the merge + growing cube is
+  the compress.
 
 ### C2 — Fold → cube (the folding one, **20×**, built in the process)
 
@@ -167,6 +172,10 @@ Three algorithms compress **the item** (the card / its visual-information conten
   (each fold overlays onto the growing block, Docker-layer style). It is **lossy** at the merges — as the
   spec directs ("don't care about the collision"). Metric used: **total surface** (the operator's words);
   say the word to re-target by volume or byte-count.
+- **Watchable process (the on-screen animation):** the `warp_fold_card` scene folds the **real board**
+  geometry (chips, GDDR7, die, the mounting hole) — creased in half five times into a laminated stack of
+  its own card layers (built up layer by layer, Docker-style), then **squished** in y into a compact cube
+  you can still read as folded card. Fold → squish → hold, never torn, only self-collision ignored.
 
 ### C3 — Tokenize → web → DNA → chromosome
 
@@ -187,7 +196,11 @@ Three algorithms compress **the item** (the card / its visual-information conten
   **114 nucleosomes, 14 layers deep** → **5.4× lossless**, and — because the coil catches repeated
   *phrases* (a whole row of identical memory, a repeated VRM motif) that C1's flat index cannot — it
   **beats flat C1 by 1.41×**. Lossless end to end (uncoil → the DNA → place the vocabulary pieces back →
-  the exact card). The animated strand→chromosome fold is the `warp_fold_chromo` scene.
+  the exact card). **Watchable process (the on-screen animation):** the `warp_tokenize_chromo` scene runs
+  the whole C3 on the real board — the card breaks into a **web of token-words** (each element a glowing
+  node = its token/value), the web reads out as a **vertical DNA double helix** (bright backbone strands +
+  token-coloured base-pair rungs), and the helix **coils into the chromosome X**. (`warp_fold_chromo` is
+  the simpler card→X-shape sibling.)
 - **Future — the semantic lossy tier.** Merge near-synonym tokens (blocks that agree *within tolerance*)
   before coiling — compressing the card's *sense*, not just its exact bytes. The lossy dial noted below.
 
