@@ -201,17 +201,16 @@ Three algorithms compress **the item** (the card / its visual-information conten
   **114 nucleosomes, 14 layers deep** → **5.4× lossless**, and — because the coil catches repeated
   *phrases* (a whole row of identical memory, a repeated VRM motif) that C1's flat index cannot — it
   **beats flat C1 by 1.41×**. Lossless end to end (uncoil → the DNA → place the vocabulary pieces back →
-  the exact card). **Watchable process (the on-screen animation):** the `warp_tokenize_chromo` scene runs
-  the whole C3 on the real board, physically + reversibly — the real biology of packing information. A
-  **near-transparent scan** gives every element **one colour = its `warp_compress` token** (the same tokens
-  as the merge, C1); those tokens thread a **DNA double helix** (`_arm`, two strands winding around each
-  arm's axis, coloured by the card element each stretch maps back to) laid along the card. Then the card
-  **erodes away** (a clean union of SDFs — `board_map(p)+cerode` vs `_chromo(p,e)+cmat`, no lerp
-  fragmentation) as the strand **keeps coiling and interlocking** — more turns, fatter fibre — condensing
-  from the extended DNA into a real metaphase **chromosome** (the two-arm/two-leg X of `_chromo`) of super
-  density. A **wire storage-cube** (`_boxframe`) then draws itself around the chromosome — the compact
-  polygon that holds it for decompression — and the whole cycle unwinds back to the flat card.
-  (`warp_fold_chromo` is the card→X-shape sibling that wraps the raw board without the DNA weave.)
+  the exact card). **Watchable process (the on-screen animation), built step by step.** The
+  `warp_tokenize_chromo` scene is developed one step at a time. **Step 1 — turn the graphics card into
+  tokens:** a **near-transparent scan** sweeps the real board and, in its wake, the card **erodes away**
+  (a clean union of SDFs — `board_map(p)+cerode` vs `_tokgrid(p)+tmat`, no lerp fragmentation) and is
+  **replaced by a field of token cubes** — one coloured cube per element = its `warp_compress` token
+  (`_tokgrid`/`_tokid` over the per-column occupancy + token grid; identical elements share a colour,
+  exactly like the merge, C1). When the tokenization is done the card is gone: it *is* the tokens now;
+  then the whole cycle reverses back to the card. **Later steps** (2+) will weave these tokens into a
+  DNA strand and condense them into the metaphase **chromosome X** — added and verified one at a time.
+  (`warp_fold_chromo` is the card→X-shape sibling that wraps the raw board directly.)
 - **Future — the semantic lossy tier.** Merge near-synonym tokens (blocks that agree *within tolerance*)
   before coiling — compressing the card's *sense*, not just its exact bytes. The lossy dial noted below.
 

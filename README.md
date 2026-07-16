@@ -566,12 +566,12 @@ crease — into a laminated stack of its own card layers (built up Docker-style)
 
 ![the real card folding into layers and squishing into a cube](docs/engine/warp_fold_card.gif)
 
-**C3 — tokenize → chromosome** (`warp_tokenize_chromo`): a near-transparent scan gives every
-element **one colour = its token**; those tokens thread a **DNA double helix** laid along the
-card, and the strand **keeps coiling and interlocking** — winding tighter and fatter — as the
-card erodes away, condensing into a real metaphase **chromosome X** (two arms, two legs) of
-super density, with a **wire storage-cube** drawn around it (the compact polygon that holds it).
-Full cycle + reverse. Codec 5.4× lossless.
+**C3 — tokenize → chromosome** (`warp_tokenize_chromo`) — built **step by step**. **Step 1: turn
+the graphics card into tokens.** A near-transparent scan sweeps the real board and, in its wake,
+the card **erodes away and is replaced by a field of token cubes** — one coloured cube per element
+= its `warp_compress` token, identical elements sharing a colour. When it's done the card is gone:
+it *is* the tokens now; then it turns back into the card. Full cycle + reverse. (Later steps weave
+these tokens into the chromosome.) Codec 5.4× lossless.
 
 ![the card as a web of words, read as DNA, coiled into a chromosome](docs/engine/warp_tokenize_chromo.gif)
 
