@@ -542,6 +542,34 @@ One GDDR block up close — filling layer by layer, then a small mushroom off it
 
 ![a single memory block overflowing](docs/engine/memory_overflow.gif)
 
+## Virtual compression of the card — three ways
+
+The card's job is to compress visual information, so the real `gpu_board` is itself
+**compressed** three ways, each a watchable process on the real board (research +
+verification: [Research 45](docs/research/45-simulation-and-compression.md), and
+`warp_compress/`). The only law ever waived is self-collision (the fold).
+
+**C1 — merge** (`warp_scan_merge`): a scan sweeps the board and classifies every element
+(identical pieces glow the **same colour** = the same token); the duplicates then collapse
+into dim ghosts while a **digit-cube of their locations grows** beside the board. Merge the
+same thing together; keep the digits that say where every copy was. Codec 4.8× lossless.
+
+![the scan classifying the card, duplicates merging, the digit cube growing](docs/engine/warp_scan_merge.gif)
+
+**C2 — fold** (`warp_fold_card`): the **real board** (chips, GDDR7, die, the mounting hole)
+is **folded** — creased in half five times, never torn, each half staying joined at its
+crease — into a laminated stack of its own card layers (built up Docker-style), then
+**squished** into a compact cube. Codec measures **20.3× smaller by total surface**.
+
+![the real card folding into layers and squishing into a cube](docs/engine/warp_fold_card.gif)
+
+**C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the card breaks into a **web of
+token-words** (each element a glowing node = its token/value), the web reads out as a
+**vertical DNA double helix**, and the helix **coils into a metaphase chromosome X**. Codec
+5.4× lossless (beats flat C1 1.41×).
+
+![the card as a web of words, read as DNA, coiled into a chromosome](docs/engine/warp_tokenize_chromo.gif)
+
 ## Electricity in motion
 
 Charge that flows and does work — the sequel to pushing electrons through the GPU. A

@@ -226,10 +226,11 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array2d(dtype=wp.int3
         keep = 1.0 - mrg * (1.0 - is_canon)
         amt = reveal * keep
         col = col * (1.0 - 0.6 * amt * face) + tc * (0.9 * amt * face)
-        # merged duplicates EMPTY OUT of the board (their slot darkens — the copy is gone, its
-        # location now lives in the digit cube), so the card visibly loses its redundancy
+        # merged duplicates collapse into a dim token-coloured GHOST (the copy is gone — only a
+        # reference to it remains; its real location now lives in the digit cube), so the card
+        # visibly loses its redundancy without reading as damage
         gone = mrg * (1.0 - is_canon) * reveal
-        col = col * (1.0 - 0.80 * gone * face) + wp.vec3(0.02, 0.03, 0.03) * (gone * face)
+        col = col * (1.0 - 0.62 * gone * face) + tc * (0.10 * gone * face)
         # the surviving copy brightens + pulses as it swallows its duplicates
         surv = mrg * is_canon * reveal
         pulse = 0.6 + 0.4 * wp.sin(float(tid) * 1.7 + time * 5.0)
