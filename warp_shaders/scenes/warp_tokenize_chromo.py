@@ -1,24 +1,25 @@
-"""warp_tokenize_chromo — C3, from scratch: the card's tokens ARE the genome; it condenses into a chromosome.
+"""warp_tokenize_chromo — C3: the card -> ~a MILLION tokens -> the chromosome-packing JOURNEY (one chain).
 
-Operator arc (verbatim): turn the card into tokens; the tokens *"connect with the proximity token(s) to
-form a DNA strain, continuous strain ... base pair merging then double helix and tighter and tighter till
-you can center it at the telomere into the chromosome"*; and *"there is so much more token in a card... do
-it right."*
+Operator directives (verbatim): *"TURN THE CARD INTO 1 MILLION TOKEN.. LET THE TOKEN ONE BY ONE
+CONNECT WITH EACH OFTHER TO FORM DNA BRANCH. ONE BY ONE let the branches connect to each other to form
+a double-helix ... the double helix have to become nucleosomes to form telomere and to form the
+chromosome ... nothing can be skipped or be done in parallel ... the double HELIXes ... everything is
+plural ... it is apart before being one ... did you visualize the chain? the journey?"*
 
-Built ONE way — bottom-up. There is a single continuous strand whose material is the card's own tokens,
-threaded in **proximity order** (a serpentine adjacency walk through the real token cells, so neighbours on
-the strand are neighbours on the card). That one strand is never a fabricated shape poured full — it is the
-tokens — and it moves through the real chromosome hierarchy:
+C3 is the packing-diagram JOURNEY as one continuous chain grown from the card's tokens. Read it from
+the loose end (bottom-left) up to the packed end (top-right) and you watch DNA become a chromosome,
+level by level, in strict order, nothing skipped, nothing parallel:
 
-  1. **In place on the card** — the strand lies on the board as the serpentine through its tokens.
-  2. **Gather → DNA double helix** — the board erodes and the strand lifts and winds into a double helix,
-     two backbones of the card's tokens, base pairs between them.
-  3. **Condense → chromosome X** — the helix folds into two chromatids crossing at the centromere and coils
-     **tighter and tighter** (super density) into the metaphase **X**.
-  4. **Reverse** — it unwinds all the way back to the card. `time` runs the whole cycle, then loops.
+  1. **The card** (real `gpu_board`).
+  2. **~A million tokens** — the board is voxelised fine (~1.2M-cell grid), painted as that grid.
+  3. **Base pairs -> double helix** — tokens gather (proximity order) into two backbones; **base-pair
+     rungs** (A/T/G/C colours) bridge them, one token connecting to the next, winding into the helix.
+  4. **Nucleosomes** — the helix beads up onto histone-like cores (beads on a string).
+  5. **Chromosome** — the beaded string coils into the **two chromatids** of the metaphase **X** (plural
+     coiled arms — apart — meeting at the one centromere; telomere tips).
 
-Every colour along the strand is a real card token, in the card's own adjacency order — the compression is
-OF the card, grown from it, not a picture of DNA with the card poured in.
+The chain grows out of the card loose->packed over `time`, each level forming in strict order; the held
+state shows the whole journey at once. Then it unwinds back to the card.
 """
 
 import math
@@ -35,20 +36,32 @@ from warp_compress import mergecube as mc
 from warp_compress.foldcube import sample_card
 
 _MAXD = 40.0
-_CYCLE = 16.0
+_CYCLE = 20.0
 _BLOCK = 2
-_N = 108                          # strand samples (one continuous genome, subsampled from the card tokens)
-_TR = 0.050                       # strand tube radius
-_YC = 0.95                        # the strand/chromosome floats above the card footprint as it lifts out
-_CARDY = 0.14                     # the strand's in-place height on the card (above the components)
-_LX = 3.0                         # DNA extent along x
-_RD = 0.42                        # DNA helix radius
-_DNAT = 15.0                      # DNA turns over the length
-_AX = 0.74                        # chromosome X half-width
-_AY = 1.18                        # chromosome X half-height
-_RC = 0.17                        # condensed-coil radius
-_XT = 30.0                        # condensed-coil turns — distinct wound loops (not fused into a ribbon)
-_MAXSEG = 0.5                     # skip over-long segments (the jump between the two chromatids of the X)
+_UP = 3                           # voxel upsample per axis -> ~1.2M token cells (a real million)
+_X0, _Y0, _Z0 = -3.7, -0.14, -1.5
+_N = 156                          # strand nodes along the whole journey
+_TR = 0.052                       # base tube radius (one double-helix backbone)
+_YC = 0.95                        # journey height
+_CARDY = 0.14
+_MAXSEG = 0.7                     # skip capsules longer than this (nucleosome->X + centromere crossover)
+_NPER = 4.0                       # strand nodes per nucleosome bead
+_NBUMP = 1.4                      # how much the tube bulges into a bead
+_ZH = 0.30                        # zone: double helix  (0 .. _ZH)
+_ZNU = 0.52                       # zone: nucleosomes   (_ZH .. _ZNU) ; chromosome X (_ZNU .. 1)
+_STARTX = -5.4
+_LXH = 2.8                        # x-length of the loose double-helix run
+_LXN = 2.2                        # x-length of the nucleosome run
+_XGAP = 1.9                       # x from the nucleosome end to the chromosome-X centre
+_AXW, _AYW = 0.85, 1.28           # chromosome-X arm half-extents (telomere reach)
+_RCH = 0.17                       # chromatid solenoid radius (the coiled arm)
+_KCH = 4.0                        # chromatid solenoid turns per arm
+_RISE = 1.9                       # the chain climbs loose->packed, like the packing diagram
+_RUNGT = 0.30                     # base-pair rungs are drawn across the loose double helix (t < this)
+_RUNGSTEP = 2                     # a base-pair rung every this-many nodes
+_RR = 0.030                       # base-pair rung radius (thin)
+# A / T / G / C base-pair colours (the diagram's coloured rungs)
+_BASECOL = ((0.92, 0.22, 0.20), (0.24, 0.86, 0.34), (0.26, 0.42, 0.96), (0.96, 0.86, 0.22))
 
 
 def _hue_np(tid):
@@ -77,9 +90,19 @@ def _build():
         has = occ_blocks[:, by, :]
         f = (tok_col < 0) & has
         tok_col[f] = index[:, by, :][f]
+
+    # ~a million tokens: fine token grid over the card, coloured by each element's token
+    nx0, ny0, nz0 = occ.shape
+    b5 = 5
+    _, idx5, _ = mc.compress(occ, block=b5)
+    ii = np.minimum(np.arange(nx0)[:, None, None] // b5, idx5.shape[0] - 1)
+    jj = np.minimum(np.arange(ny0)[None, :, None] // b5, idx5.shape[1] - 1)
+    kk = np.minimum(np.arange(nz0)[None, None, :] // b5, idx5.shape[2] - 1)
+    tokvox = np.where(occ > 0, idx5[ii, jj, kk], -1).astype(np.int32)
+    tok3d = np.repeat(np.repeat(np.repeat(tokvox, _UP, 0), _UP, 1), _UP, 2).astype(np.int32)
+
     bwx = 7.4 / nbx
     bwz = 3.0 / nbz
-    # serpentine adjacency path through the occupied token cells -> proximity order of the genome
     order = []
     for bk in range(nbz):
         rng = range(nbx) if (bk % 2 == 0) else range(nbx - 1, -1, -1)
@@ -87,18 +110,90 @@ def _build():
             if occ_col[bi, bk]:
                 order.append((bi, bk))
     npath = len(order)
-    # subsample the genome to _N nodes: in-place card positions + token colour per node
-    idx = np.linspace(0, npath - 1, _N).round().astype(int)
+    idxs = np.linspace(0, npath - 1, _N).round().astype(int)
     cardxyz = np.zeros((_N, 3), np.float32)
     col = np.zeros((_N, 3), np.float32)
-    for k, j in enumerate(idx):
+    for k, j in enumerate(idxs):
         bi, bk = order[j]
         cardxyz[k] = (-3.7 + (bi + 0.5) * bwx, _CARDY, -1.5 + (bk + 0.5) * bwz)
         col[k] = _hue_np(int(tok_col[bi, bk]))
-    return np.ascontiguousarray(cardxyz), np.ascontiguousarray(col), npath
+    return (np.ascontiguousarray(cardxyz), np.ascontiguousarray(col), npath,
+            np.ascontiguousarray(tok3d))
 
 
-_CARDXYZ, _COL, _NPATH = _build()
+def _bead(i, amt=1.0):
+    return _TR * (1.0 + amt * _NBUMP * (0.5 + 0.5 * math.cos(2.0 * math.pi * i / _NPER)))
+
+
+def _chain_struct():
+    """the fixed full journey: spine, winding offset, per-node radius, base-pair rungs. Built once."""
+    N = _N
+    t = np.linspace(0.0, 1.0, N)
+    xnu_end = _STARTX + _LXH + _LXN
+    xcen = xnu_end + _XGAP                          # chromosome-X centre
+    # two chromatid diagonals (they cross at the centromere): A = "\", B = "/"
+    tips = (np.array([-_AXW, _AYW, 0.0]), np.array([_AXW, -_AYW, 0.0]),
+            np.array([_AXW, _AYW, 0.0]), np.array([-_AXW, -_AYW, 0.0]))
+    sp = np.zeros((N, 3))
+    wamp = np.zeros(N)
+    td = np.zeros(N)                               # fine double-helix turn-density
+    rad = np.full(N, _TR)
+    for i in range(N):
+        ti = t[i]
+        if ti < _ZH:                                # bare double helix (the loose end)
+            u = ti / _ZH
+            sp[i] = [_STARTX + u * _LXH, _YC, 0.0]
+            wamp[i] = 0.34; td[i] = 1.2
+        elif ti < _ZNU:                             # nucleosomes (beads on a string)
+            u = (ti - _ZH) / (_ZNU - _ZH)
+            sp[i] = [_STARTX + _LXH + u * _LXN, _YC, 0.0]
+            wamp[i] = 0.20; td[i] = 1.2; rad[i] = _bead(i, 1.5)
+        else:                                       # chromosome X — two coiled chromatid arms
+            u = (ti - _ZNU) / (1.0 - _ZNU)
+            if u < 0.5:
+                p0, p1 = tips[0], tips[1]; la = u * 2.0
+            else:
+                p0, p1 = tips[2], tips[3]; la = (u - 0.5) * 2.0
+            axis = p0 * (1.0 - la) + p1 * la
+            d = p1 - p0; d = d / (np.linalg.norm(d) + 1e-9)
+            e1 = np.cross(d, np.array([0.0, 0.0, 1.0])); e1 = e1 / (np.linalg.norm(e1) + 1e-9)
+            e2 = np.cross(d, e1)
+            ph = 2.0 * math.pi * _KCH * la
+            coil = _RCH * (math.cos(ph) * e1 + math.sin(ph) * e2)   # solenoid arm (coiled nucleosomes)
+            sp[i] = [xcen + axis[0] + coil[0], _YC + axis[1] + coil[1], axis[2] + coil[2]]
+            wamp[i] = 0.0; td[i] = 0.0; rad[i] = _TR * 1.25 * (1.0 + 0.35 * (0.5 + 0.5 * math.cos(2.0 * math.pi * i / _NPER)))
+
+    sp[:, 1] += _RISE * t                          # the whole chain climbs as it packs
+    # winding: perpendicular frame along the spine, phase from cumulative turn-density
+    tan = np.zeros_like(sp)
+    tan[1:-1] = sp[2:] - sp[:-2]
+    tan[0] = sp[1] - sp[0]
+    tan[-1] = sp[-1] - sp[-2]
+    tan /= (np.linalg.norm(tan, axis=1, keepdims=True) + 1e-9)
+    ref = np.tile(np.array([0.0, 0.0, 1.0]), (N, 1))
+    par = np.abs((tan * ref).sum(1)) > 0.9
+    ref[par] = np.array([1.0, 0.0, 0.0])
+    uu = np.cross(tan, ref); uu /= (np.linalg.norm(uu, axis=1, keepdims=True) + 1e-9)
+    vv = np.cross(tan, uu)
+    seg = np.zeros(N)
+    seg[1:] = np.linalg.norm(sp[1:] - sp[:-1], axis=1)
+    phi = np.cumsum(2.0 * math.pi * td * seg)
+    off = wamp[:, None] * (np.cos(phi)[:, None] * uu + np.sin(phi)[:, None] * vv)
+
+    # base-pair rungs across the loose double helix (a coloured A/T/G/C every few nodes)
+    rung_idx = [i for i in range(N) if t[i] < _RUNGT and i % _RUNGSTEP == 0]
+    rcol = np.array([_BASECOL[k % 4] for k in range(len(rung_idx))], np.float32)
+    return (np.ascontiguousarray(sp), np.ascontiguousarray(off),
+            np.ascontiguousarray(rad.astype(np.float32)), np.ascontiguousarray(t),
+            np.array(rung_idx, np.int32), np.ascontiguousarray(rcol))
+
+
+_CARDXYZ, _COL, _NPATH, _TOK3D = _build()
+_NX, _NY, _NZ = _TOK3D.shape
+_CX, _CY, _CZ = 7.4 / _NX, 0.44 / _NY, 3.0 / _NZ
+_NTOK = int((_TOK3D >= 0).sum())
+_SPINE, _OFF, _RAD, _TT, _RUNG_IDX, _RCOL = _chain_struct()
+_NR = int(_RUNG_IDX.shape[0])
 
 
 def _ss(x):
@@ -106,125 +201,171 @@ def _ss(x):
     return x * x * (3.0 - 2.0 * x)
 
 
-def _xbase(t):
-    """the metaphase X traced by one continuous strand: two chromatids (diagonals) crossing at centre."""
-    out = np.zeros((t.shape[0], 3), np.float64)
-    for k in range(t.shape[0]):
-        tt = t[k]
-        if tt < 0.5:
-            p0 = np.array([-_AX, _AY, 0.0]); p2 = np.array([_AX, -_AY, 0.0]); lt = tt * 2.0
-        else:
-            p0 = np.array([_AX, _AY, 0.0]); p2 = np.array([-_AX, -_AY, 0.0]); lt = (tt - 0.5) * 2.0
-        c = np.array([0.0, 0.0, 0.0])
-        if lt < 0.5:
-            out[k] = p0 * (1.0 - lt * 2.0) + c * (lt * 2.0)
-        else:
-            out[k] = c * (1.0 - (lt - 0.5) * 2.0) + p2 * ((lt - 0.5) * 2.0)
-    out[:, 1] += _YC
-    return out
+def _positions(reveal):
+    """grow the journey from the card: node i assembles once the reveal front passes its t."""
+    asm = np.clip((reveal - _TT + 0.09) / 0.06, 0.0, 1.0)   # front over-runs so the tail fully assembles
+    asm = asm * asm * (3.0 - 2.0 * asm)
+    a = asm[:, None]
+    base = _CARDXYZ.astype(np.float64) * (1.0 - a) + _SPINE * a
+    off = _OFF * a
+    pa = (base + off).astype(np.float32)
+    pb = (base - off).astype(np.float32)
+    rad = (_RAD * asm).astype(np.float32)
+    ra = pa[_RUNG_IDX]
+    rb = pb[_RUNG_IDX]
+    rr = (_RR * asm[_RUNG_IDX]).astype(np.float32)
+    return pa, pb, rad, ra, rb, rr
 
 
-def _positions(a):
-    """the one strand at morph a in [0,2]: 0 = card serpentine, 1 = DNA helix, 2 = chromosome X."""
-    t = np.linspace(0.0, 1.0, _N)
-    dna_base = np.stack([(t - 0.5) * 2.0 * _LX, np.full(_N, _YC), np.zeros(_N)], 1)
-    xb = _xbase(t)
-    if a <= 1.0:
-        f = _ss(a)
-        base = _CARDXYZ.astype(np.float64) * (1.0 - f) + dna_base * f
-        wamp = f * _RD
-        turns = _DNAT
-    else:
-        f = _ss(a - 1.0)
-        base = dna_base * (1.0 - f) + xb * f
-        wamp = _RD * (1.0 - f) + _RC * f
-        turns = _DNAT * (1.0 - f) + _XT * f
-    # per-node tangent frame so the coil winds PERPENDICULAR to the local path — a uniform coil on the
-    # DNA axis AND on every arm of the X (the fixed-plane winding collapsed to smooth bars on the arms).
-    tan = np.zeros_like(base)
-    tan[1:-1] = base[2:] - base[:-2]
-    tan[0] = base[1] - base[0]
-    tan[-1] = base[-1] - base[-2]
-    tan /= (np.linalg.norm(tan, axis=1, keepdims=True) + 1e-9)
-    ref = np.tile(np.array([0.0, 0.0, 1.0]), (_N, 1))
-    par = np.abs((tan * ref).sum(1)) > 0.9
-    ref[par] = np.array([1.0, 0.0, 0.0])
-    uu = np.cross(tan, ref); uu /= (np.linalg.norm(uu, axis=1, keepdims=True) + 1e-9)
-    vv = np.cross(tan, uu)
-    phi = (2.0 * math.pi * turns * t)[:, None]
-    off = wamp * (np.cos(phi) * uu + np.sin(phi) * vv)
-    return (base + off).astype(np.float32), (base - off).astype(np.float32)
-
-
-# --------------------------------------------------------------------------- strand SDF (the genome tube)
 @wp.func
-def _tube(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3), n: int) -> float:
+def _hue(h: float) -> wp.vec3:
+    r = wp.clamp(wp.abs(h * 6.0 - 3.0) - 1.0, 0.0, 1.0)
+    g = wp.clamp(2.0 - wp.abs(h * 6.0 - 2.0), 0.0, 1.0)
+    bb = wp.clamp(2.0 - wp.abs(h * 6.0 - 4.0), 0.0, 1.0)
+    return wp.vec3(r, g, bb)
+
+
+@wp.func
+def _tokcolor(tid: int) -> wp.vec3:
+    if tid < 0:
+        return wp.vec3(0.10, 0.13, 0.12)
+    h = (float(tid) * 0.61803) % 1.0
+    return _hue(h)
+
+
+@wp.func
+def _voxtok(p: wp.vec3, tok: wp.array3d(dtype=wp.int32), nx: int, ny: int, nz: int) -> int:
+    i = int(wp.clamp((p[0] - _X0) / _CX, 0.0, float(nx - 1)))
+    j = int(wp.clamp((p[1] - _Y0) / _CY, 0.0, float(ny - 1)))
+    k = int(wp.clamp((p[2] - _Z0) / _CZ, 0.0, float(nz - 1)))
+    return tok[i, j, k]
+
+
+@wp.func
+def _seam(p: wp.vec3) -> float:
+    fx = (p[0] - _X0) / _CX
+    fz = (p[2] - _Z0) / _CZ
+    ex = wp.abs(fx - wp.floor(fx) - 0.5)
+    ez = wp.abs(fz - wp.floor(fz) - 0.5)
+    e = wp.max(ex, ez)
+    return wp.clamp((0.5 - e) * 6.0, 0.55, 1.0)
+
+
+@wp.func
+def _tube(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3),
+          rad: wp.array(dtype=float), n: int) -> float:
     best = _MAXD
     for i in range(n - 1):
-        if wp.length(pa[i + 1] - pa[i]) < _MAXSEG:           # skip the long chromatid-to-chromatid jump
-            d = sd_capsule(p, pa[i], pa[i + 1], _TR)
-            if d < best:
-                best = d
-        if wp.length(pb[i + 1] - pb[i]) < _MAXSEG:
-            d = sd_capsule(p, pb[i], pb[i + 1], _TR)
+        r = rad[i]
+        if r > 0.006:
+            if wp.length(pa[i + 1] - pa[i]) < _MAXSEG:
+                d = sd_capsule(p, pa[i], pa[i + 1], r)
+                if d < best:
+                    best = d
+            if wp.length(pb[i + 1] - pb[i]) < _MAXSEG:
+                d = sd_capsule(p, pb[i], pb[i + 1], r)
+                if d < best:
+                    best = d
+    return best
+
+
+@wp.func
+def _tubeseg(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3),
+             rad: wp.array(dtype=float), n: int) -> int:
+    best = _MAXD
+    seg = int(0)
+    for i in range(n - 1):
+        r = rad[i]
+        if r > 0.006:
+            if wp.length(pa[i + 1] - pa[i]) < _MAXSEG:
+                d = sd_capsule(p, pa[i], pa[i + 1], r)
+                if d < best:
+                    best = d
+                    seg = i
+            if wp.length(pb[i + 1] - pb[i]) < _MAXSEG:
+                d = sd_capsule(p, pb[i], pb[i + 1], r)
+                if d < best:
+                    best = d
+                    seg = i
+    return seg
+
+
+@wp.func
+def _rungs(p: wp.vec3, ra: wp.array(dtype=wp.vec3), rb: wp.array(dtype=wp.vec3),
+           rr: wp.array(dtype=float), nr: int) -> float:
+    best = _MAXD
+    for k in range(nr):
+        if rr[k] > 0.006:
+            d = sd_capsule(p, ra[k], rb[k], rr[k])
             if d < best:
                 best = d
     return best
 
 
 @wp.func
-def _tubeseg(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3), n: int) -> int:
+def _rungseg(p: wp.vec3, ra: wp.array(dtype=wp.vec3), rb: wp.array(dtype=wp.vec3),
+             rr: wp.array(dtype=float), nr: int) -> int:
     best = _MAXD
     seg = int(0)
-    for i in range(n - 1):
-        if wp.length(pa[i + 1] - pa[i]) < _MAXSEG:
-            d = sd_capsule(p, pa[i], pa[i + 1], _TR)
+    for k in range(nr):
+        if rr[k] > 0.006:
+            d = sd_capsule(p, ra[k], rb[k], rr[k])
             if d < best:
                 best = d
-                seg = i
-        if wp.length(pb[i + 1] - pb[i]) < _MAXSEG:
-            d = sd_capsule(p, pb[i], pb[i + 1], _TR)
-            if d < best:
-                best = d
-                seg = i
+                seg = k
     return seg
 
 
 @wp.func
-def _map(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3), n: int, cerode: float) -> float:
-    d = _tube(p, pa, pb, n)
+def _map(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3),
+         rad: wp.array(dtype=float), n: int,
+         ra: wp.array(dtype=wp.vec3), rb: wp.array(dtype=wp.vec3), rr: wp.array(dtype=float), nr: int,
+         cerode: float, shide: float) -> float:
+    d = _MAXD
     if cerode < 1.6:
         d = wp.min(d, board_map(p) + cerode)
+    if shide < 1.6:
+        d = wp.min(d, _tube(p, pa, pb, rad, n) + shide)
+        d = wp.min(d, _rungs(p, ra, rb, rr, nr) + shide)
     return d
 
 
 @wp.func
-def _normal(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3), n: int, cerode: float) -> wp.vec3:
+def _normal(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3),
+            rad: wp.array(dtype=float), n: int,
+            ra: wp.array(dtype=wp.vec3), rb: wp.array(dtype=wp.vec3), rr: wp.array(dtype=float), nr: int,
+            cerode: float, shide: float) -> wp.vec3:
     e = 0.0015
-    dx = _map(p + wp.vec3(e, 0.0, 0.0), pa, pb, n, cerode) - _map(p - wp.vec3(e, 0.0, 0.0), pa, pb, n, cerode)
-    dy = _map(p + wp.vec3(0.0, e, 0.0), pa, pb, n, cerode) - _map(p - wp.vec3(0.0, e, 0.0), pa, pb, n, cerode)
-    dz = _map(p + wp.vec3(0.0, 0.0, e), pa, pb, n, cerode) - _map(p - wp.vec3(0.0, 0.0, e), pa, pb, n, cerode)
+    dx = _map(p + wp.vec3(e, 0.0, 0.0), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide) - _map(p - wp.vec3(e, 0.0, 0.0), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
+    dy = _map(p + wp.vec3(0.0, e, 0.0), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide) - _map(p - wp.vec3(0.0, e, 0.0), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
+    dz = _map(p + wp.vec3(0.0, 0.0, e), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide) - _map(p - wp.vec3(0.0, 0.0, e), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
     return wp.normalize(wp.vec3(dx, dy, dz))
 
 
 @wp.func
 def _ao(p: wp.vec3, nrm: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3),
-        n: int, cerode: float) -> float:
+        rad: wp.array(dtype=float), n: int,
+        ra: wp.array(dtype=wp.vec3), rb: wp.array(dtype=wp.vec3), rr: wp.array(dtype=float), nr: int,
+        cerode: float, shide: float) -> float:
     o = float(0.0)
     sca = float(1.0)
     for k in range(5):
         hr = 0.012 + 0.05 * float(k)
-        d = _map(p + nrm * hr, pa, pb, n, cerode)
+        d = _map(p + nrm * hr, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
         o += (hr - d) * sca
         sca *= 0.85
     return wp.clamp(1.0 - 2.0 * o, 0.0, 1.0)
 
 
 @wp.kernel
-def _render_kernel(img: wp.array2d(dtype=wp.vec3), pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3),
-                   col: wp.array(dtype=wp.vec3), n: int,
+def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array3d(dtype=wp.int32),
+                   nx: int, ny: int, nz: int,
+                   pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3),
+                   rad: wp.array(dtype=float), col: wp.array(dtype=wp.vec3), n: int,
+                   ra: wp.array(dtype=wp.vec3), rb: wp.array(dtype=wp.vec3), rr: wp.array(dtype=float),
+                   rcol: wp.array(dtype=wp.vec3), nr: int,
                    eye: wp.vec3, fwd: wp.vec3, right: wp.vec3, up: wp.vec3, width: int, height: int,
-                   time: float, tanfov: float, cerode: float):
+                   time: float, tanfov: float, cerode: float, shide: float, tokamt: float):
     i, j = wp.tid()
     aspect = float(width) / float(height)
     u = (2.0 * (float(j) + 0.5) / float(width) - 1.0) * tanfov * aspect
@@ -233,9 +374,9 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), pa: wp.array(dtype=wp.vec3), 
 
     t = float(0.0)
     hit = int(0)
-    for _ in range(200):
+    for _ in range(210):
         p = eye + rd * t
-        d = _map(p, pa, pb, n, cerode)
+        d = _map(p, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
         if d < 0.0006 * t + 0.0004:
             hit = 1
             break
@@ -248,34 +389,52 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), pa: wp.array(dtype=wp.vec3), 
         return
 
     p = eye + rd * t
-    nrm = _normal(p, pa, pb, n, cerode)
-    ao = _ao(p, nrm, pa, pb, n, cerode)
-    lit = wp.clamp(wp.dot(nrm, wp.normalize(wp.vec3(0.4, 0.85, 0.5))), 0.2, 1.0)
-    dtube = _tube(p, pa, pb, n)
+    nrm = _normal(p, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
+    ao = _ao(p, nrm, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
+    ldir = wp.normalize(wp.vec3(0.45, 0.8, 0.45))
+    lit = wp.clamp(wp.dot(nrm, ldir), 0.0, 1.0)
+    hv = wp.normalize(ldir - rd)                              # specular highlight -> rounded look
+    spec = wp.pow(wp.clamp(wp.dot(nrm, hv), 0.0, 1.0), 26.0) * 0.5
+    rim = wp.pow(1.0 - wp.clamp(-wp.dot(nrm, rd), 0.0, 1.0), 3.0) * 0.18
+    shade = (0.12 + 0.95 * lit) * (ao * ao)                  # deep crevice AO -> 3D coils read
     dcard = _MAXD
     if cerode < 1.6:
         dcard = board_map(p) + cerode
+    dtube = _MAXD
+    drung = _MAXD
+    if shide < 1.6:
+        dtube = _tube(p, pa, pb, rad, n) + shide
+        drung = _rungs(p, ra, rb, rr, nr) + shide
 
+    if drung <= dcard and drung <= dtube:
+        bc = rcol[_rungseg(p, ra, rb, rr, nr)]                # a base-pair rung (A/T/G/C)
+        img[i, j] = bc * shade + wp.vec3(spec, spec, spec) + bc * (0.10 + rim)
+        return
     if dtube <= dcard:
-        seg = _tubeseg(p, pa, pb, n)
-        tc = col[seg]                                        # the card token this stretch of strand is
-        img[i, j] = tc * ((0.5 + 0.6 * lit) * ao) + tc * 0.12
+        tc = col[_tubeseg(p, pa, pb, rad, n)]                 # the strand: a card token
+        img[i, j] = tc * shade + wp.vec3(spec, spec, spec) + tc * (0.10 + rim)
         return
 
-    img[i, j] = board_shade(p, nrm, rd, ao, time)            # the surviving card, eroding away
+    # the card surface — painted as ~a million token cells; tokamt fades the card look into the tokens
+    bshade = board_shade(p, nrm, rd, ao, time)
+    tc = _tokcolor(_voxtok(p, tok, nx, ny, nz))
+    toklook = tc * ((0.5 + 0.55 * lit) * ao) * _seam(p)
+    img[i, j] = bshade * (1.0 - tokamt) + toklook * tokamt
 
 
 def _fwd(s):
-    """forward half s in [0,1] -> (a, cerode). card -> gather to DNA -> fold+coil to X -> hold."""
-    if s < 0.14:
-        return 0.0, 0.0
-    if s < 0.46:
-        f = _ss((s - 0.14) / 0.32)
-        return f, 2.0 * f
-    if s < 0.82:
-        f = _ss((s - 0.46) / 0.36)
-        return 1.0 + f, 2.0
-    return 2.0, 2.0
+    """forward half s in [0,1] -> (reveal, cerode, shide, tokamt). STRICT sequence, nothing parallel:
+    card -> million tokens -> the chain grows loose->packed (helix -> nucleosomes -> chromosome X)."""
+    if s < 0.08:                                    # 1. the real card
+        return 0.0, 0.0, 3.0, 0.0
+    if s < 0.20:                                    # 2. the card becomes ~a million tokens
+        return 0.0, 0.0, 3.0, _ss((s - 0.08) / 0.12)
+    if s < 0.28:                                    #    hold the million-token card
+        return 0.0, 0.0, 3.0, 1.0
+    if s < 0.92:                                    # 3-5. the journey grows: base pairs -> double helix
+        r = _ss((s - 0.28) / 0.64)                  #      -> nucleosomes -> chromosome X
+        return r, 2.0 * r, 0.0, 1.0
+    return 1.0, 2.0, 0.0, 1.0                       # hold the full chain (the whole journey visible)
 
 
 def _state(time):
@@ -285,28 +444,35 @@ def _state(time):
 
 
 def _render(width, height, time, mouse, device):
-    a, cerode = _state(time)
-    posA, posB = _positions(a)
+    reveal, cerode, shide, tokamt = _state(time)
+    posA, posB, radn, raa, rbb, rrr = _positions(reveal)
     pa = wp.array(posA, dtype=wp.vec3, device=device)
     pb = wp.array(posB, dtype=wp.vec3, device=device)
+    rad = wp.array(radn, dtype=float, device=device)
     col = wp.array(_COL, dtype=wp.vec3, device=device)
+    ra = wp.array(raa, dtype=wp.vec3, device=device)
+    rb = wp.array(rbb, dtype=wp.vec3, device=device)
+    rr = wp.array(rrr, dtype=float, device=device)
+    rcol = wp.array(_RCOL, dtype=wp.vec3, device=device)
+    tok = wp.array3d(_TOK3D, dtype=wp.int32, device=device)
 
-    lift = min(1.0, a)                                        # 0 on the card, 1 once lifted into the strand
-    az = 0.55 + 0.06 * math.sin(time * 0.12) + float(mouse[0]) * 0.006
-    el = 0.42 * (1.0 - lift) + 0.20 * lift
-    dist = 9.0 * (1.0 - lift) + 6.4 * lift
-    tgt = wp.vec3(-0.1 * (1.0 - lift), 0.15 * (1.0 - lift) + _YC * lift, 0.0)
+    lift = reveal
+    az = 0.30 + 0.05 * math.sin(time * 0.10) + float(mouse[0]) * 0.006
+    el = 0.42 * (1.0 - lift) + 0.15 * lift
+    dist = 9.0 * (1.0 - lift) + 10.6 * lift
+    tgt = wp.vec3(-0.1 * (1.0 - lift) + 0.2 * lift, 0.15 * (1.0 - lift) + (_YC + 1.25) * lift, 0.0)
     eye = tgt + wp.vec3(dist * math.cos(el) * math.sin(az), dist * math.sin(el),
                         dist * math.cos(el) * math.cos(az))
     fwd = wp.normalize(tgt - eye)
     right = wp.normalize(wp.cross(fwd, wp.vec3(0.0, 1.0, 0.0)))
     up = wp.cross(right, fwd)
-    tanfov = math.tan(math.radians(46.0) * 0.5)
+    tanfov = math.tan(math.radians(48.0) * 0.5)
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(_render_kernel, dim=(height, width),
-              inputs=[img, pa, pb, col, _N, eye, fwd, right, up, width, height,
-                      float(time), tanfov, float(cerode)],
+              inputs=[img, tok, _NX, _NY, _NZ, pa, pb, rad, col, _N, ra, rb, rr, rcol, _NR,
+                      eye, fwd, right, up, width, height,
+                      float(time), tanfov, float(cerode), float(shide), float(tokamt)],
               device=device)
     wp.synchronize_device(device)
     return post.tonemap(img.numpy(), mode="aces", exposure=1.1, preserve_hue=True)
@@ -314,10 +480,10 @@ def _render(width, height, time, mouse, device):
 
 SCENE = Scene(
     name="warp_tokenize_chromo",
-    description="C3, from scratch: a single continuous strand whose material is the card's own tokens, "
-                "threaded in proximity order, lies on the board, then lifts and winds into a DNA double "
-                "helix and folds + coils tighter and tighter into the metaphase chromosome X — the card's "
-                "tokens condensed into a chromosome, grown from the card, not a picture of DNA poured full; "
-                "then it unwinds back to the card.",
+    description="C3, the whole journey as one chain (nothing skipped or parallel): the real RTX board "
+                "becomes ~a million token cells that connect into two backbones with coloured base-pair "
+                "rungs, wind into a DNA double helix, bead into nucleosomes, and coil into the two "
+                "chromatids of the metaphase chromosome X — every packing level visible at once — then "
+                "unwind back to the card.",
     renderer=_render,
 )
