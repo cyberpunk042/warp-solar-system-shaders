@@ -5,20 +5,19 @@ image in the process and not at the result, a bit like docker image ... you have
 squish it just right and you need a really 20x smaller cube of the total surface of the whole item of
 compression."* And, sharply: *"YOU CANNOT TEAR THE CARD APPART... YOU MUST FOLD IT... FOLDING."*
 
-So this is **real folding**. The card is one connected sheet. To fold it in half, the far half swings
-about the crease line — a rigid hinge, an isometry — and the two halves stay **joined at the crease**
-(the material bends around; it is never cut). Fold in half, and in half again, alternating the long
-and short axis, **five times** (x, x, z, x, z — the exact schedule `warp_compress.foldcube` uses to
-reach the target), stacking gaplessly into a compact laminated **cube**. The only thing ignored is
-**self-collision**: as layers pile up they pass through each other's components — that overlap is what
-takes the fold past the lossless limit down to the real board's **20.3x smaller total surface**
-(22398 -> 1102 exposed voxel-faces, measured by the codec).
+So this is **real folding of the real card**. The geometry is the actual `board_map` (green solder
+mask, gold routing, GDDR7 packages, the die, the mounting hole) — not a blank sheet. To fold it in
+half, the far half swings about the crease line — a rigid hinge, an isometry — and the two halves stay
+**joined at the crease** (the material bends around; it is never cut). Fold in half, and in half
+again, alternating the long and short axis, **five times** (x, x, z, x, z — the exact schedule
+`warp_compress.foldcube` uses), stacking into a laminated block of its own card layers, each layer a
+real strip of the board (the fold coordinate maps every point back to where it came from on the flat
+card). The only thing ignored is **self-collision**: stacked components pass through each other.
 
-Each layer is a real strip of the card: the fold coordinate maps every point of the laminated block
-back to where it came from on the flat board, so the green solder mask, the gold routing, the GDDR7
-packages and the die are what fold and stack — connected across every crease. `time` runs the folds
-forward (compress) and back (decompress): the compressed image is built **in the process**, one
-crease-layer at a time, Docker-style.
+Then it is **squished** ("squish it just right"): the tall folded stack is compressed in y into a
+compact **cube** you can still read as folded card layers. The compressed image is built **in the
+process**, one crease-layer at a time, Docker-style; the codec measures the exposed surface at
+**~20.3x smaller** (22398 -> 1102 voxel-faces). `time` runs fold -> squish -> hold, then back.
 """
 
 import math
@@ -27,14 +26,14 @@ import warp as wp
 
 from .. import electronics_common as ec
 from ..engine import post
-from ..procedural.sdf import sd_round_box
 from ..scene import Scene
-from .gpu_board import board_shade
+from .gpu_board import board_map, board_shade
 
 _MAXD = 40.0
 _CYCLE = 12.0
 _N = 5                          # five folds: in half, again, again, again, again
-_TAU = 0.030                    # sheet half-pitch -> layers stack gaplessly (thin, squished "just right")
+_TAU = 0.120                    # layer pitch while folding (thick enough to SEE the real card's chips)
+_SQ_MIN = 0.24                  # final y-squish -> the tall folded stack is squished "just right" to a cube
 _XR = 3.7                       # board half-extent x
 _ZR = 1.5                       # board half-extent z
 
@@ -129,8 +128,9 @@ def _hinge_back(p: wp.vec3, m: int, theta: float) -> wp.vec3:
 
 @wp.func
 def _sheet(q: wp.vec3) -> float:
-    """The flat card as a thin connected sheet over its full footprint (rounded edges = the fold bend)."""
-    return sd_round_box(q, wp.vec3(_XR, _TAU, _ZR), _TAU * 0.9)
+    """The real card as the folded sheet — board_map (chips, GDDR7, die, traces), thinned in y so the
+    folded layers stack; components interpenetrate (the ignored self-collision)."""
+    return board_map(q)
 
 
 @wp.func
@@ -165,53 +165,61 @@ def _clip_xz(p: wp.vec3, xhi: float, zhi: float) -> float:
 
 
 @wp.func
-def _fmap(p: wp.vec3, m: int, theta: float) -> float:
-    if m >= _N:
-        d = _sheet(_unfold(p, _N))                          # fully folded cube
-        return wp.max(d, _clip_xz(p, _xhi(_N), _zhi(_N)))
-    c = _crease(m)
-    ac = _axis_coord(p, m)
-    base = wp.max(_sheet(_unfold(p, m)), ac - c)            # half that stays (<= crease)
-    base = wp.max(base, _clip_xz(p, _xhi(m), _zhi(m)))      # ...clipped to the already-folded footprint
-    q = _hinge_back(p, m, theta)
-    acq = _axis_coord(q, m)
-    flap = wp.max(_sheet(_unfold(q, m)), c - acq)           # half hinging over (>= crease), connected at c
-    flap = wp.max(flap, _clip_xz(q, _xhi(m), _zhi(m)))
-    return wp.min(base, flap)
+def _unsq(p: wp.vec3, sq: float) -> wp.vec3:
+    """Undo the y-squish so the fold is evaluated in un-squished space, then the caller scales by sq."""
+    return wp.vec3(p[0], p[1] / sq, p[2])
 
 
 @wp.func
-def _shade_q(p: wp.vec3, m: int, theta: float) -> wp.vec3:
-    """Board-local coord of the nearer half, so each layer paints its own strip of the real card."""
+def _fmap(p: wp.vec3, m: int, theta: float, sq: float) -> float:
+    ps = _unsq(p, sq)
+    d = float(0.0)
     if m >= _N:
-        return _unfold(p, _N)
+        d = wp.max(_sheet(_unfold(ps, _N)), _clip_xz(ps, _xhi(_N), _zhi(_N)))   # fully folded cube
+    else:
+        c = _crease(m)
+        base = wp.max(_sheet(_unfold(ps, m)), _axis_coord(ps, m) - c)           # half that stays (<= crease)
+        base = wp.max(base, _clip_xz(ps, _xhi(m), _zhi(m)))                     # ...clipped to folded footprint
+        q = _hinge_back(ps, m, theta)
+        flap = wp.max(_sheet(_unfold(q, m)), c - _axis_coord(q, m))            # half hinging over, joined at c
+        flap = wp.max(flap, _clip_xz(q, _xhi(m), _zhi(m)))
+        d = wp.min(base, flap)
+    return d * sq                                                              # keep the field valid under the squish
+
+
+@wp.func
+def _shade_q(p: wp.vec3, m: int, theta: float, sq: float) -> wp.vec3:
+    """Board-local coord of the nearer half, so each layer paints its own strip of the real card."""
+    ps = _unsq(p, sq)
+    if m >= _N:
+        return _unfold(ps, _N)
     c = _crease(m)
-    base = wp.max(_sheet(_unfold(p, m)), _axis_coord(p, m) - c)
-    base = wp.max(base, _clip_xz(p, _xhi(m), _zhi(m)))
-    q = _hinge_back(p, m, theta)
+    base = wp.max(_sheet(_unfold(ps, m)), _axis_coord(ps, m) - c)
+    base = wp.max(base, _clip_xz(ps, _xhi(m), _zhi(m)))
+    q = _hinge_back(ps, m, theta)
     flap = wp.max(_sheet(_unfold(q, m)), c - _axis_coord(q, m))
     flap = wp.max(flap, _clip_xz(q, _xhi(m), _zhi(m)))
     if flap < base:
         return _unfold(q, m)
-    return _unfold(p, m)
+    return _unfold(ps, m)
 
 
 @wp.func
-def _fnormal(p: wp.vec3, m: int, theta: float) -> wp.vec3:
+def _fnormal(p: wp.vec3, m: int, theta: float, sq: float) -> wp.vec3:
     e = 0.0011
-    dx = _fmap(p + wp.vec3(e, 0.0, 0.0), m, theta) - _fmap(p - wp.vec3(e, 0.0, 0.0), m, theta)
-    dy = _fmap(p + wp.vec3(0.0, e, 0.0), m, theta) - _fmap(p - wp.vec3(0.0, e, 0.0), m, theta)
-    dz = _fmap(p + wp.vec3(0.0, 0.0, e), m, theta) - _fmap(p - wp.vec3(0.0, 0.0, e), m, theta)
+    dx = _fmap(p + wp.vec3(e, 0.0, 0.0), m, theta, sq) - _fmap(p - wp.vec3(e, 0.0, 0.0), m, theta, sq)
+    dy = _fmap(p + wp.vec3(0.0, e, 0.0), m, theta, sq) - _fmap(p - wp.vec3(0.0, e, 0.0), m, theta, sq)
+    dz = _fmap(p + wp.vec3(0.0, 0.0, e), m, theta, sq) - _fmap(p - wp.vec3(0.0, 0.0, e), m, theta, sq)
     return wp.normalize(wp.vec3(dx, dy, dz))
 
 
 @wp.func
-def _fao(p: wp.vec3, n: wp.vec3, m: int, theta: float) -> float:
+def _fao(p: wp.vec3, n: wp.vec3, m: int, theta: float, sq: float) -> float:
     occ = float(0.0)
     sca = float(1.0)
     for k in range(5):
         hr = 0.008 + 0.04 * float(k)
-        d = _fmap(p + n * hr, m, theta)
+        d = _fmap(p + n * hr, m, theta, sq)
         occ += (hr - d) * sca
         sca *= 0.85
     return wp.clamp(1.0 - 2.0 * occ, 0.0, 1.0)
@@ -220,7 +228,7 @@ def _fao(p: wp.vec3, n: wp.vec3, m: int, theta: float) -> float:
 @wp.kernel
 def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3, right: wp.vec3,
                    up: wp.vec3, width: int, height: int, time: float, tanfov: float,
-                   m: int, theta: float):
+                   m: int, theta: float, sq: float):
     i, j = wp.tid()
     aspect = float(width) / float(height)
     u = (2.0 * (float(j) + 0.5) / float(width) - 1.0) * tanfov * aspect
@@ -231,7 +239,7 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3, r
     hit = int(0)
     for _ in range(340):
         p = eye + rd * t
-        d = _fmap(p, m, theta)
+        d = _fmap(p, m, theta, sq)
         if d < 0.0006 * t + 0.0003:
             hit = 1
             break
@@ -244,9 +252,9 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3, r
         return
 
     p = eye + rd * t
-    n = _fnormal(p, m, theta)
-    ao = _fao(p, n, m, theta)
-    q = _shade_q(p, m, theta)
+    n = _fnormal(p, m, theta, sq)
+    ao = _fao(p, n, m, theta, sq)
+    q = _shade_q(p, m, theta, sq)
     col = board_shade(q, n, rd, ao, time)
     # warm rim glow along the folded creases so the fold reads as it stacks
     seam = wp.pow(wp.clamp(1.0 - wp.abs(wp.dot(n, -rd)), 0.0, 1.0), 3.0)
@@ -260,27 +268,41 @@ def _progress(time):
     return 1.0 - abs(2.0 * u - 1.0)
 
 
+def _smoothstep(x):
+    x = min(1.0, max(0.0, x))
+    return x * x * (3.0 - 2.0 * x)
+
+
+_PF = 0.55                       # fold phase ends here (5 folds), then squish, then hold
+_PS = 0.80                       # squish phase ends here
+
+
 def _fold_state(prog):
-    """(active-fold index m, hinge angle theta) for a compression amount in [0,1]."""
-    s = prog * float(_N)
-    m = int(math.floor(s))
-    if m >= _N:
-        return _N, 0.0
-    frac = s - float(m)
-    theta = (frac * frac * (3.0 - 2.0 * frac)) * math.pi     # smoothstep ease into each hinge, 0..pi
-    return m, theta
+    """(active-fold index m, hinge angle theta, y-squish sq) — fold, then squish to the cube, then hold."""
+    if prog < _PF:                                          # folding: 5 hinges
+        s = (prog / _PF) * float(_N)
+        m = int(math.floor(s))
+        frac = s - float(m)
+        theta = _smoothstep(frac) * math.pi
+        return m, theta, 1.0
+    if prog < _PS:                                          # squishing the tall stack into the cube
+        sq = 1.0 + (_SQ_MIN - 1.0) * _smoothstep((prog - _PF) / (_PS - _PF))
+        return _N, 0.0, sq
+    return _N, 0.0, _SQ_MIN                                 # hold the squished cube
 
 
 def _render(width, height, time, mouse, device):
     prog = _progress(time)
-    m, theta = _fold_state(prog)
-    # frame the kept-footprint centre; zoom in as it condenses to the cube
-    az = 0.62 + float(mouse[0]) * 0.006
-    el = 0.42 * (1.0 - prog) + 0.92 * prog                   # rise to look down onto the folded cube
-    dist = 9.6 * (1.0 - prog) + 3.6 * prog
-    cx = -0.05 * (1.0 - prog) + _CX * prog
-    cz = -0.05 * (1.0 - prog) + _CZ * prog
-    cy = 0.0 * (1.0 - prog) + _CY * prog
+    m, theta, sq = _fold_state(prog)
+    foldfrac = min(1.0, prog / _PF)                         # 0..1 as the folds accumulate
+    sA = (1.0 - sq) / (1.0 - _SQ_MIN)                       # 0 while folding, 1 when fully squished
+    # follow the growing stack, then orbit the squished cube
+    az = 0.62 + 0.7 * sA * math.sin(time * 0.4) + float(mouse[0]) * 0.006
+    el = 0.40 * (1.0 - sA) + 0.52 * sA
+    dist = (9.6 * (1.0 - foldfrac) + 11.5 * foldfrac) * (1.0 - sA) + 4.9 * sA
+    cx = -0.05 * (1.0 - foldfrac) + _CX * foldfrac
+    cz = -0.05 * (1.0 - foldfrac) + _CZ * foldfrac
+    cy = _CY * sq * foldfrac
     tgt = wp.vec3(cx, cy, cz)
     eye = tgt + wp.vec3(dist * math.cos(el) * math.sin(az), dist * math.sin(el),
                         dist * math.cos(el) * math.cos(az))
@@ -292,7 +314,7 @@ def _render(width, height, time, mouse, device):
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(_render_kernel, dim=(height, width),
               inputs=[img, eye, fwd, right, up, width, height, float(time), tanfov,
-                      int(m), float(theta)],
+                      int(m), float(theta), float(sq)],
               device=device)
     wp.synchronize_device(device)
     return post.tonemap(img.numpy(), mode="aces", exposure=1.1, preserve_hue=True)

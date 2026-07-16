@@ -87,10 +87,12 @@ digits that say where every copy was.
 
 ![the scan reading the card, duplicates merging, the digit cube growing](engine/warp_scan_merge.gif)
 
-**C2 — fold** (`warp_fold_card`): the card is **folded** — one connected sheet creased in half **five
-times** (never cut; each far half swings about its crease and stays joined), layers fusing as
-collision is ignored — squishing into a compact cube **~20× smaller by total surface** (22398 → 1102
-exposed faces, measured by the codec).
+**C2 — fold** (`warp_fold_card`): the **real board** (chips, GDDR7, die, the mounting hole) is
+**folded** — creased in half **five times** (never cut; each far half swings about its crease and stays
+joined), stacking into a laminated block of its own card layers as collision is ignored — then
+**squished** just right into a compact cube. The compressed image is built **in the process**,
+layer by layer, Docker-style; the codec measures the surface at **~20× smaller** (22398 → 1102
+exposed faces).
 
 ![warp_fold_card — the RTX board folded into a 20x cube](engine/warp_fold_card.png)
 
