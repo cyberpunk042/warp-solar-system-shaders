@@ -77,12 +77,12 @@ three different ways, each a **watchable process on the real board**, reversible
 time** ([Research 45](research/45-simulation-and-compression.md), Part II). Each obeys reality: the
 only thing ever ignored is *self-collision*.
 
-**C1 — merge** (`warp_scan_merge`): a scan wave sweeps the board and **classifies** every element —
-identical pieces glow the **same colour** (the same `warp_compress.mergecube` token: the GDDR7
-packages, the VRM chokes, repeated die cells). Then each repeated element's copies **merge in place —
-where the card is** — into a **digit-cube that grows right there on the board**, its size set by how
-many copies merged; the redundant copies fade to ghosts. No teleporting into a cube beside the card:
-the compression happens on the card itself.
+**C1 — merge** (`warp_scan_merge`): a scan wave sweeps the board and **classifies** every element by its
+`warp_compress.mergecube` token colour (identical pieces share a colour). Then the card is **absorbed**
+— it dissolves as each element becomes an atomic **mini-cube**, and all the mini-cubes **pack into one
+dense cube** (grouped by colour) above where the card is: the whole card compressed to a small dense
+store. The GIF runs the **whole cycle including the reverse** — compress, hold, then decompress and the
+card re-forms.
 
 ![warp_scan_merge — a scan classifies the card, duplicates merge, a location cube grows](engine/warp_scan_merge.png)
 
@@ -99,12 +99,12 @@ exposed faces).
 
 ![the card folding in half five times into a 20x cube and back](engine/warp_fold_card.gif)
 
-**C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the real board is **read as a web of
-token-words** (each element a glowing node = its `warp_compress` token/value), the web reads out as a
-**DNA double helix** rising off the card, and then the **card's own board material coils in place** into
-the four arms of a metaphase **chromosome** (the real green mask / gold routing / GDDR7 / die, wrapped
-through the coil — like DNA condensing into chromatin). The coiled card *is* the compressed genome
-(`tokenchromo` codec, lossless). No abstract dots: the chromosome is the real card, coiled.
+**C3 — tokenize → chromosome** (`warp_tokenize_chromo`): a **near-transparent scan** gives every element
+**one colour = its `warp_compress` token** (the same tokens as the merge), then the card **weaves and
+coils** — layer interlocking on layer — into a **real metaphase chromosome** (the two-arm/two-leg X),
+built as a **tight woven mesh of coloured tokens** so dense it forms one solid shape, and a **wire
+storage-cube** draws itself around it (the compact polygon that holds the super-dense token-mesh). The
+GIF runs the whole cycle and unwinds back to the flat card (`tokenchromo` codec, lossless).
 
 ![warp_tokenize_chromo — the card as a web of token-words](engine/warp_tokenize_chromo.png)
 

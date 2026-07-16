@@ -1,25 +1,27 @@
-"""warp_tokenize_chromo — C3: the card is read as a web of token-words, then its REAL MATERIAL coils to a chromosome.
+"""warp_tokenize_chromo — C3: tokens weave into a tight mesh chromosome, in its storage cube.
 
-Operator spec (verbatim): *"break down of the item into a web of word that remesent per each atom a word,
-or a token rather in a web that gives values and we can then compress it from DNA equivalent sequence
-into the whole process of chromosome."* And the physics rule (2026-07-16): *"you have to merge where the
-card is ... you are not supposed to break physics"* — the compression must happen to the **real card, in
-place**, not as abstract dots teleporting into empty space.
+Operator spec (verbatim, 2026-07-16): *"a really tightly bounded mesh of those tokens like becoming a mini
+chromosome so much its compressed together, like weaving a token after forming DNA like strain that keep
+and keep interlocking to form a unite shape / wall / exterior. The scan can be different near transparent.
+the goal is to have a token of color per elements similar to the merge / second compression. and I want a
+real chromosome at the end... and little tensor shape like two arms and two legs that could move in a cube
+with super density. it can be so compressed that it has a representation of a larger polygone / cube or
+rectangle around itself in the compression storage."*
 
-So C3, done the same honest way as the fold (C2):
+C3 as a full reversible process on the real `gpu_board`:
 
-  1. **The card** — the real RTX `gpu_board` on the bench.
-  2. **The web of words** — every element lights up as a glowing **token-node** on the card (its colour =
-     its `warp_compress` token/value), linked to its neighbours — the item read as a web of words.
-  3. **The DNA sequence** — the web is read out as a **DNA double helix** rising just off the board (the
-     token beads become base-pairs on two backbones) — the DNA-equivalent sequence of the card.
-  4. **The chromosome** — then the **card's own board material coils up**, in place, into the four arms of
-     a metaphase **chromosome** (the classic X, filled with the real green solder-mask / gold-routing /
-     GDDR7 / die material — `board_map` wrapped through the coil), exactly as DNA condenses into chromatin.
-     The token/DNA read-out fades as the real material takes over. The coiled genome *is* the compressed
-     card. `warp_compress.tokenchromo` is the codec behind it (lossless, verified).
+  1. **The card**, then a **near-transparent scan** sweeps it — every element takes **one colour = its
+     `warp_compress` token** (the same tokens as the merge, C1).
+  2. **Weave** — the card's material **coils and weaves**, layer interlocking on layer, tightening into a
+     **real metaphase chromosome** (the two-arms/two-legs X). It is not the raw board any more: it is a
+     **dense woven mesh of coloured tokens** — each cell of the mesh coloured by the card element it came
+     from (mapped straight through the coil), packed so tight it forms one solid shape / wall / exterior.
+  3. **The storage cube** — a wire **bounding cube** draws itself around the chromosome: the compact
+     polygon that holds the super-dense token-mesh for decompression.
+  4. **Reverse** — it all runs backwards, the chromosome unwinding to the flat card. `time` runs the whole
+     cycle, then loops.
 
-`time` runs card → web → DNA → real-material chromosome, then unwinds and loops.
+Codec behind it: `warp_compress.tokenchromo` (lossless, verified).
 """
 
 import math
@@ -29,85 +31,28 @@ import warp as wp
 
 from .. import electronics_common as ec
 from ..engine import post
-from ..particles import emitter
-from ..procedural.sdf import op_smooth_union, sd_capsule, sd_round_box, sd_sphere
+from ..procedural.sdf import op_smooth_union, sd_capsule, sd_sphere, sd_round_box
 from ..scene import Scene
-from .gpu_board import board_map, board_shade
+from .gpu_board import board_map
 from warp_compress import mergecube as mc
 from warp_compress.foldcube import sample_card, _BB
-
 
 _MAXD = 40.0
 _CYCLE = 15.0
 _BLOCK = 5
+_MESH = 26.0                     # token-mesh cell frequency (how fine the woven cells are)
 
 
 def _build():
-    """token nodes (word per element) + board / DNA-helix positions + web & DNA edges."""
+    """the card's per-block token volume (index grid) — one token/colour per element, for the mesh."""
     b = _BLOCK
     occ = sample_card()
-    vocab, index, meta = mc.compress(occ, block=b)
-    occp = mc._pad_to(occ, b)
-    nbx, nby, nbz = index.shape
-    blk = (occp.reshape(nbx, b, nby, b, nbz, b)
-               .transpose(0, 2, 4, 1, 3, 5)
-               .reshape(nbx, nby, nbz, b ** 3))
-    occ_blocks = blk.any(axis=3)
-    cells = []
-    for bi in range(0, nbx, 1):
-        for bk in range(0, nbz, 1):
-            tid = -1
-            for by in range(nby - 1, -1, -1):
-                if occ_blocks[bi, by, bk]:
-                    tid = int(index[bi, by, bk]); break
-            if tid >= 0:
-                cells.append((bi, bk, tid))
-    cells = cells[::5]                                     # subsample -> a few dozen legible nodes
-    n = len(cells)
-    bx, bz = _BB[1], _BB[5]
-    board = np.zeros((n, 3), np.float32)
-    tok = np.zeros(n, np.int32)
-    for i, (bi, bk, tid) in enumerate(cells):
-        x = -bx + (bi + 0.5) / nbx * 2.0 * bx
-        z = -bz + (bk + 0.5) / nbz * 2.0 * bz
-        board[i] = (x, 0.42, z)                            # just above the board's components
-        tok[i] = tid
-
-    # DNA double helix rising off the board, standing vertical over the card centre
-    helix = np.zeros((n, 3), np.float32)
-    npair = max(1, (n + 1) // 2)
-    for i in range(n):
-        s = i % 2
-        k = i // 2
-        ay = 0.4 + 3.4 * (k / max(1, npair - 1))           # rises up off the board
-        th = k * 0.58
-        r = 0.62
-        helix[i] = (r * math.cos(th + s * math.pi), ay, r * math.sin(th + s * math.pi))
-
-    web = []
-    for i in range(n):
-        d = np.sum((board - board[i]) ** 2, axis=1)
-        d[i] = 1e9
-        for j in np.argsort(d)[:2]:
-            a, c = min(i, int(j)), max(i, int(j))
-            web.append((a, c))
-    web = sorted(set(web))
-    dna = []
-    for i in range(n - 2):
-        dna.append((i, i + 2))                             # backbone (same strand)
-    for k in range(npair):
-        if 2 * k + 1 < n:
-            dna.append((2 * k, 2 * k + 1))                 # base-pair rungs
-    web = np.asarray(web, np.int32) if web else np.zeros((0, 2), np.int32)
-    dna = np.asarray(dna, np.int32) if dna else np.zeros((0, 2), np.int32)
-    nbb = max(0, n - 2)
-    return board, helix, tok, web, dna, nbb
+    vocab, index, meta = mc.compress(occ, block=b)          # index: (nbx, nby, nbz) token per block
+    return np.ascontiguousarray(index.astype(np.int32))
 
 
-_BOARD, _HELIX, _TOK, _WEB, _DNA, _NBB = _build()
-_N = _BOARD.shape[0]
-_NWEB = _WEB.shape[0]
-_NDNA = _DNA.shape[0]
+_INDEX = _build()
+_NBX, _NBY, _NBZ = _INDEX.shape
 
 
 # ------------------------------------------------------------------ real-material coil (from fold_chromo)
@@ -122,7 +67,6 @@ def _tri(a: float, f: float) -> float:
 
 @wp.func
 def _fill(p: wp.vec3, fold: float) -> wp.vec3:
-    """chromosome-frame point -> board-local coord: stand the flat board up + accordion-pack the arms."""
     ang = fold * 1.5708
     ca = wp.cos(ang); sa = wp.sin(ang)
     q = wp.vec3(p[0], ca * p[1] - sa * p[2], sa * p[1] + ca * p[2])
@@ -156,16 +100,39 @@ def _cfmap(p: wp.vec3, fold: float) -> float:
 
 
 @wp.func
-def _cnormal(p: wp.vec3, fold: float) -> wp.vec3:
+def _boxframe(p: wp.vec3, b: wp.vec3, e: float) -> float:
+    q = wp.vec3(wp.abs(p[0]) - b[0], wp.abs(p[1]) - b[1], wp.abs(p[2]) - b[2])
+    qx = wp.abs(q[0] + e) - e
+    qy = wp.abs(q[1] + e) - e
+    qz = wp.abs(q[2] + e) - e
+    d1 = wp.length(wp.vec3(wp.max(qx, 0.0), wp.max(qy, 0.0), wp.max(q[2], 0.0))) + wp.min(wp.max(qx, wp.max(qy, q[2])), 0.0)
+    d2 = wp.length(wp.vec3(wp.max(qx, 0.0), wp.max(q[1], 0.0), wp.max(qz, 0.0))) + wp.min(wp.max(qx, wp.max(q[1], qz)), 0.0)
+    d3 = wp.length(wp.vec3(wp.max(q[0], 0.0), wp.max(qy, 0.0), wp.max(qz, 0.0))) + wp.min(wp.max(q[0], wp.max(qy, qz)), 0.0)
+    return wp.min(wp.min(d1, d2), d3)
+
+
+_BOXB = wp.constant(wp.vec3(1.55, 2.0, 0.85))    # bounding-cube half-extents around the chromosome
+
+
+@wp.func
+def _map(p: wp.vec3, fold: float, cagew: float) -> float:
+    d = _cfmap(p, fold)
+    if cagew > 0.01:
+        d = wp.min(d, _boxframe(p, _BOXB, 0.02))
+    return d
+
+
+@wp.func
+def _normal(p: wp.vec3, fold: float, cagew: float) -> wp.vec3:
     e = 0.0013
-    dx = _cfmap(p + wp.vec3(e, 0.0, 0.0), fold) - _cfmap(p - wp.vec3(e, 0.0, 0.0), fold)
-    dy = _cfmap(p + wp.vec3(0.0, e, 0.0), fold) - _cfmap(p - wp.vec3(0.0, e, 0.0), fold)
-    dz = _cfmap(p + wp.vec3(0.0, 0.0, e), fold) - _cfmap(p - wp.vec3(0.0, 0.0, e), fold)
+    dx = _map(p + wp.vec3(e, 0.0, 0.0), fold, cagew) - _map(p - wp.vec3(e, 0.0, 0.0), fold, cagew)
+    dy = _map(p + wp.vec3(0.0, e, 0.0), fold, cagew) - _map(p - wp.vec3(0.0, e, 0.0), fold, cagew)
+    dz = _map(p + wp.vec3(0.0, 0.0, e), fold, cagew) - _map(p - wp.vec3(0.0, 0.0, e), fold, cagew)
     return wp.normalize(wp.vec3(dx, dy, dz))
 
 
 @wp.func
-def _cao(p: wp.vec3, n: wp.vec3, fold: float) -> float:
+def _ao(p: wp.vec3, n: wp.vec3, fold: float) -> float:
     occ = float(0.0)
     sca = float(1.0)
     for k in range(5):
@@ -176,7 +143,6 @@ def _cao(p: wp.vec3, n: wp.vec3, fold: float) -> float:
     return wp.clamp(1.0 - 2.0 * occ, 0.0, 1.0)
 
 
-# ------------------------------------------------------------------ token web / DNA (particle read-out)
 @wp.func
 def _hue(h: float) -> wp.vec3:
     r = wp.clamp(wp.abs(h * 6.0 - 3.0) - 1.0, 0.0, 1.0)
@@ -187,45 +153,39 @@ def _hue(h: float) -> wp.vec3:
 
 @wp.func
 def _tokcolor(tid: int) -> wp.vec3:
+    if tid < 0:
+        return wp.vec3(0.10, 0.13, 0.12)
     h = (float(tid) * 0.61803) % 1.0
     return _hue(h)
 
 
 @wp.func
-def _npos(i: int, blend: float, board: wp.array(dtype=wp.vec3), helix: wp.array(dtype=wp.vec3)) -> wp.vec3:
-    return board[i] * (1.0 - blend) + helix[i] * blend      # board (web) -> helix (DNA)
-
-
-@wp.func
-def _seg_glow(ro: wp.vec3, rd: wp.vec3, a: wp.vec3, bpt: wp.vec3, size: float) -> float:
-    g = float(0.0)
-    for s in range(4):
-        u = (float(s) + 0.5) / 4.0
-        g += emitter(ro, rd, a + (bpt - a) * u, size)
-    return g / 4.0
+def _tok_at(q: wp.vec3, index: wp.array3d(dtype=wp.int32), nbx: int, nby: int, nbz: int) -> int:
+    fx = (q[0] - (-3.7)) / 7.4
+    fy = (q[1] - (-0.14)) / 0.44
+    fz = (q[2] - (-1.5)) / 3.0
+    bi = int(wp.clamp(fx * float(nbx), 0.0, float(nbx - 1)))
+    by = int(wp.clamp(fy * float(nby), 0.0, float(nby - 1)))
+    bk = int(wp.clamp(fz * float(nbz), 0.0, float(nbz - 1)))
+    return index[bi, by, bk]
 
 
 @wp.kernel
-def _render_kernel(img: wp.array2d(dtype=wp.vec3),
-                   board: wp.array(dtype=wp.vec3), helix: wp.array(dtype=wp.vec3),
-                   tok: wp.array(dtype=wp.int32),
-                   web: wp.array2d(dtype=wp.int32), dna: wp.array2d(dtype=wp.int32),
-                   nnode: int, nweb: int, ndna: int, nbb: int,
+def _render_kernel(img: wp.array2d(dtype=wp.vec3), index: wp.array3d(dtype=wp.int32),
+                   nbx: int, nby: int, nbz: int,
                    eye: wp.vec3, fwd: wp.vec3, right: wp.vec3, up: wp.vec3, width: int, height: int,
-                   time: float, tanfov: float, fold: float, blend: float,
-                   node_a: float, web_w: float, dna_w: float):
+                   time: float, tanfov: float, fold: float, cagew: float, scanx: float, tokamt: float):
     i, j = wp.tid()
     aspect = float(width) / float(height)
     u = (2.0 * (float(j) + 0.5) / float(width) - 1.0) * tanfov * aspect
     v = (2.0 * (float(height - 1 - i) + 0.5) / float(height) - 1.0) * tanfov
     rd = wp.normalize(fwd + right * u + up * v)
 
-    # the real card material — flat board, coiling into the chromosome as `fold` ramps
     t = float(0.0)
     hit = int(0)
     for _ in range(240):
         p = eye + rd * t
-        d = _cfmap(p, fold)
+        d = _map(p, fold, cagew)
         if d < 0.0006 * t + 0.0004:
             hit = 1
             break
@@ -233,40 +193,40 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3),
         if t > _MAXD:
             break
 
-    col = ec.studio_sky(rd)
-    if hit == 1:
-        p = eye + rd * t
-        n = _cnormal(p, fold)
-        ao = _cao(p, n, fold)
-        col = board_shade(_fill(p, fold), n, rd, ao, time)
-        seam = wp.pow(wp.clamp(1.0 - wp.abs(wp.dot(n, -rd)), 0.0, 1.0), 3.0)
-        col = col + wp.vec3(0.3, 0.7, 1.0) * (seam * fold * 0.6)     # cool rim glow as it coils
+    if hit == 0:
+        img[i, j] = ec.studio_sky(rd)
+        return
 
-    # the token/DNA read-out (glowing web -> helix), fading as the material coils
-    glow = wp.vec3(0.0, 0.0, 0.0)
-    for k in range(nnode):
-        pk = _npos(k, blend, board, helix)
-        ge = emitter(eye, rd, pk, 0.07)
-        glow = glow + _tokcolor(tok[k]) * (ge * node_a * 1.4)
-    if web_w > 0.01:
-        for e in range(nweb):
-            a = _npos(web[e, 0], blend, board, helix)
-            bp = _npos(web[e, 1], blend, board, helix)
-            g = _seg_glow(eye, rd, a, bp, 0.05)
-            glow = glow + wp.vec3(0.6, 0.85, 1.0) * (g * web_w * 0.7)
-    if dna_w > 0.01:
-        for e in range(ndna):
-            a = _npos(dna[e, 0], blend, board, helix)
-            bp = _npos(dna[e, 1], blend, board, helix)
-            if e < nbb:
-                g = _seg_glow(eye, rd, a, bp, 0.032)
-                glow = glow + wp.vec3(0.55, 0.9, 1.0) * (g * dna_w * 1.5)
-            else:
-                g = _seg_glow(eye, rd, a, bp, 0.05)
-                tc = (_tokcolor(tok[dna[e, 0]]) + _tokcolor(tok[dna[e, 1]])) * 0.5
-                glow = glow + tc * (g * dna_w * 0.9)
+    p = eye + rd * t
+    # the wire storage-cube?
+    if cagew > 0.01 and _boxframe(p, _BOXB, 0.02) < _cfmap(p, fold) + 0.0005:
+        img[i, j] = wp.vec3(0.35, 0.85, 1.0) * (0.8 * cagew)
+        return
 
-    img[i, j] = col + glow
+    n = _normal(p, fold, cagew)
+    ao = _ao(p, n, fold)
+    q = _fill(p, fold)                                       # board-local coord this material came from
+    tid = _tok_at(q, index, nbx, nby, nbz)
+    tc = _tokcolor(tid)
+
+    # woven token-mesh: colour per element (token) + tight interlocking cell seams in board space
+    mx = wp.abs(wp.sin(q[0] * _MESH))
+    my = wp.abs(wp.sin((q[1] * 3.0) * _MESH))
+    mz = wp.abs(wp.sin(q[2] * _MESH))
+    weave = wp.min(wp.min(mx, my), mz)
+    cell = wp.clamp(weave * 6.0, 0.30, 1.0)                  # dark seams -> woven cells
+    lit = wp.clamp(wp.dot(n, wp.normalize(wp.vec3(0.4, 0.85, 0.5))), 0.2, 1.0)
+    base = tc * ((0.45 + 0.6 * lit) * ao * cell)
+    # near-transparent scan sweeping down the card early on
+    band = wp.abs(q[0] - scanx)
+    scan = float(0.0)
+    if band < 0.25:
+        scan = (1.0 - band / 0.25) * (1.0 - tokamt)
+    col = base * tokamt + wp.vec3(0.10, 0.14, 0.13) * (1.0 - tokamt)   # fade in the token colour as it weaves
+    col = col + wp.vec3(0.4, 0.9, 1.0) * (scan * 0.5)
+    seam = wp.pow(wp.clamp(1.0 - wp.abs(wp.dot(n, -rd)), 0.0, 1.0), 3.0)
+    col = col + tc * (seam * fold * 0.4)                     # rim as it tightens into the X
+    img[i, j] = col
 
 
 def _smooth(x):
@@ -274,37 +234,35 @@ def _smooth(x):
     return x * x * (3.0 - 2.0 * x)
 
 
-def _stage(time):
-    """(fold, blend, node_alpha, web_w, dna_w) — card → web → DNA → real-material chromosome → unwind."""
+def _state(time):
+    """(fold, cage_w, scan_x, tok_amt) — card → scan → weave into token-mesh X + cube → reverse."""
     u = (float(time) % _CYCLE) / _CYCLE
-    if u < 0.12:                                    # the card (flat, real material)
-        return 0.0, 0.0, _smooth(u / 0.12) * 0.2, 0.0, 0.0
-    if u < 0.32:                                    # break into the web of token-words (on the card)
-        f = (u - 0.12) / 0.20
-        return 0.0, 0.0, _smooth(f), _smooth(f), 0.0
-    if u < 0.52:                                    # read out into the DNA helix (rising off the card)
-        f = (u - 0.32) / 0.20
-        return 0.0, _smooth(f), 1.0, 1.0 - _smooth(f), _smooth(f)
-    if u < 0.82:                                    # the card's MATERIAL coils into the chromosome
-        f = (u - 0.52) / 0.30
-        return _smooth(f), 1.0, 1.0 - _smooth(f), 0.0, 1.0 - _smooth(f)
-    # unwind: the chromosome opens back to the flat card, DNA re-reads
-    f = (u - 0.82) / 0.18
-    return 1.0 - _smooth(f), 1.0 - _smooth(f), _smooth(f), 0.0, _smooth(f)
+    if u < 0.12:                                    # the flat card (real board colours, no tokens yet)
+        return 0.0, 0.0, -3.7, 0.0
+    if u < 0.30:                                    # near-transparent scan: tokens colour in per element
+        f = (u - 0.12) / 0.18
+        return 0.0, 0.0, -3.7 + 7.4 * _smooth(f), _smooth(f)
+    if u < 0.60:                                    # weave: the card coils/tightens into the chromosome X
+        f = (u - 0.30) / 0.30
+        return _smooth(f), 0.0, 4.0, 1.0
+    if u < 0.72:                                    # the storage cube draws itself around the dense mesh
+        f = (u - 0.60) / 0.12
+        return 1.0, _smooth(f), 4.0, 1.0
+    if u < 0.88:                                    # hold the compressed chromosome in its cube
+        return 1.0, 1.0, 4.0, 1.0
+    # reverse: cube fades, chromosome unwinds to the flat card
+    f = (u - 0.88) / 0.12
+    return 1.0 - _smooth(f), 1.0 - _smooth(f), 4.0, 1.0 - 0.5 * _smooth(f)
 
 
 def _render(width, height, time, mouse, device):
-    fold, blend, node_a, web_w, dna_w = _stage(time)
-    board = wp.array(_BOARD, dtype=wp.vec3, device=device)
-    helix = wp.array(_HELIX, dtype=wp.vec3, device=device)
-    tok = wp.array(_TOK, dtype=wp.int32, device=device)
-    web = wp.array2d(_WEB, dtype=wp.int32, device=device)
-    dna = wp.array2d(_DNA, dtype=wp.int32, device=device)
+    fold, cagew, scanx, tokamt = _state(time)
+    index = wp.array3d(_INDEX, dtype=wp.int32, device=device)
 
-    az = 0.30 + 0.35 * fold + 0.10 * math.sin(time * 0.2) + float(mouse[0]) * 0.006
-    el = 0.30 * (1.0 - fold) + 0.16 * fold                  # look down at the board, rise to face the X
-    dist = 9.4 * (1.0 - fold) + 6.2 * fold
-    tgt = wp.vec3(0.0, 0.2 + 0.2 * fold, 0.0)
+    az = 0.30 + 0.5 * fold + 0.08 * math.sin(time * 0.2) + float(mouse[0]) * 0.006
+    el = 0.34 * (1.0 - fold) + 0.14 * fold
+    dist = 9.4 * (1.0 - fold) + 6.6 * fold
+    tgt = wp.vec3(0.0, 0.15 + 0.15 * fold, 0.0)
     eye = tgt + wp.vec3(dist * math.cos(el) * math.sin(az), dist * math.sin(el),
                         dist * math.cos(el) * math.cos(az))
     fwd = wp.normalize(tgt - eye)
@@ -314,9 +272,8 @@ def _render(width, height, time, mouse, device):
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(_render_kernel, dim=(height, width),
-              inputs=[img, board, helix, tok, web, dna, _N, _NWEB, _NDNA, _NBB,
-                      eye, fwd, right, up, width, height, float(time), tanfov,
-                      float(fold), float(blend), float(node_a), float(web_w), float(dna_w)],
+              inputs=[img, index, _NBX, _NBY, _NBZ, eye, fwd, right, up, width, height,
+                      float(time), tanfov, float(fold), float(cagew), float(scanx), float(tokamt)],
               device=device)
     wp.synchronize_device(device)
     return post.tonemap(img.numpy(), mode="aces", exposure=1.15, preserve_hue=True)
@@ -324,10 +281,9 @@ def _render(width, height, time, mouse, device):
 
 SCENE = Scene(
     name="warp_tokenize_chromo",
-    description="C3 as a physically-honest process: the real RTX board is read as a web of token-words "
-                "(each element a glowing node = its warp_compress token/value), the web reads out as a DNA "
-                "double helix, then the card's OWN board material coils in place into the four arms of a "
-                "metaphase chromosome (the real green mask / gold routing / GDDR7 / die, wrapped through "
-                "the coil) — the coiled genome is the compressed card (tokenchromo codec, lossless).",
+    description="C3 as a full reversible process: a near-transparent scan gives every element one "
+                "warp_compress token colour, the card weaves and coils into a real metaphase chromosome "
+                "(the two-arm/two-leg X) built as a tight mesh of coloured tokens, and a wire storage-cube "
+                "draws itself around the super-dense mesh — then it unwinds back to the flat card.",
     renderer=_render,
 )
