@@ -99,15 +99,14 @@ exposed faces).
 
 ![the card folding in half five times into a 20x cube and back](engine/warp_fold_card.gif)
 
-**C3 — tokenize → chromosome** (`warp_tokenize_chromo`) — built **step by step**, following the real
-chromosome hierarchy (base pairs → double helix → nucleosomes → chromatid → chromosome). **Step 1: turn
-the card into tokens** — a **near-transparent scan** sweeps the board and the card erodes into a **dense
-field of token cubes** (one colour per element; a real card is dense — thousands of tokens). **Step 2: the
-tokens connect by proximity into a continuous strand** — a link front sweeps the card and each token joins
-its **actual spatial neighbour** (a serpentine adjacency path through the real token cells, where the card
-sits, not re-sorted onto a fabricated axis), forming one continuous strand; then it unlinks back to the
-card. (Next sub-step lifts this proximity strand into the DNA double helix; later steps coil it into the
-chromosome X; `tokenchromo` codec, lossless.)
+**C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the card's own tokens **are** the genome. One
+continuous strand — its material the card's tokens, threaded in **proximity order** (a serpentine adjacency
+walk through the real token cells, so neighbours on the strand are neighbours on the card) — lies **on the
+board**, then lifts and winds into a **DNA double helix** (two backbones of the card's tokens), and folds
+into two chromatids crossing at the centromere, coiling **tighter and tighter** into the metaphase
+**chromosome X** of super density; then it unwinds all the way back. Every colour along it is a real card
+token, in the card's own order — the compression is *grown from* the card, not a picture of DNA poured
+full (`tokenchromo` codec, lossless).
 
 ![warp_tokenize_chromo — the card as a web of token-words](engine/warp_tokenize_chromo.png)
 

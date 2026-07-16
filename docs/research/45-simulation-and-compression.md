@@ -207,15 +207,19 @@ Three algorithms compress **the item** (the card / its visual-information conten
   real board and the card **erodes away** (a clean union of SDFs — `board_map(p)+cerode` vs
   `_tokgrid(p)+tmat`, no lerp fragmentation) and is **replaced by a dense field of token cubes** — one
   colour per element = its `warp_compress` token (fine `block=2` → ~2,000 cells, because a real card is
-  dense with tokens, not dozens). **Step 2 — the tokens connect by proximity into a continuous strand:** a link
-  front (`grow`) sweeps the card and each token joins its **actual spatial neighbour** — a serpentine
-  adjacency path through the real occupied token cells (`_build` emits per-cell successor offsets
-  `sdi`/`sdk` + path index `pidx`), so consecutive strand steps are true neighbours, **where the card
-  sits**, not re-sorted by array index onto a fabricated centre axis (the earlier version's bug). The
-  `_strand` SDF links each linked token to its path-successor; tokens leave the loose field as the front
-  passes. **Next sub-step** lifts this proximity strand into the DNA double helix (base pairs → twist);
-  **later steps** coil it into nucleosomes and the metaphase **chromosome X**. (`warp_fold_chromo` is the
-  card→X-shape sibling that wraps the raw board directly.)
+  dense with tokens, not dozens). **The card's tokens ARE the genome (built bottom-up, from scratch).** There is one
+  continuous strand whose material is the card's own tokens, threaded in **proximity order** — a serpentine
+  adjacency walk through the real occupied token cells, so neighbours on the strand are neighbours on the
+  card (`_build` orders the cells; the genome is subsampled to `_N` nodes carrying their real token
+  colours). That single strand is rendered as a two-backbone tube (`_tube`) and its node positions are
+  morphed in Python (`_positions(a)`) through the real hierarchy: **a=0** it lies **on the board** (the
+  serpentine through the tokens); **a=1** it lifts and winds into the **DNA double helix** (two backbones
+  of the card's tokens); **a=2** it folds into two chromatids crossing at the centromere (`_xbase`) and
+  coils **tighter and tighter** (super density) into the metaphase **chromosome X**. The board erodes
+  (`cerode`) as the strand lifts out; the whole cycle reverses back to the card. Crucially the strand is
+  never a fabricated shape poured full — its colours are always the card's real tokens in the card's own
+  order, so the chromosome is *grown from* the card. (`warp_fold_chromo` is the card→X-shape sibling that
+  wraps the raw board directly.)
 - **Future — the semantic lossy tier.** Merge near-synonym tokens (blocks that agree *within tolerance*)
   before coiling — compressing the card's *sense*, not just its exact bytes. The lossy dial noted below.
 
