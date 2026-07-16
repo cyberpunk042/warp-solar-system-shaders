@@ -218,8 +218,7 @@ Three algorithms compress **the item** (the card / its visual-information conten
   coils **tighter and tighter** (super density) into the metaphase **chromosome X**. The board erodes
   (`cerode`) as the strand lifts out; the whole cycle reverses back to the card. Crucially the strand is
   never a fabricated shape poured full — its colours are always the card's real tokens in the card's own
-  order, so the chromosome is *grown from* the card. (`warp_fold_chromo` is the card→X-shape sibling that
-  wraps the raw board directly.)
+  order, so the chromosome is *grown from* the card.
 - **Future — the semantic lossy tier.** Merge near-synonym tokens (blocks that agree *within tolerance*)
   before coiling — compressing the card's *sense*, not just its exact bytes. The lossy dial noted below.
 

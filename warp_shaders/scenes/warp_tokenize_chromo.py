@@ -38,16 +38,17 @@ _MAXD = 40.0
 _CYCLE = 16.0
 _BLOCK = 2
 _N = 108                          # strand samples (one continuous genome, subsampled from the card tokens)
-_TR = 0.052                       # strand tube radius
+_TR = 0.050                       # strand tube radius
 _YC = 0.95                        # the strand/chromosome floats above the card footprint as it lifts out
-_CARDY = 0.06                     # the strand's in-place height on the card
+_CARDY = 0.14                     # the strand's in-place height on the card (above the components)
 _LX = 3.0                         # DNA extent along x
 _RD = 0.42                        # DNA helix radius
 _DNAT = 15.0                      # DNA turns over the length
-_AX = 0.72                        # chromosome X half-width
+_AX = 0.74                        # chromosome X half-width
 _AY = 1.18                        # chromosome X half-height
-_RC = 0.15                        # condensed-coil radius
-_XT = 40.0                        # condensed-coil turns (super density)
+_RC = 0.17                        # condensed-coil radius
+_XT = 30.0                        # condensed-coil turns — distinct wound loops (not fused into a ribbon)
+_MAXSEG = 0.5                     # skip over-long segments (the jump between the two chromatids of the X)
 
 
 def _hue_np(tid):
@@ -138,10 +139,21 @@ def _positions(a):
         base = dna_base * (1.0 - f) + xb * f
         wamp = _RD * (1.0 - f) + _RC * f
         turns = _DNAT * (1.0 - f) + _XT * f
-    phi = 2.0 * math.pi * turns * t
-    wa = np.stack([np.zeros(_N), np.cos(phi), np.sin(phi)], 1) * wamp
-    wb = np.stack([np.zeros(_N), np.cos(phi + math.pi), np.sin(phi + math.pi)], 1) * wamp
-    return (base + wa).astype(np.float32), (base + wb).astype(np.float32)
+    # per-node tangent frame so the coil winds PERPENDICULAR to the local path — a uniform coil on the
+    # DNA axis AND on every arm of the X (the fixed-plane winding collapsed to smooth bars on the arms).
+    tan = np.zeros_like(base)
+    tan[1:-1] = base[2:] - base[:-2]
+    tan[0] = base[1] - base[0]
+    tan[-1] = base[-1] - base[-2]
+    tan /= (np.linalg.norm(tan, axis=1, keepdims=True) + 1e-9)
+    ref = np.tile(np.array([0.0, 0.0, 1.0]), (_N, 1))
+    par = np.abs((tan * ref).sum(1)) > 0.9
+    ref[par] = np.array([1.0, 0.0, 0.0])
+    uu = np.cross(tan, ref); uu /= (np.linalg.norm(uu, axis=1, keepdims=True) + 1e-9)
+    vv = np.cross(tan, uu)
+    phi = (2.0 * math.pi * turns * t)[:, None]
+    off = wamp * (np.cos(phi) * uu + np.sin(phi) * vv)
+    return (base + off).astype(np.float32), (base - off).astype(np.float32)
 
 
 # --------------------------------------------------------------------------- strand SDF (the genome tube)
@@ -149,12 +161,14 @@ def _positions(a):
 def _tube(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3), n: int) -> float:
     best = _MAXD
     for i in range(n - 1):
-        d = sd_capsule(p, pa[i], pa[i + 1], _TR)
-        if d < best:
-            best = d
-        d = sd_capsule(p, pb[i], pb[i + 1], _TR)
-        if d < best:
-            best = d
+        if wp.length(pa[i + 1] - pa[i]) < _MAXSEG:           # skip the long chromatid-to-chromatid jump
+            d = sd_capsule(p, pa[i], pa[i + 1], _TR)
+            if d < best:
+                best = d
+        if wp.length(pb[i + 1] - pb[i]) < _MAXSEG:
+            d = sd_capsule(p, pb[i], pb[i + 1], _TR)
+            if d < best:
+                best = d
     return best
 
 
@@ -163,14 +177,16 @@ def _tubeseg(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3
     best = _MAXD
     seg = int(0)
     for i in range(n - 1):
-        d = sd_capsule(p, pa[i], pa[i + 1], _TR)
-        if d < best:
-            best = d
-            seg = i
-        d = sd_capsule(p, pb[i], pb[i + 1], _TR)
-        if d < best:
-            best = d
-            seg = i
+        if wp.length(pa[i + 1] - pa[i]) < _MAXSEG:
+            d = sd_capsule(p, pa[i], pa[i + 1], _TR)
+            if d < best:
+                best = d
+                seg = i
+        if wp.length(pb[i + 1] - pb[i]) < _MAXSEG:
+            d = sd_capsule(p, pb[i], pb[i + 1], _TR)
+            if d < best:
+                best = d
+                seg = i
     return seg
 
 

@@ -61,7 +61,7 @@ def main():
     import warp as wp
     import warp_shaders as ws
     wp.init()
-    for name in ("warp_fold_card", "warp_fold_chromo"):
+    for name in ("warp_fold_card",):
         a = np.asarray(ws.render(name, width=110, height=90, time=0.0), np.float32)   # flat board
         b = np.asarray(ws.render(name, width=110, height=90, time=5.0), np.float32)   # folded
         assert np.all(np.isfinite(a)) and a.max() > 0.1 and a.std() > 0.01, f"{name}: bad frame"

@@ -112,13 +112,6 @@ full (`tokenchromo` codec, lossless).
 
 ![the card breaking into a web, read as DNA, coiled into a chromosome](engine/warp_tokenize_chromo.gif)
 
-**Bonus — card → X** (`warp_fold_chromo`): the card wraps directly into the metaphase-chromosome X
-shape, four plump arms at a pinched centromere, filled with its own folded board material.
-
-![warp_fold_chromo — the RTX board wrapped into an X chromosome](engine/warp_fold_chromo.png)
-
-![the card folding into a chromosome and back](engine/warp_fold_chromo.gif)
-
 ## Simulation of reality — the card, by real physics
 
 The graphics card taken seriously: simulated by *respecting the physics of the world it is made of*,

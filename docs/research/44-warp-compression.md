@@ -23,10 +23,10 @@ layers** of its own board. The completed folds are a static reflected stack (a d
 fold currently in progress is a rigid hinge (`board_map` sampled on the point rotated back about the
 crease), so what lifts and stacks is the real board.
 
-**Card → chromosome (`warp_fold_chromo`).** The card wraps into a **metaphase chromosome** — four
-plump rounded arms (fat capsules blended at a pinched **centromere**, with a centromere bead) making
-the classic X, filled with the card's own folded board material. The flat board stands up and coils
-into the X; unwrapping lays it flat again.
+**Card → chromosome (`warp_tokenize_chromo`).** The card's own tokens become a single continuous
+strand (threaded in proximity order) that lifts off the board, winds into a **DNA double helix**, and
+coils tighter and tighter into a **metaphase chromosome** — the classic X, two chromatids at a pinched
+**centromere** — grown from the card's tokens; unwinding lays it back flat. (Full write-up: research 45.)
 
 ## The one idea, two shapes (the underlying byte/card codec)
 
