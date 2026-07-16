@@ -100,11 +100,11 @@ exposed faces).
 ![the card folding in half five times into a 20x cube and back](engine/warp_fold_card.gif)
 
 **C3 — tokenize → chromosome** (`warp_tokenize_chromo`): a **near-transparent scan** gives every element
-**one colour = its `warp_compress` token** (the same tokens as the merge), then the card **weaves and
-coils** — layer interlocking on layer — into a **real metaphase chromosome** (the two-arm/two-leg X),
-built as a **tight woven mesh of coloured tokens** so dense it forms one solid shape, and a **wire
-storage-cube** draws itself around it (the compact polygon that holds the super-dense token-mesh). The
-GIF runs the whole cycle and unwinds back to the flat card (`tokenchromo` codec, lossless).
+**one colour = its `warp_compress` token** (the same tokens as the merge); those tokens thread a **DNA
+double helix** laid along the card, and the strand **keeps coiling and interlocking** — winding tighter
+and fatter — while the card erodes away, condensing into a **real metaphase chromosome** (the two-arm/
+two-leg X) of super density, with a **wire storage-cube** drawn around it (the compact polygon that holds
+it). The GIF runs the whole cycle and unwinds back to the flat card (`tokenchromo` codec, lossless).
 
 ![warp_tokenize_chromo — the card as a web of token-words](engine/warp_tokenize_chromo.png)
 

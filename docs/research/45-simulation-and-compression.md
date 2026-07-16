@@ -202,14 +202,16 @@ Three algorithms compress **the item** (the card / its visual-information conten
   *phrases* (a whole row of identical memory, a repeated VRM motif) that C1's flat index cannot — it
   **beats flat C1 by 1.41×**. Lossless end to end (uncoil → the DNA → place the vocabulary pieces back →
   the exact card). **Watchable process (the on-screen animation):** the `warp_tokenize_chromo` scene runs
-  the whole C3 on the real board, physically + reversibly — a **near-transparent scan** gives every element
-  **one colour = its `warp_compress` token** (the same tokens as the merge, C1), then the card **weaves and
-  coils** in place into a real metaphase **chromosome** (the two-arm/two-leg X) built as a **tight woven
-  mesh of coloured tokens**: the coil is `board_map(_fill(p,fold))` (real card material) but shaded by the
-  **per-element token** it maps back to (`_tok_at`) with fine cell-seams, so it reads as one super-dense
-  interlocked token-mesh, not raw board. A **wire storage-cube** (`_boxframe`) then draws itself around the
-  chromosome — the compact polygon that holds the mesh for decompression — and the whole cycle unwinds
-  back to the flat card. (`warp_fold_chromo` is the card→X-shape sibling without the token mesh.)
+  the whole C3 on the real board, physically + reversibly — the real biology of packing information. A
+  **near-transparent scan** gives every element **one colour = its `warp_compress` token** (the same tokens
+  as the merge, C1); those tokens thread a **DNA double helix** (`_arm`, two strands winding around each
+  arm's axis, coloured by the card element each stretch maps back to) laid along the card. Then the card
+  **erodes away** (a clean union of SDFs — `board_map(p)+cerode` vs `_chromo(p,e)+cmat`, no lerp
+  fragmentation) as the strand **keeps coiling and interlocking** — more turns, fatter fibre — condensing
+  from the extended DNA into a real metaphase **chromosome** (the two-arm/two-leg X of `_chromo`) of super
+  density. A **wire storage-cube** (`_boxframe`) then draws itself around the chromosome — the compact
+  polygon that holds it for decompression — and the whole cycle unwinds back to the flat card.
+  (`warp_fold_chromo` is the card→X-shape sibling that wraps the raw board without the DNA weave.)
 - **Future — the semantic lossy tier.** Merge near-synonym tokens (blocks that agree *within tolerance*)
   before coiling — compressing the card's *sense*, not just its exact bytes. The lossy dial noted below.
 
