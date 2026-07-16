@@ -207,12 +207,14 @@ Three algorithms compress **the item** (the card / its visual-information conten
   real board and the card **erodes away** (a clean union of SDFs — `board_map(p)+cerode` vs
   `_tokgrid(p)+tmat`, no lerp fragmentation) and is **replaced by a dense field of token cubes** — one
   colour per element = its `warp_compress` token (fine `block=2` → ~2,000 cells, because a real card is
-  dense with tokens, not dozens). **Step 2 — the tokens connect into a DNA double helix:** the card's whole
-  token sequence (`_SEQ`, every occupied cell) unrolls into densely-packed **base-pair rungs** (`_rung`,
-  `_NRUNG` bars each coloured by a card token) linking two sugar-phosphate backbone rails (`_rail`, helix
-  tubes), forming a base-pair ladder that then twists **tighter and tighter** into the double helix
-  (`om` 0→`_OMMAX`). Then the whole cycle reverses back to the card. **Later steps** (3+) coil this helix
-  into nucleosomes and condense it into the metaphase **chromosome X**. (`warp_fold_chromo` is the
+  dense with tokens, not dozens). **Step 2 — the tokens connect by proximity into a continuous strand:** a link
+  front (`grow`) sweeps the card and each token joins its **actual spatial neighbour** — a serpentine
+  adjacency path through the real occupied token cells (`_build` emits per-cell successor offsets
+  `sdi`/`sdk` + path index `pidx`), so consecutive strand steps are true neighbours, **where the card
+  sits**, not re-sorted by array index onto a fabricated centre axis (the earlier version's bug). The
+  `_strand` SDF links each linked token to its path-successor; tokens leave the loose field as the front
+  passes. **Next sub-step** lifts this proximity strand into the DNA double helix (base pairs → twist);
+  **later steps** coil it into nucleosomes and the metaphase **chromosome X**. (`warp_fold_chromo` is the
   card→X-shape sibling that wraps the raw board directly.)
 - **Future — the semantic lossy tier.** Merge near-synonym tokens (blocks that agree *within tolerance*)
   before coiling — compressing the card's *sense*, not just its exact bytes. The lossy dial noted below.

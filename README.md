@@ -570,10 +570,11 @@ crease — into a laminated stack of its own card layers (built up Docker-style)
 chromosome hierarchy (base pairs → double helix → nucleosomes → chromatid → chromosome).
 **Step 1: turn the card into tokens** — a near-transparent scan sweeps the board and the card erodes
 into a **dense field of token cubes** (one colour per element; a real card is dense — thousands of
-tokens, not dozens). **Step 2: the tokens connect into a DNA double helix** — the card's whole token
-sequence unrolls into densely-packed **base-pair rungs** (each a card token) between two
-sugar-phosphate backbones, and the strand winds **tighter and tighter**. Then it all unwinds back to
-the card. (Later steps coil this helix into the chromosome X.) Codec 5.4× lossless.
+tokens, not dozens). **Step 2: the tokens connect by proximity into a continuous strand** — a link front
+sweeps the card and each token joins its **actual spatial neighbour** (a serpentine adjacency path
+through the real token cells, where the card sits — not re-sorted onto a fabricated axis), forming one
+continuous strand; then it unlinks back to the card. (Next sub-step lifts this proximity strand into the
+DNA double helix; later steps coil it into the chromosome X.) Codec 5.4× lossless.
 
 ![the card as a web of words, read as DNA, coiled into a chromosome](docs/engine/warp_tokenize_chromo.gif)
 
