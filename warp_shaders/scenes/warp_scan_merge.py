@@ -178,30 +178,31 @@ def _cube_nearest(p: wp.vec3, nt: int, cx: wp.array(dtype=float), cz: wp.array(d
 @wp.func
 def _cmap(p: wp.vec3, nt: int, cx: wp.array(dtype=float), cz: wp.array(dtype=float),
           cnt: wp.array(dtype=float), slx: wp.array(dtype=float), sly: wp.array(dtype=float),
-          slz: wp.array(dtype=float), mrg: float, con: float) -> float:
-    return wp.min(board_map(p), _cube_sdf(p, nt, cx, cz, cnt, slx, sly, slz, mrg, con))
+          slz: wp.array(dtype=float), mrg: float, con: float, berode: float) -> float:
+    # +berode erodes the card away as the cube gathers: when the storage cube is done, the card is GONE
+    return wp.min(board_map(p) + berode, _cube_sdf(p, nt, cx, cz, cnt, slx, sly, slz, mrg, con))
 
 
 @wp.func
 def _fnormal(p: wp.vec3, nt: int, cx: wp.array(dtype=float), cz: wp.array(dtype=float),
              cnt: wp.array(dtype=float), slx: wp.array(dtype=float), sly: wp.array(dtype=float),
-             slz: wp.array(dtype=float), mrg: float, con: float) -> wp.vec3:
+             slz: wp.array(dtype=float), mrg: float, con: float, berode: float) -> wp.vec3:
     e = 0.0012
-    dx = _cmap(p + wp.vec3(e, 0.0, 0.0), nt, cx, cz, cnt, slx, sly, slz, mrg, con) - _cmap(p - wp.vec3(e, 0.0, 0.0), nt, cx, cz, cnt, slx, sly, slz, mrg, con)
-    dy = _cmap(p + wp.vec3(0.0, e, 0.0), nt, cx, cz, cnt, slx, sly, slz, mrg, con) - _cmap(p - wp.vec3(0.0, e, 0.0), nt, cx, cz, cnt, slx, sly, slz, mrg, con)
-    dz = _cmap(p + wp.vec3(0.0, 0.0, e), nt, cx, cz, cnt, slx, sly, slz, mrg, con) - _cmap(p - wp.vec3(0.0, 0.0, e), nt, cx, cz, cnt, slx, sly, slz, mrg, con)
+    dx = _cmap(p + wp.vec3(e, 0.0, 0.0), nt, cx, cz, cnt, slx, sly, slz, mrg, con, berode) - _cmap(p - wp.vec3(e, 0.0, 0.0), nt, cx, cz, cnt, slx, sly, slz, mrg, con, berode)
+    dy = _cmap(p + wp.vec3(0.0, e, 0.0), nt, cx, cz, cnt, slx, sly, slz, mrg, con, berode) - _cmap(p - wp.vec3(0.0, e, 0.0), nt, cx, cz, cnt, slx, sly, slz, mrg, con, berode)
+    dz = _cmap(p + wp.vec3(0.0, 0.0, e), nt, cx, cz, cnt, slx, sly, slz, mrg, con, berode) - _cmap(p - wp.vec3(0.0, 0.0, e), nt, cx, cz, cnt, slx, sly, slz, mrg, con, berode)
     return wp.normalize(wp.vec3(dx, dy, dz))
 
 
 @wp.func
 def _fao(p: wp.vec3, n: wp.vec3, nt: int, cx: wp.array(dtype=float), cz: wp.array(dtype=float),
          cnt: wp.array(dtype=float), slx: wp.array(dtype=float), sly: wp.array(dtype=float),
-         slz: wp.array(dtype=float), mrg: float, con: float) -> float:
+         slz: wp.array(dtype=float), mrg: float, con: float, berode: float) -> float:
     occ = float(0.0)
     sca = float(1.0)
     for k in range(5):
         hr = 0.012 + 0.06 * float(k)
-        d = _cmap(p + n * hr, nt, cx, cz, cnt, slx, sly, slz, mrg, con)
+        d = _cmap(p + n * hr, nt, cx, cz, cnt, slx, sly, slz, mrg, con, berode)
         occ += (hr - d) * sca
         sca *= 0.85
     return wp.clamp(1.0 - 2.0 * occ, 0.0, 1.0)
@@ -215,7 +216,8 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array2d(dtype=wp.int3
                    slx: wp.array(dtype=float), sly: wp.array(dtype=float), slz: wp.array(dtype=float),
                    nt: int, nbx: int, nbz: int,
                    eye: wp.vec3, fwd: wp.vec3, right: wp.vec3, up: wp.vec3, width: int, height: int,
-                   time: float, tanfov: float, bx: float, bz: float, front: float, mrg: float, con: float):
+                   time: float, tanfov: float, bx: float, bz: float, front: float, mrg: float,
+                   con: float, berode: float):
     i, j = wp.tid()
     aspect = float(width) / float(height)
     u = (2.0 * (float(j) + 0.5) / float(width) - 1.0) * tanfov * aspect
@@ -226,7 +228,7 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array2d(dtype=wp.int3
     hit = int(0)
     for _ in range(220):
         p = eye + rd * t
-        d = _cmap(p, nt, tcx, tcz, tcnt, slx, sly, slz, mrg, con)
+        d = _cmap(p, nt, tcx, tcz, tcnt, slx, sly, slz, mrg, con, berode)
         if d < 0.0007 * t + 0.0004:
             hit = 1
             break
@@ -239,10 +241,10 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array2d(dtype=wp.int3
         return
 
     p = eye + rd * t
-    db = board_map(p)
+    db = board_map(p) + berode
     dc = _cube_sdf(p, nt, tcx, tcz, tcnt, slx, sly, slz, mrg, con)
-    n = _fnormal(p, nt, tcx, tcz, tcnt, slx, sly, slz, mrg, con)
-    ao = _fao(p, n, nt, tcx, tcz, tcnt, slx, sly, slz, mrg, con)
+    n = _fnormal(p, nt, tcx, tcz, tcnt, slx, sly, slz, mrg, con, berode)
+    ao = _fao(p, n, nt, tcx, tcz, tcnt, slx, sly, slz, mrg, con, berode)
 
     if dc < db:
         # a digit-cube: grown in place on the card, then gathered into the one storage cube
@@ -300,11 +302,12 @@ def _state(time):
     front = -bx + (2.0 * bx + 0.6) * min(p / 0.40, 1.0)      # scan sweeps across, reading + classifying
     mrg = _smooth(0.30, 0.52, p)                             # copies merge in place; digit-cubes grow
     con = _smooth(0.58, 0.82, p)                             # the mini-cubes gather into ONE storage cube
-    return front, mrg, con
+    berode = 1.6 * _smooth(0.60, 0.86, p)                    # the card ERODES away as they gather — gone
+    return front, mrg, con, berode                          # by the time the cube is done, no card left
 
 
 def _render(width, height, time, mouse, device):
-    front, mrg, con = _state(time)
+    front, mrg, con, berode = _state(time)
     tok = wp.array2d(_TOK2D, dtype=wp.int32, device=device)
     canon = wp.array2d(_CANON, dtype=wp.int32, device=device)
     tcx = wp.array(_TCX, dtype=float, device=device)
@@ -317,8 +320,8 @@ def _render(width, height, time, mouse, device):
 
     az = 0.58 + float(mouse[0]) * 0.006
     el = 0.60
-    dist = 9.6
-    tgt = wp.vec3(-0.1, 0.25, 0.0)
+    dist = 9.6 * (1.0 - con) + 3.9 * con                     # dolly in as the storage cube forms
+    tgt = wp.vec3(-0.1, 0.25 * (1.0 - con) + (_CBASE + 0.24) * con, 0.0)
     eye = tgt + wp.vec3(dist * math.cos(el) * math.sin(az), dist * math.sin(el),
                         dist * math.cos(el) * math.cos(az))
     fwd = wp.normalize(tgt - eye)
@@ -331,7 +334,7 @@ def _render(width, height, time, mouse, device):
               inputs=[img, tok, canon, tcx, tcz, tcnt, ttid, slx, sly, slz, _NT, _NBX, _NBZ,
                       eye, fwd, right, up, width, height,
                       float(time), tanfov, float(_BB[1]), float(_BB[5]),
-                      float(front), float(mrg), float(con)],
+                      float(front), float(mrg), float(con), float(berode)],
               device=device)
     wp.synchronize_device(device)
     return post.tonemap(img.numpy(), mode="aces", exposure=1.1, preserve_hue=True)
