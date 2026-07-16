@@ -70,16 +70,17 @@ def _build():
         board[i] = (x, 0.22, z)
         tok[i] = tid
 
-    # DNA double helix: node i on strand i%2, backbone step k=i//2, along x
+    # DNA double helix: node i on strand i%2, backbone step k=i//2, standing VERTICAL (along y) so it
+    # reads instantly as DNA; the two strands are pi out of phase, base-pair rungs bridge them
     helix = np.zeros((n, 3), np.float32)
     npair = max(1, (n + 1) // 2)
     for i in range(n):
         s = i % 2
         k = i // 2
-        ax = -2.8 + 5.6 * (k / max(1, npair - 1))
-        th = k * 0.62
-        r = 0.95
-        helix[i] = (ax, r * math.cos(th + s * math.pi), r * math.sin(th + s * math.pi))
+        ay = -2.35 + 4.7 * (k / max(1, npair - 1))
+        th = k * 0.58                                    # ~11 steps/turn -> clear open coil
+        r = 0.72
+        helix[i] = (r * math.cos(th + s * math.pi), ay, r * math.sin(th + s * math.pi))
 
     # chromosome X: four arms from a pinched centromere, the sequence coiled along them
     chromo = np.zeros((n, 3), np.float32)
@@ -124,6 +125,7 @@ _BOARD, _HELIX, _CHROMO, _TOK, _WEB, _DNA = _build()
 _N = _BOARD.shape[0]
 _NWEB = _WEB.shape[0]
 _NDNA = _DNA.shape[0]
+_NBB = max(0, _N - 2)            # first (_N-2) DNA edges are backbone (i, i+2); the rest are rungs
 
 
 @wp.func
@@ -187,7 +189,7 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3),
                    board: wp.array(dtype=wp.vec3), helix: wp.array(dtype=wp.vec3),
                    chromo: wp.array(dtype=wp.vec3), tok: wp.array(dtype=wp.int32),
                    web: wp.array2d(dtype=wp.int32), dna: wp.array2d(dtype=wp.int32),
-                   nnode: int, nweb: int, ndna: int,
+                   nnode: int, nweb: int, ndna: int, nbb: int,
                    eye: wp.vec3, fwd: wp.vec3, right: wp.vec3, up: wp.vec3, width: int, height: int,
                    time: float, tanfov: float, stage: int, blend: float,
                    card_fade: float, node_a: float, web_w: float, dna_w: float):
@@ -237,9 +239,13 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3),
         for e in range(ndna):
             a = _npos(dna[e, 0], stage, blend, board, helix, chromo)
             b = _npos(dna[e, 1], stage, blend, board, helix, chromo)
-            g = _seg_glow(eye, rd, a, b, 0.05)
-            tc = (_tokcolor(tok[dna[e, 0]]) + _tokcolor(tok[dna[e, 1]])) * 0.5
-            glow = glow + tc * (g * dna_w * 0.9)
+            if e < nbb:                                              # backbone strand — bright, thin
+                g = _seg_glow(eye, rd, a, b, 0.032)
+                glow = glow + wp.vec3(0.55, 0.9, 1.0) * (g * dna_w * 1.5)
+            else:                                                    # base-pair rung — token-coloured
+                g = _seg_glow(eye, rd, a, b, 0.05)
+                tc = (_tokcolor(tok[dna[e, 0]]) + _tokcolor(tok[dna[e, 1]])) * 0.5
+                glow = glow + tc * (g * dna_w * 0.9)
 
     img[i, j] = col + glow
 
@@ -293,7 +299,7 @@ def _render(width, height, time, mouse, device):
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(_render_kernel, dim=(height, width),
-              inputs=[img, board, helix, chromo, tok, web, dna, _N, _NWEB, _NDNA,
+              inputs=[img, board, helix, chromo, tok, web, dna, _N, _NWEB, _NDNA, _NBB,
                       eye, fwd, right, up, width, height, float(time), tanfov,
                       int(stage), float(blend), float(card_fade), float(node_a),
                       float(web_w), float(dna_w)],

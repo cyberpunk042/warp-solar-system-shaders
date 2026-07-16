@@ -226,10 +226,14 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array2d(dtype=wp.int3
         keep = 1.0 - mrg * (1.0 - is_canon)
         amt = reveal * keep
         col = col * (1.0 - 0.6 * amt * face) + tc * (0.9 * amt * face)
+        # merged duplicates EMPTY OUT of the board (their slot darkens — the copy is gone, its
+        # location now lives in the digit cube), so the card visibly loses its redundancy
+        gone = mrg * (1.0 - is_canon) * reveal
+        col = col * (1.0 - 0.80 * gone * face) + wp.vec3(0.02, 0.03, 0.03) * (gone * face)
         # the surviving copy brightens + pulses as it swallows its duplicates
         surv = mrg * is_canon * reveal
         pulse = 0.6 + 0.4 * wp.sin(float(tid) * 1.7 + time * 5.0)
-        col = col + tc * (surv * 1.3 * pulse * face) + wp.vec3(1.0, 1.0, 1.0) * (surv * surv * 0.7 * face)
+        col = col + tc * (surv * 1.5 * pulse * face) + wp.vec3(1.0, 1.0, 1.0) * (surv * surv * 0.8 * face)
 
     # the scan wavefront: a bright cyan-white bar with a soft leading ripple
     band = wp.abs(sp[0] - front)
