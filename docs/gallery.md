@@ -79,9 +79,10 @@ only thing ever ignored is *self-collision*.
 
 **C1 — merge** (`warp_scan_merge`): a scan wave sweeps the board and **classifies** every element —
 identical pieces glow the **same colour** (the same `warp_compress.mergecube` token: the GDDR7
-packages, the VRM chokes, repeated die cells). Then the duplicates **merge to one** while a **digit
-cube** of their locations **grows** beside the board — merge the same thing together, and keep the
-digits that say where every copy was.
+packages, the VRM chokes, repeated die cells). Then each repeated element's copies **merge in place —
+where the card is** — into a **digit-cube that grows right there on the board**, its size set by how
+many copies merged; the redundant copies fade to ghosts. No teleporting into a cube beside the card:
+the compression happens on the card itself.
 
 ![warp_scan_merge — a scan classifies the card, duplicates merge, a location cube grows](engine/warp_scan_merge.png)
 

@@ -146,9 +146,11 @@ Three algorithms compress **the item** (the card / its visual-information conten
   collision.
 - **Watchable process (the on-screen animation):** the `warp_scan_merge` scene runs C1 on the real board
   — a scan wave sweeps and **classifies** every element (identical pieces glow the **same colour** = the
-  same token), then the **duplicates empty out** of the board (their slots darken — the copy is gone) while
-  a **digit cube of their locations grows** beside it. The scan is the read; the merge + growing cube is
-  the compress.
+  same token), then each repeated element's copies **merge in place, where the card is** — at that
+  element's own canonical location — growing a **digit-cube right there on the board**, its size set by
+  how many copies merged (the count = the digits/locations); the redundant copies fade to ghosts. The
+  merge respects physics: the compression forms **on the card**, never in a fabricated cube floating
+  beside it. The scan is the read; the in-place merge + growing cubes are the compress.
 
 ### C2 — Fold → cube (the folding one, **20×**, built in the process)
 

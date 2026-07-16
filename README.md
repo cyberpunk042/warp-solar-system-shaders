@@ -550,9 +550,10 @@ verification: [Research 45](docs/research/45-simulation-and-compression.md), and
 `warp_compress/`). The only law ever waived is self-collision (the fold).
 
 **C1 — merge** (`warp_scan_merge`): a scan sweeps the board and classifies every element
-(identical pieces glow the **same colour** = the same token); the duplicates then collapse
-into dim ghosts while a **digit-cube of their locations grows** beside the board. Merge the
-same thing together; keep the digits that say where every copy was. Codec 4.8× lossless.
+(identical pieces glow the **same colour** = the same token); each repeated element's copies
+then **merge in place — where the card is** — into a **digit-cube that grows right there on the
+board**, sized by how many copies merged, while the redundant copies fade to ghosts. The
+compression happens on the card, not in a floating cube beside it. Codec 4.8× lossless.
 
 ![the scan classifying the card, duplicates merging, the digit cube growing](docs/engine/warp_scan_merge.gif)
 
