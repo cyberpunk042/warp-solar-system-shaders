@@ -593,9 +593,19 @@ helices — is in frame and the entire winding is visible.
 
 ![the whole base-pair field gathering into ladders and twisting into a field of double helices](docs/engine/warp_helix.gif)
 
-> **Processes 4–6 (nucleosomes → 30nm fibre → chromosome) are being rebuilt** as honest, chained
-> transforms — each consuming the previous process's real output, each shown whole. The earlier versions
-> were retired for cutting corners; they'll return one at a time, verified.
+**C3 — genome, process 4 · nucleosomes** (`warp_nucleosome`): this process **chains from Process 3's actual
+wound helices** and wraps them into **"beads on a string."** A nucleosome is ~one double helix's worth of
+DNA (~150 bp) coiled ~1.75 turns around a histone core, with **linker** DNA to the next bead — so the 1663
+helices become **1663 beads on a string** (count barely changes; the win is spatial, ~6× smaller). Every
+base pair is reused — the middle of each helix wraps its bead, the ends are the linker — nothing spawned,
+nothing teleports. A fixed camera (slow tilt down, no spin) watches the forest of helices collapse into a
+flat carpet of beads.
+
+![the field of double helices wrapping down into beads on a string](docs/engine/warp_nucleosome.gif)
+
+> **Processes 5–6 (30nm fibre → chromosome) are being rebuilt** as honest, chained transforms — each
+> consuming the previous process's real output, each shown whole. Next: the ~1663 beads coil ~6 per turn
+> into the 30 nm fibre, then fold into the two chromatids of the chromosome (centromere + telomere caps).
 
 ## Electricity in motion
 

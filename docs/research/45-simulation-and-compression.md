@@ -251,14 +251,28 @@ one before it.
   becoming a receding forest of double helices) is in frame the whole way and the entire winding is
   visible. *Stops at the field of double helices.*
 
+- **Process 4 — nucleosomes** (`warp_shaders/genome/nucleosome.py`, scene `warp_nucleosome`). **Chains from
+  Process 3's actual output** (`wound_positions(wind_helix())` — the real wound-helix geometry). It wraps
+  each double helix into a nucleosome bead: "beads on a string." The biology sets the number — a nucleosome
+  is ~147 bp wrapped ~1.75 left-handed turns around a histone octamer, plus ~50 bp of **linker** to the
+  next bead (~200 bp repeat). That is **~one of our double helices** (110 bp), so the 1663 helices become
+  **1663 beads** — the *count* barely changes; what the step buys is **spatial** compaction (~6×: a long
+  helix wraps down into a compact bead). Conserving: every base pair is reused — the middle ~70% of each
+  helix's pairs wrap the core, ~15% at each end are the linker DNA reaching to the neighbouring beads (the
+  histone core is the empty centre the DNA wraps, not spawned matter). A fixed camera (slow tilt down, no
+  spin) watches the tall forest of helices collapse into the flat carpet of beads-on-a-string, whole field
+  in frame. *Stops at beads on a string.*
+
 At every step matter is conserved (transform, never spawn), physics and logic are not broken, the motion
 is continuous, and each process consumes the previous one's real output.
 
-**Processes 4–6 (nucleosomes → 30nm fibre → chromosome) are being rebuilt.** Earlier drafts cut corners —
-they generated idealised shapes by index (or sprayed points into a chromosome silhouette) instead of
-folding the real strand, did not strictly chain from the prior output, and showed only a moving section
-rather than the whole process. They have been retired and will return one at a time, each chaining
-honestly from the process before it and shown whole. The tokenize→chromosome **codec**
+**Processes 5–6 (30nm fibre → chromosome) are being rebuilt.** Earlier drafts cut corners — they generated
+idealised shapes by index (or sprayed points into a chromosome silhouette) instead of folding the real
+strand, did not strictly chain from the prior output, and showed only a moving section rather than the
+whole process. They have been retired and will return one at a time, each chaining honestly from the
+process before it and shown whole: the ~1663 nucleosome beads coil ~6 per turn into the **30 nm fibre**
+(the big count-funnel begins here), which folds into the two chromatids of the metaphase **chromosome**
+with its centromere and **telomere** caps. The tokenize→chromosome **codec**
 (`warp_compress/tokenchromo.py`, lossless round-trip, 5.4×) is unaffected — that is a separate,
 verified compression result.
 

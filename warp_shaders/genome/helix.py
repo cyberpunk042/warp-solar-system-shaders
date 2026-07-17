@@ -87,3 +87,21 @@ def wind_helix(sub: int = 2, block: int = 5, bp_per_helix: int = 110,
     return DoubleHelix(field_a=bp.field_a, field_b=bp.field_b, a_col=bp.a_col, b_col=bp.b_col,
                        centers=centers, bp_per_helix=g, radius=radius, height=height,
                        dtheta=dtheta, groove=groove)
+
+
+def wound_positions(hx: DoubleHelix):
+    """The **fully-wound** double-helix backbone positions — Process 3's actual end state, the geometry
+    Process 4 chains from. Returns ``(pa, pb)`` each (P,3): for every base pair, its two tokens sitting on
+    the two backbones of their little helix (the same ``_helix_end`` math the scene uses at twist = 1)."""
+    p = hx.n_pairs
+    g = hx.bp_per_helix
+    i = np.arange(p)
+    hg = i // g
+    l = (i % g).astype(np.float32)
+    c = hx.centers[hg]
+    y = (l / float(g) - 0.5) * hx.height
+    th = l * hx.dtheta
+    pa = np.stack([c[:, 0] + hx.radius * np.cos(th), c[:, 1] + y, c[:, 2] + hx.radius * np.sin(th)], 1)
+    pb = np.stack([c[:, 0] + hx.radius * np.cos(th + hx.groove), c[:, 1] + y,
+                   c[:, 2] + hx.radius * np.sin(th + hx.groove)], 1)
+    return pa.astype(np.float32), pb.astype(np.float32)
