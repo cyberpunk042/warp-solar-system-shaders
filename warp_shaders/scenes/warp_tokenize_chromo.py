@@ -40,7 +40,7 @@ _CYCLE = 20.0
 _BLOCK = 2
 _UP = 3                           # voxel upsample per axis -> ~1.2M token cells (a real million)
 _X0, _Y0, _Z0 = -3.7, -0.14, -1.5
-_N = 156                          # strand nodes along the whole journey
+_N = 176                          # strand nodes along the whole journey (smoother tubes)
 _TR = 0.052                       # base tube radius (one double-helix backbone)
 _YC = 0.95                        # journey height
 _CARDY = 0.14
@@ -190,7 +190,7 @@ def _chain_struct():
         rad[i] = _TR * 1.15 * (1.0 + 0.30 * (0.5 + 0.5 * math.cos(2.0 * math.pi * float(i) / _NPER)))
     for i in range(i2, N):                           # chromosome: thick coiled rod, faint bead texture
         wamp[i] = 0.0; td[i] = 0.0
-        rad[i] = _TR * 1.75 * (1.0 + 0.22 * (0.5 + 0.5 * math.cos(2.0 * math.pi * float(i) / _NPER)))
+        rad[i] = _TR * 1.95 * (1.0 + 0.20 * (0.5 + 0.5 * math.cos(2.0 * math.pi * float(i) / _NPER)))
 
     # winding: perpendicular frame along the spine, phase from cumulative turn-density
     tan = np.zeros_like(sp)
@@ -385,6 +385,23 @@ def _ao(p: wp.vec3, nrm: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtyp
     return wp.clamp(1.0 - 2.0 * o, 0.0, 1.0)
 
 
+@wp.func
+def _shade_tube(tc: wp.vec3, nrm: wp.vec3, rd: wp.vec3, ao: float) -> wp.vec3:
+    """organic two-light shading: warm key + cool fill + fresnel rim + glossy highlight."""
+    key = wp.normalize(wp.vec3(0.5, 0.82, 0.42))
+    fill = wp.normalize(wp.vec3(-0.5, 0.28, -0.55))
+    klit = wp.clamp(wp.dot(nrm, key), 0.0, 1.0)
+    flit = wp.clamp(wp.dot(nrm, fill), 0.0, 1.0)
+    ao2 = ao * ao
+    warm = wp.vec3(tc[0] * 1.00, tc[1] * 0.93, tc[2] * 0.80)
+    cool = wp.vec3(tc[0] * 0.55, tc[1] * 0.68, tc[2] * 1.00)
+    body = warm * ((0.12 + 0.90 * klit) * ao2) + cool * (0.30 * flit * ao2)
+    hv = wp.normalize(key - rd)
+    spec = wp.pow(wp.clamp(wp.dot(nrm, hv), 0.0, 1.0), 44.0) * 1.1
+    rim = wp.pow(1.0 - wp.clamp(-wp.dot(nrm, rd), 0.0, 1.0), 2.5) * 0.45
+    return body + wp.vec3(spec, spec, spec) + tc * rim
+
+
 @wp.kernel
 def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array3d(dtype=wp.int32),
                    nx: int, ny: int, nz: int,
@@ -419,12 +436,7 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array3d(dtype=wp.int3
     p = eye + rd * t
     nrm = _normal(p, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
     ao = _ao(p, nrm, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
-    ldir = wp.normalize(wp.vec3(0.45, 0.8, 0.45))
-    lit = wp.clamp(wp.dot(nrm, ldir), 0.0, 1.0)
-    hv = wp.normalize(ldir - rd)                              # specular highlight -> rounded look
-    spec = wp.pow(wp.clamp(wp.dot(nrm, hv), 0.0, 1.0), 26.0) * 0.5
-    rim = wp.pow(1.0 - wp.clamp(-wp.dot(nrm, rd), 0.0, 1.0), 3.0) * 0.18
-    shade = (0.12 + 0.95 * lit) * (ao * ao)                  # deep crevice AO -> 3D coils read
+    lit = wp.clamp(wp.dot(nrm, wp.normalize(wp.vec3(0.45, 0.8, 0.45))), 0.2, 1.0)
     dcard = _MAXD
     if cerode < 1.6:
         dcard = board_map(p) + cerode
@@ -436,11 +448,11 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array3d(dtype=wp.int3
 
     if drung <= dcard and drung <= dtube:
         bc = rcol[_rungseg(p, ra, rb, rr, nr)]                # a base-pair rung (A/T/G/C)
-        img[i, j] = bc * shade + wp.vec3(spec, spec, spec) + bc * (0.10 + rim)
+        img[i, j] = _shade_tube(bc, nrm, rd, ao)
         return
     if dtube <= dcard:
         tc = col[_tubeseg(p, pa, pb, rad, n)]                 # the strand: a card token
-        img[i, j] = tc * shade + wp.vec3(spec, spec, spec) + tc * (0.10 + rim)
+        img[i, j] = _shade_tube(tc, nrm, rd, ao)
         return
 
     # the card surface — painted as ~a million token cells; tokamt fades the card look into the tokens
@@ -503,7 +515,11 @@ def _render(width, height, time, mouse, device):
                       float(time), tanfov, float(cerode), float(shide), float(tokamt)],
               device=device)
     wp.synchronize_device(device)
-    return post.tonemap(img.numpy(), mode="aces", exposure=1.1, preserve_hue=True)
+    hdr = img.numpy()
+    hdr = post.bloom(hdr, threshold=0.55, strength=0.7, radius=6, passes=4)    # glow on highlights
+    out = post.tonemap(hdr, mode="aces", exposure=1.2, preserve_hue=True)
+    out = post.vignette(out, amount=0.34)                                      # cinematic falloff
+    return out
 
 
 SCENE = Scene(
