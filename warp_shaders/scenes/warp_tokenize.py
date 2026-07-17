@@ -140,7 +140,7 @@ def _disperse(time: float) -> float:
 
 def _camera(time: float):
     target = np.array([0.0, 0.12, 0.0], np.float32)
-    az = 0.55 + 0.22 * time            # continuous orbit — never static
+    az = 0.62                           # fixed — the card stays put; the tokenisation is the motion
     el = 0.34
     dist = 7.6
     ro = target + dist * np.array(

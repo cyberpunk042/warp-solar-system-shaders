@@ -246,56 +246,26 @@ one before it.
   drift, continuously, into an **ordered field of vertical rungs — an unwound ladder**, order emerging
   from the token cloud. *Stops at the base-pair field.*
 
-- **Process 3 — the double helix** (`warp_shaders/genome/helix.py`, scene `warp_helix`). Wind the base
-  pairs into DNA: each pair becomes a **rung**, and the pair's two tokens become the two points on the
-  two **backbones** that spiral around the axis (**~10.5 base pairs per turn**, a real right-handed
-  helix). Over time the strand winds up from a loose ladder into the tight double helix — two smooth
-  backbone ribbons with the coloured base-pair rungs crossing between them — while the camera climbs it.
-  Conserving: all **182872** pairs (and so every token) placed exactly once, nothing spawned. The strand
-  is very long — that length is exactly why the next steps coil it (nucleosomes → chromatid →
-  chromosome). *Stops at the double helix.*
+- **Process 3 — the double helix** (`warp_shaders/genome/helix.py`, scene `warp_helix`). **Chains from
+  Process 2's actual output.** It takes the ordered base-pair field (`BasePairs.field_a` / `field_b` —
+  every pair's two tokens on a rung) and physically winds it: the field of rungs first gathers, in
+  sequence, into one straight **ladder**, then the ladder **twists** about its axis into the right-handed
+  **double helix**, the two tokens of each rung tracing the two backbones. Conserving and physical: no
+  point is created or teleports — each token moves continuously from where Process 2 left it, through the
+  flat ladder, onto the helix. The camera is fixed (only a straight push-in), so the **whole strand** (all
+  182872 base pairs) is in frame the whole way and the entire winding is visible. *Stops at the double
+  helix.*
 
-- **Process 4 — nucleosomes** (`warp_shaders/genome/nucleosome.py`, scene `warp_nucleosome`). The DNA's
-  first level of packing. The double helix is far too long to stay extended, so every **~200 base pairs**
-  a stretch of **~146** wraps ~1.75 turns into a tight super-coil — a **nucleosome bead** — joined by a
-  short **linker**: the classic *beads on a string* (**915 beads** over 182872 bp). Over time the
-  extended strand draws in and winds into the beads. Conserving: the beads are made **only of the DNA
-  wound tighter** — nothing is added at the centre (no histone spawned; we use what we transform). Every
-  base pair placed once, continuous motion. *Stops at beads on a string.*
+At every step matter is conserved (transform, never spawn), physics and logic are not broken, the motion
+is continuous, and each process consumes the previous one's real output.
 
-- **Process 5 — the 30nm fibre** (`warp_shaders/genome/fiber.py`, scene `warp_fiber`). The next level of
-  packing. The beads-on-a-string itself **coils into a solenoid** — ~6 nucleosomes per turn wound around
-  a common axis into the thick **30nm chromatin fibre**. Conserving: each nucleosome bead is carried
-  **whole** from the string onto the solenoid (a rigid translation of the bead; its inner wrap is
-  untouched; linkers stretch between the relocated beads). Every base pair placed once; the strand
-  condenses ~5× along its length. *Stops at the 30nm fibre.*
-
-- **Process 6 — the metaphase chromosome** (`warp_shaders/genome/chromosome.py`, scene
-  `warp_chromosome`). The last process. The 30nm fibre **folds and condenses** into looped domains that
-  pack the shape of the metaphase chromosome — the blue **X**: two chromatid arms fat and rounded at the
-  tips, pinched at the **centromere** with its two lighter nodes. **All 182872 base pairs — every bit of
-  the original card — packed into the X.** Conserving: nothing spawned; each point travels a straight
-  continuous line into place. *This is where the whole ladder lands.*
-
-The genome library rebuilds C3 as **six conserving, one-at-a-time processes**, each verified on the real
-board before the next — the complete ladder from the card to a chromosome:
-
-> **molecule → tokens (P1) → base pairs (P2) → double helix (P3) → nucleosomes (P4) → 30nm fibre (P5) →
-> chromosome (P6).**
-
-At every step matter is conserved (transform, never spawn), physics and logic are not broken, and the
-motion is continuous.
-
-- **The journey** (`warp_shaders/genome/journey.py`, scene `warp_genome`). All six processes chained
-  into **one continuous morph**: the same 182872 base-pair points are carried through every stage
-  (tokens → base pairs → double helix → nucleosomes → 30nm fibre → chromosome), the colour warming to
-  chromosome blue, the camera orbiting the three-dimensional stages then settling face-on to the X. The
-  intermediate stages are drawn as compact, readable versions of each structure so the morph shows each
-  stage's character; the endpoints are the real Process-1 token cloud and Process-6 chromosome. It is the
-  whole ladder in a single scene — the card, become a chromosome, conserved end to end.
-
-The earlier monolithic `warp_tokenize_chromo` (card → helix → chromosome in one scene) remains as the
-original end-to-end vision alongside the genome library.
+**Processes 4–6 (nucleosomes → 30nm fibre → chromosome) are being rebuilt.** Earlier drafts cut corners —
+they generated idealised shapes by index (or sprayed points into a chromosome silhouette) instead of
+folding the real strand, did not strictly chain from the prior output, and showed only a moving section
+rather than the whole process. They have been retired and will return one at a time, each chaining
+honestly from the process before it and shown whole. The tokenize→chromosome **codec**
+(`warp_compress/tokenchromo.py`, lossless round-trip, 5.4×) is unaffected — that is a separate,
+verified compression result.
 
 **Open spec questions (for the operator to steer — flagged, not assumed):**
 - What is **"the item"** precisely — the card's 3-D geometry (voxels), its rendered visual output

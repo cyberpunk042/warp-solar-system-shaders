@@ -581,51 +581,19 @@ pair (nothing spawned); the pairs drift, continuously, into an ordered field of 
 
 ![the floating tokens streaming into an ordered field of base-pair rungs](docs/engine/warp_basepair.gif)
 
-**C3 — genome, process 3 · double helix** (`warp_helix`): a separate process winds the base pairs into
-**DNA** — each pair a **rung**, its two tokens the two spiraling **backbones** (**~10.5 bp/turn**). The
-strand winds up from a loose ladder into the tight double helix, two smooth backbone ribbons with
-coloured rungs between them, as the camera climbs it. Conserving: all **182872** pairs placed once,
-nothing spawned — the strand is very long (that length is why the next steps coil it into a chromosome).
+**C3 — genome, process 3 · double helix** (`warp_helix`): this process **chains from Process 2's actual
+output** — it takes the ordered base-pair field (every pair's two tokens on a rung) and physically winds
+it: the field of rungs gathers, in sequence, into one straight **ladder**, then the ladder **twists**
+about its axis into the right-handed **double helix**, the two tokens of each rung tracing the two
+backbones. Conserving and physical: no point is created or teleports — each moves continuously from where
+Process 2 left it. The camera is fixed (only a straight push-in), so the **whole strand** — all 182872
+base pairs — is in frame and the entire winding is visible.
 
-![the base pairs winding up from a loose ladder into the double helix](docs/engine/warp_helix.gif)
+![the whole base-pair field gathering into a ladder and twisting into the double helix](docs/engine/warp_helix.gif)
 
-**C3 — genome, process 4 · nucleosomes** (`warp_nucleosome`): the DNA's first level of packing — every
-**~200 bp**, ~146 wrap into a **nucleosome bead** joined by linkers: *beads on a string* (**915 beads**).
-The extended strand draws in and winds into the beads as the camera travels. Conserving: the beads are
-the DNA wound tighter — nothing added at the centre (no histone spawned).
-
-![the extended DNA strand winding into nucleosome beads on a string](docs/engine/warp_nucleosome.gif)
-
-**C3 — genome, process 5 · 30nm fibre** (`warp_fiber`): the next level of packing — the beads-on-a-string
-**coils into a solenoid** (~6 nucleosomes per turn) into the thick **30nm chromatin fibre**. Conserving:
-each bead is carried whole from the string onto the fibre, nothing spawned; the strand condenses ~5×.
-
-![the nucleosome string reeling onto the 30nm solenoid fibre](docs/engine/warp_fiber.gif)
-
-**C3 — genome, process 6 · the chromosome** (`warp_chromosome`): the last process — the 30nm fibre folds
-and condenses into the metaphase chromosome, the blue **X** (two chromatid arms, pinched centromere with
-its nodes). **All 182872 base pairs — every bit of the original card — packed into the X.** Conserving:
-nothing spawned. This is where the whole ladder lands: molecule → tokens → base pairs → double helix →
-nucleosomes → 30nm fibre → chromosome.
-
-![the 30nm fibre folding and condensing into the blue chromosome X](docs/engine/warp_chromosome.gif)
-
-**C3 — genome, the journey** (`warp_genome`): all six conserving processes chained into **one continuous
-morph** — the board's **182872 base pairs** carried as a single point cloud **tokens → base pairs →
-double helix → nucleosomes → 30nm fibre → chromosome**, colour warming to chromosome blue. Conserving
-throughout: the same points, reconfiguring, never spawned — the whole ladder in one scene.
-
-![the card's base pairs morphing through the whole ladder into the chromosome](docs/engine/warp_genome.gif)
-
-**C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the board is voxelised into **~a million token
-cells** (a real 1.2M-cell grid, one colour per element), which **rise into a beautiful DNA double helix**
-— two backbones + coloured **base-pair rungs** (A/T/G/C), grown from the card's own tokens — that then
-**weaves itself into a single smooth solid chromosome**: the blue metaphase **X**, two curved chromatid
-arms fat and rounded at the telomere tips, pinched at the centromere with its two nodes. The whole thing
-turns as it forms; then it unwinds back to the card. The end state is just the chromosome. Codec 5.4×
-lossless.
-
-![the card as a web of words, read as DNA, coiled into a chromosome](docs/engine/warp_tokenize_chromo.gif)
+> **Processes 4–6 (nucleosomes → 30nm fibre → chromosome) are being rebuilt** as honest, chained
+> transforms — each consuming the previous process's real output, each shown whole. The earlier versions
+> were retired for cutting corners; they'll return one at a time, verified.
 
 ## Electricity in motion
 

@@ -31,11 +31,37 @@ _BASES = np.array([
 ], dtype=np.float32)
 
 
+# the ordered base-pair field (Process 2's OUTPUT) — a wide, shallow lattice of vertical rungs. The
+# scene binds the cloud onto this; Process 3 (the double helix) winds it from here. Shared so the two
+# processes use the exact same positions (a real chain, not a restart).
+_FIELD_NX = 432
+_FIELD_SX = 0.115
+_FIELD_SZ = 0.150
+_FIELD_Y = 1.15
+_HL = 0.13                        # rung half-length (token A below the site, token B above)
+
+
+def ordered_field_sites(n: int) -> np.ndarray:
+    """The (jittered) lattice sites the base pairs settle onto — the centre of each rung."""
+    gi = np.arange(n)
+    nz = int(np.ceil(n / _FIELD_NX))
+    frac = lambda v: v - np.floor(v)
+    jx = (frac(np.sin(gi * 12.9898) * 43758.5453) - 0.5) * (0.7 * _FIELD_SX)
+    jz = (frac(np.sin(gi * 78.2330 + 2.0) * 43758.5453) - 0.5) * (0.7 * _FIELD_SZ)
+    jy = (frac(np.sin(gi * 37.7190 + 4.0) * 43758.5453) - 0.5) * 0.10
+    x = (gi % _FIELD_NX - _FIELD_NX * 0.5) * _FIELD_SX + jx
+    z = (gi // _FIELD_NX - nz * 0.5) * _FIELD_SZ + jz
+    y = _FIELD_Y + jy
+    return np.stack([x, y, z], axis=1).astype(np.float32)
+
+
 @dataclasses.dataclass
 class BasePairs:
     """The floating tokens, bound in twos. Arrays are (P,·) with P = N/2 pairs. ``a_*``/``b_*`` are the
-    two member tokens; ``mid`` the binding centre, ``axis`` the unit A->B rung direction. Conserved:
-    every one of the N input tokens appears in exactly one pair — none spawned, none dropped."""
+    two member tokens in the floating cloud; ``field_a``/``field_b`` are the same two tokens in the
+    ordered base-pair field (Process 2's OUTPUT — the unwound ladder); ``mid`` the binding centre,
+    ``axis`` the unit A->B rung direction. Conserved: every one of the N input tokens appears in exactly
+    one pair — none spawned, none dropped."""
 
     a_pos: np.ndarray
     b_pos: np.ndarray
@@ -43,6 +69,8 @@ class BasePairs:
     b_col: np.ndarray
     mid: np.ndarray
     axis: np.ndarray
+    field_a: np.ndarray = None
+    field_b: np.ndarray = None
 
     @property
     def n_pairs(self) -> int:
@@ -108,5 +136,12 @@ def bind_pairs(sub: int = 2, block: int = 5, disperse: float = 1.0) -> BasePairs
     mid = 0.5 * (a_pos + b_pos)
     d = b_pos - a_pos
     axis = d / np.maximum(np.linalg.norm(d, axis=1, keepdims=True), 1e-6)
+
+    # the ordered base-pair field (Process 2's output): each pair's two tokens on a vertical rung
+    sites = ordered_field_sites(n // 2)
+    up = np.array([0.0, _HL, 0.0], np.float32)
+    field_a = (sites - up).astype(np.float32)
+    field_b = (sites + up).astype(np.float32)
+
     return BasePairs(a_pos=a_pos, b_pos=b_pos, a_col=a_col, b_col=b_col,
-                     mid=mid, axis=axis.astype(np.float32))
+                     mid=mid, axis=axis.astype(np.float32), field_a=field_a, field_b=field_b)

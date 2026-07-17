@@ -44,16 +44,9 @@ def main():
     assert rep_size < rnd_size, f"repetition not exploited (rep {rep_size} vs random {rnd_size})"
     print(f"  repetition condenses: OK  (repetitive -> {rep_size} symbols, random -> {rnd_size})")
 
-    # 5. the warp_tokenize_chromo scene (C3 as a process) renders on the real board and animates
-    #    across card -> web of token-words -> DNA helix -> chromosome
-    import warp as wp
-    import warp_shaders as ws
-    wp.init()
-    card = np.asarray(ws.render("warp_tokenize_chromo", width=120, height=90, time=0.6), np.float32)   # card+scan
-    helix = np.asarray(ws.render("warp_tokenize_chromo", width=120, height=90, time=7.0), np.float32)  # DNA helix
-    assert np.all(np.isfinite(card)) and card.max() > 0.1 and card.std() > 0.01, "tokenize_chromo: bad frame"
-    assert np.abs(card - helix).mean() > 1e-3, "tokenize_chromo: card -> DNA helix did not animate"
-    print("  scene warp_tokenize_chromo: OK")
+    # (The C3-as-one-scene renderer `warp_tokenize_chromo` was retired in favour of the conserving,
+    #  one-process-at-a-time genome library — tokenize / basepair / helix scenes, each verified on its
+    #  own. This test now covers only the tokenize->chromosome codec.)
 
     print("ALL PASSED")
 

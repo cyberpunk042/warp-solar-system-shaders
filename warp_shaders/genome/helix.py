@@ -1,61 +1,53 @@
 """Process 3 — the double helix: wind the base pairs into DNA.
 
-A separate conserving process. Its INPUT is the base-pair field from Process 2. It assembles those pairs
-into the **DNA double helix**: pair i becomes the i-th **rung**, and the pair's two tokens become the two
-points on the two **backbones** that spiral around the axis. Reading the pairs in sequence and stepping
-the twist angle + rise per pair traces the classic right-handed double helix (~10.5 base pairs per turn).
+A conserving process that **chains from Process 2's actual output**. Its input is the ordered base-pair
+field (``BasePairs.field_a`` / ``field_b`` — the unwound ladder of rungs the tokens settled onto). It
+does not regenerate anything: the two tokens of every base pair are the two ends of a rung, and those
+same tokens become the two backbones of the double helix.
 
-Conserving and physical: every base pair (and so every token) is placed exactly once — nothing spawned.
-The rungs are the 182872 base pairs; the two backbones are those same pairs' tokens, in order. The strand
-is very long (that length is exactly why the next steps coil it into a chromosome). This process stops at
-the double helix.
+The transform is a real, continuous winding: the field of rungs first gathers into a single straight
+ladder (rungs stacked in sequence), then the ladder **twists** about its axis into the right-handed
+double helix. Nothing is spawned, nothing teleports — every point moves continuously from where Process
+2 left it to its place on the helix. This lib supplies the geometry; ``scenes/warp_helix`` animates the
+gather + twist.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import math
 
 import numpy as np
 
 from .basepair import bind_pairs
 
-_BACKBONE = np.array([0.72, 0.80, 0.95], np.float32)   # sugar-phosphate backbone (both strands alike)
-
 
 @dataclasses.dataclass
 class DoubleHelix:
-    """The base pairs wound into DNA. ``s1``/``s2`` (P,3) are the two backbone points of each rung;
-    ``rung_a``/``rung_b`` (P,3) the base colours at the two ends. Conserved: P rungs for P base pairs,
-    the two backbones traced by the pairs' own tokens — none spawned."""
+    """The base pairs, ready to wind into DNA. ``field_a``/``field_b`` (P,3) are the two tokens of each
+    pair as Process 2 left them (the input); ``a_col``/``b_col`` their base colours. ``height``,
+    ``radius``, ``dtheta`` (twist per base pair) and ``groove`` parameterise the target helix — the two
+    backbones are the same tokens, so nothing is spawned."""
 
-    s1: np.ndarray
-    s2: np.ndarray
-    rung_a: np.ndarray
-    rung_b: np.ndarray
-    backbone: np.ndarray
-    axis_len: float
+    field_a: np.ndarray
+    field_b: np.ndarray
+    a_col: np.ndarray
+    b_col: np.ndarray
+    height: float
+    radius: float
+    dtheta: float
+    groove: float
 
     @property
     def n_pairs(self) -> int:
-        return int(self.s1.shape[0])
+        return int(self.field_a.shape[0])
 
 
-def wind_helix(sub: int = 2, block: int = 5, bp_per_turn: float = 10.5,
-               radius: float = 0.55, rise: float = 0.075, groove: float = 2.4) -> DoubleHelix:
-    """Wind the Process-2 base pairs into a right-handed double helix. Returns a :class:`DoubleHelix`."""
+def wind_helix(sub: int = 2, block: int = 5, radius: float = 1.25, height: float = 6.8,
+               turns: float = 18.0, groove: float = math.pi) -> DoubleHelix:
+    """Prepare the Process-2 base pairs to wind into a double helix of ``turns`` full turns."""
     bp = bind_pairs(sub=sub, block=block)
     p = bp.n_pairs
-    i = np.arange(p, dtype=np.float64)
-
-    theta = i * (2.0 * np.pi / bp_per_turn)     # twist per base pair -> ~10.5 bp/turn
-    y = i * rise                                # rise per base pair (the strand climbs)
-
-    s1 = np.stack([radius * np.cos(theta), y, radius * np.sin(theta)], axis=1)
-    # second strand offset by the groove angle -> the characteristic major/minor grooves of B-DNA
-    s2 = np.stack([radius * np.cos(theta + groove), y, radius * np.sin(theta + groove)], axis=1)
-
-    return DoubleHelix(
-        s1=s1.astype(np.float32), s2=s2.astype(np.float32),
-        rung_a=bp.a_col, rung_b=bp.b_col,
-        backbone=_BACKBONE.copy(), axis_len=float(y[-1] if p else 0.0),
-    )
+    dtheta = turns * 2.0 * math.pi / float(p)          # twist per base pair, over the whole strand
+    return DoubleHelix(field_a=bp.field_a, field_b=bp.field_b, a_col=bp.a_col, b_col=bp.b_col,
+                       height=height, radius=radius, dtheta=dtheta, groove=groove)

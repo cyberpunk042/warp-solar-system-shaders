@@ -1,12 +1,12 @@
-"""Tests for Process 3 — the double helix (warp_shaders.genome.helix).
+"""Tests for Process 3 — the double helix (warp_shaders.genome.helix), the honest, chained version.
 
-Operator spec: the base pairs wind into DNA — each pair a rung, its two tokens the two backbones. A
-conserving process: every base pair placed exactly once, nothing spawned.
+Process 3 chains from Process 2's ACTUAL output: it winds the base-pair field (each pair's two tokens
+on a rung) into the DNA double helix — no regeneration, the two tokens become the two backbones.
 
-  1. conservation: rungs == base pairs == tokens/2 (every pair placed once);
-  2. geometry: the two backbones sit on a cylinder of the helix radius (constant distance from axis);
-  3. twist: consecutive rungs advance by a constant angle (~10.5 bp/turn) and rise (a real helix);
-  4. the warp_helix scene renders on the real board and the strand animates (loose ladder -> wound).
+  1. chained + conserved: the helix input IS Process 2's field (field_a/field_b from bind_pairs), one
+     rung per base pair, all finite;
+  2. helix parameters: a positive per-base-pair twist over the whole strand;
+  3. the warp_helix scene renders and the whole strand animates (base-pair field -> wound helix).
 
     python -m tests.test_helix
 """
@@ -17,36 +17,33 @@ from warp_shaders.genome import bind_pairs, wind_helix
 
 
 def main():
-    n_pairs = bind_pairs(sub=2, block=5).n_pairs
-    hx = wind_helix(sub=2, block=5, radius=0.72, rise=0.095)
+    bp = bind_pairs(sub=2, block=5)
+    hx = wind_helix(sub=2, block=5)
 
-    # 1. conservation — one rung per base pair
-    assert hx.n_pairs == n_pairs, f"rungs {hx.n_pairs} != base pairs {n_pairs}"
-    print(f"  conservation: OK  ({hx.n_pairs} rungs for {n_pairs} base pairs, none spawned)")
+    # 1. chained + conserved — the helix's input is exactly Process 2's ordered field
+    assert hx.n_pairs == bp.n_pairs, f"pairs {hx.n_pairs} != base pairs {bp.n_pairs}"
+    assert np.array_equal(hx.field_a, bp.field_a) and np.array_equal(hx.field_b, bp.field_b), \
+        "Process 3 does not chain from Process 2's actual field"
+    assert np.all(np.isfinite(hx.field_a)) and np.all(np.isfinite(hx.field_b))
+    # the field is a set of vertical rungs: field_b sits above field_a by 2*HL
+    dy = (hx.field_b - hx.field_a)[:, 1]
+    assert np.allclose(dy, dy[0], atol=1e-4) and dy[0] > 0, "input is not the base-pair rung field"
+    print(f"  chained + conserved: OK  ({hx.n_pairs} rungs, input == Process 2 field)")
 
-    # 2. geometry — both backbones lie on the helix cylinder (radius 0.72 in x/z about the axis)
-    r1 = np.hypot(hx.s1[:, 0], hx.s1[:, 2])
-    r2 = np.hypot(hx.s2[:, 0], hx.s2[:, 2])
-    assert np.allclose(r1, 0.72, atol=1e-3) and np.allclose(r2, 0.72, atol=1e-3)
-    print("  geometry: OK  (both backbones on the helix cylinder)")
+    # 2. helix parameters — a real, positive twist per base pair over the whole strand
+    assert hx.dtheta > 0.0 and hx.radius > 0.0 and hx.height > 0.0
+    total_turns = hx.dtheta * hx.n_pairs / (2 * np.pi)
+    assert total_turns > 4.0, f"too few turns for a helix ({total_turns:.1f})"
+    print(f"  helix parameters: OK  (~{total_turns:.0f} turns, radius {hx.radius})")
 
-    # 3. twist — constant rise + constant angular step (a true right-handed helix)
-    dy = np.diff(hx.s1[:1000, 1])
-    assert np.allclose(dy, dy[0], atol=1e-5) and dy[0] > 0, "rise not constant / not climbing"
-    ang = np.arctan2(hx.s1[:1000, 2], hx.s1[:1000, 0])
-    dstep = np.diff(np.unwrap(ang))
-    assert np.allclose(dstep, dstep[0], atol=1e-4), "twist not constant"
-    turns_per_bp = abs(dstep[0]) / (2 * np.pi)
-    print(f"  twist: OK  (constant rise + ~{1/turns_per_bp:.1f} bp/turn)")
-
-    # 4. the warp_helix scene renders and the strand animates (loose ladder -> wound helix)
+    # 3. the warp_helix scene renders and the whole strand animates (field -> ladder -> wound helix)
     import warp as wp
     import warp_shaders as ws
     wp.init()
-    loose = np.asarray(ws.render("warp_helix", width=160, height=90, time=0.0), np.float32)
-    wound = np.asarray(ws.render("warp_helix", width=160, height=90, time=3.4), np.float32)
-    assert np.all(np.isfinite(loose)) and wound.max() > 0.1 and wound.std() > 0.01, "bad frame"
-    assert np.abs(loose - wound).mean() > 1e-3, "warp_helix: ladder -> helix did not animate"
+    field = np.asarray(ws.render("warp_helix", width=120, height=150, time=0.4), np.float32)
+    wound = np.asarray(ws.render("warp_helix", width=120, height=150, time=6.0), np.float32)
+    assert np.all(np.isfinite(field)) and wound.max() > 0.1 and wound.std() > 0.01, "bad frame"
+    assert np.abs(field - wound).mean() > 1e-3, "warp_helix: field -> helix did not animate"
     print("  scene warp_helix: OK")
 
     print("ALL PASSED")
