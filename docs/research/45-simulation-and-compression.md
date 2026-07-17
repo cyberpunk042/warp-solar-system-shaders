@@ -270,10 +270,22 @@ one before it.
   untouched; linkers stretch between the relocated beads). Every base pair placed once; the strand
   condenses ~5× along its length. *Stops at the 30nm fibre.*
 
-The earlier monolithic `warp_tokenize_chromo` (card → helix → chromosome in one scene) remains as the
-end-to-end vision; the genome library is the same idea rebuilt as conserving, one-at-a-time processes,
-each verified on the real board before the next is started (folding the fibre into the metaphase
-chromosome to follow).
+- **Process 6 — the metaphase chromosome** (`warp_shaders/genome/chromosome.py`, scene
+  `warp_chromosome`). The last process. The 30nm fibre **folds and condenses** into looped domains that
+  pack the shape of the metaphase chromosome — the blue **X**: two chromatid arms fat and rounded at the
+  tips, pinched at the **centromere** with its two lighter nodes. **All 182872 base pairs — every bit of
+  the original card — packed into the X.** Conserving: nothing spawned; each point travels a straight
+  continuous line into place. *This is where the whole ladder lands.*
+
+The genome library rebuilds C3 as **six conserving, one-at-a-time processes**, each verified on the real
+board before the next — the complete ladder from the card to a chromosome:
+
+> **molecule → tokens (P1) → base pairs (P2) → double helix (P3) → nucleosomes (P4) → 30nm fibre (P5) →
+> chromosome (P6).**
+
+At every step matter is conserved (transform, never spawn), physics and logic are not broken, and the
+motion is continuous. The earlier monolithic `warp_tokenize_chromo` (card → helix → chromosome in one
+scene) remains as the end-to-end vision alongside it.
 
 **Open spec questions (for the operator to steer — flagged, not assumed):**
 - What is **"the item"** precisely — the card's 3-D geometry (voxels), its rendered visual output

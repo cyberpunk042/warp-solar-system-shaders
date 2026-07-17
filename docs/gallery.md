@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (305 scenes).
+`python render.py --list` for the full, current list (306 scenes).
 
 ## Engine showcase
 
@@ -153,6 +153,18 @@ length.
 ![warp_fiber — the beads-on-a-string coiled into the 30nm solenoid fibre](engine/warp_fiber.png)
 
 ![the nucleosome string reeling onto the 30nm solenoid fibre](engine/warp_fiber.gif)
+
+**C3 — genome, process 6 · the chromosome** (`warp_chromosome`): the last process — the 30nm fibre
+**folds and condenses** into the metaphase chromosome, the blue **X**: two chromatid arms fat and
+rounded at the tips, pinched at the **centromere** with its two lighter nodes. **All 182872 base pairs —
+every bit of the original card — packed into the X**, turning like a pinwheel. Conserving: nothing
+spawned; each point travels a straight continuous line into place. This is where the whole ladder lands:
+the card, become a chromosome (molecule → tokens → base pairs → double helix → nucleosomes → 30nm fibre
+→ chromosome).
+
+![warp_chromosome — the fibre folded into the blue metaphase chromosome X](engine/warp_chromosome.png)
+
+![the 30nm fibre folding and condensing into the blue chromosome X](engine/warp_chromosome.gif)
 
 **C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the board is voxelised into **~a million token
 cells** (a real 1.2M-cell grid, one colour per element), which **rise into a beautiful DNA double helix**

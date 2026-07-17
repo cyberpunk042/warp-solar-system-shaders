@@ -602,6 +602,14 @@ each bead is carried whole from the string onto the fibre, nothing spawned; the 
 
 ![the nucleosome string reeling onto the 30nm solenoid fibre](docs/engine/warp_fiber.gif)
 
+**C3 — genome, process 6 · the chromosome** (`warp_chromosome`): the last process — the 30nm fibre folds
+and condenses into the metaphase chromosome, the blue **X** (two chromatid arms, pinched centromere with
+its nodes). **All 182872 base pairs — every bit of the original card — packed into the X.** Conserving:
+nothing spawned. This is where the whole ladder lands: molecule → tokens → base pairs → double helix →
+nucleosomes → 30nm fibre → chromosome.
+
+![the 30nm fibre folding and condensing into the blue chromosome X](docs/engine/warp_chromosome.gif)
+
 **C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the board is voxelised into **~a million token
 cells** (a real 1.2M-cell grid, one colour per element), which **rise into a beautiful DNA double helix**
 — two backbones + coloured **base-pair rungs** (A/T/G/C), grown from the card's own tokens — that then
