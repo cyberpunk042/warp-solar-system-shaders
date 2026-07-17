@@ -208,20 +208,17 @@ Three algorithms compress **the item** (the card / its visual-information conten
   surface is **painted as that grid** — every element becomes its own tiny token cell of its own colour
   (`_voxtok` at the hit point, dark `_seam` between cells so the million tokens read as discrete). The
   board geometry stays (it marches correctly); `tokamt` fades the board look into the token mosaic. **Step
-  2 — the packing journey as one chain:** the tokens **connect one to the next** into a single strand,
-  rendered as two backbones (`_tube`) bridged by coloured **base-pair rungs** (`_rungs`, A/T/G/C). The
-  strand's node positions are built once (`_chain_struct`), stitched end-to-end into **one unbroken
-  thread**, as the whole chromosome-packing hierarchy laid out **loose→packed, low→high** like the classic
-  diagram: a bare **DNA double helix** (with base-pair rungs), then **nucleosomes** (the backbones merge
-  into one beaded string — beads on a string), then **several separate looped domains** (a rosette of
-  distinct loops — plural, apart), which condense into the **two chromatids** of the one metaphase
-  **chromosome X** (each arm a well-sampled dense solenoid, meeting at the one centromere — apart before
-  being one). Over `time` the chain **grows out of the card**
-  loose→packed (a reveal front, `_positions`), each level forming in strict order — nothing skipped,
-  nothing in parallel — and the held state shows the whole journey at once. The board erodes (`cerode`) as
-  the chain lifts out; the whole cycle reverses back to the card. Crucially the strand is never a
-  fabricated shape poured full — its backbone colours are always the card's real tokens in the card's own
-  order, so the chromosome is *grown from* the card.
+  2 — the DNA double helix:** the tokens **rise into a beautiful vertical double helix** — two backbones
+  (`_tube`) 180° apart bridged by coloured **base-pair rungs** (`_rungs`, A/T/G/C), an open twisted ladder,
+  its colours the card's own tokens in proximity order (grown from the card). **Step 3 — weave into the
+  chromosome:** the helix `_tube` distance is blended (`weave`) into a solid chromosome SDF `_chromo` — a
+  smooth blue **X** built from four fat, smoothly-tapered arms (`op_smooth_union` of a thin core + swelling
+  spheres) pinched at the centromere, plus the two little centromere `_nodes`. As `weave` runs 0→1 the
+  helix coils and condenses into the solid chromosome and the token colours shift to chromosome blue; the
+  whole thing turns on a continuous orbit (a real animation, not a static layout). The end state is **just
+  the chromosome**; then the cycle reverses back to the card. Crucially the helix is never a fabricated
+  shape poured full — its backbone colours are always the card's real tokens in the card's own order, so
+  the chromosome is *grown from* the card.
 - **Future — the semantic lossy tier.** Merge near-synonym tokens (blocks that agree *within tolerance*)
   before coiling — compressing the card's *sense*, not just its exact bytes. The lossy dial noted below.
 

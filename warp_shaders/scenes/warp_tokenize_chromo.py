@@ -1,25 +1,19 @@
-"""warp_tokenize_chromo — C3: the card -> ~a MILLION tokens -> the chromosome-packing JOURNEY (one chain).
+"""warp_tokenize_chromo — C3: the card's tokens become a beautiful DNA double helix that weaves itself
+into a single smooth solid chromosome.
 
-Operator directives (verbatim): *"TURN THE CARD INTO 1 MILLION TOKEN.. LET THE TOKEN ONE BY ONE
-CONNECT WITH EACH OFTHER TO FORM DNA BRANCH. ONE BY ONE let the branches connect to each other to form
-a double-helix ... the double helix have to become nucleosomes to form telomere and to form the
-chromosome ... nothing can be skipped or be done in parallel ... the double HELIXes ... everything is
-plural ... it is apart before being one ... did you visualize the chain? the journey?"*
+Operator directive (verbatim): *"the final product is just supposed to be a chromosome ... your DNA and
+double helix too are trash, they are supposed to be beautiful and weave themselves into a chromosome ...
+Even a millimeter different from this is wrong"* (with the classic blue metaphase-chromosome reference).
 
-C3 is the packing-diagram JOURNEY as one continuous chain grown from the card's tokens. Read it from
-the loose end (bottom-left) up to the packed end (top-right) and you watch DNA become a chromosome,
-level by level, in strict order, nothing skipped, nothing parallel:
+So the end state is ONE clean, smooth, solid chromosome — the blue X: two curved chromatid arms, fat and
+rounded at the four telomere tips, pinched at the centromere with its two little nodes. The animation:
 
   1. **The card** (real `gpu_board`).
   2. **~A million tokens** — the board is voxelised fine (~1.2M-cell grid), painted as that grid.
-  3. **Base pairs -> double helix** — tokens gather (proximity order) into two backbones; **base-pair
-     rungs** (A/T/G/C colours) bridge them, one token connecting to the next, winding into the helix.
-  4. **Nucleosomes** — the helix beads up onto histone-like cores (beads on a string).
-  5. **Chromosome** — the beaded string coils into the **two chromatids** of the metaphase **X** (plural
-     coiled arms — apart — meeting at the one centromere; telomere tips).
-
-The chain grows out of the card loose->packed over `time`, each level forming in strict order; the held
-state shows the whole journey at once. Then it unwinds back to the card.
+  3. **DNA double helix** — the tokens rise into a beautiful spinning double helix (two backbones +
+     coloured base-pair rungs), grown from the card's own tokens.
+  4. **Weave** — the helix coils and condenses, weaving itself into the chromosome.
+  5. **Chromosome** — a single smooth solid blue X, slowly turning. Then it unwinds back to the card.
 """
 
 import math
@@ -27,9 +21,8 @@ import math
 import numpy as np
 import warp as wp
 
-from .. import electronics_common as ec
 from ..engine import post
-from ..procedural.sdf import sd_capsule
+from ..procedural.sdf import sd_capsule, sd_sphere, op_smooth_union
 from ..scene import Scene
 from .gpu_board import board_map, board_shade
 from warp_compress import mergecube as mc
@@ -40,31 +33,20 @@ _CYCLE = 20.0
 _BLOCK = 2
 _UP = 3                           # voxel upsample per axis -> ~1.2M token cells (a real million)
 _X0, _Y0, _Z0 = -3.7, -0.14, -1.5
-_N = 176                          # strand nodes along the whole journey (smoother tubes)
-_TR = 0.052                       # base tube radius (one double-helix backbone)
-_YC = 0.95                        # journey height
 _CARDY = 0.14
-_MAXSEG = 0.7                     # skip capsules longer than this (only the centromere crossover)
-_NPER = 4.0                       # strand nodes per nucleosome bead
-_NBUMP = 1.4                      # how much the tube bulges into a bead
-_ZH = 0.22                        # zone: double helix   (0 .. _ZH)
-_ZNU = 0.40                       # zone: nucleosomes    (_ZH .. _ZNU)
-_ZL = 0.66                        # zone: looped domains (_ZNU .. _ZL) ; chromosome X (_ZL .. 1)
-_STARTX = -5.4
-_LXH = 2.6                        # x-length of the loose double-helix run
-_LXN = 1.9                        # x-length of the nucleosome run
-_HRISE = 0.55                     # y the helix climbs over its run
-_NRISE = 0.85                     # y the nucleosome string climbs
-_NLOOP = 3                        # separate looped domains (plural, apart, before the one chromosome)
-_RLOOP = 0.72                     # looped-domain radius
-_LSCAF = 0.5                      # how much the loop rosette climbs toward the chromosome
-_AXW, _AYW = 0.94, 1.38           # chromosome-X arm half-extents (telomere reach)
-_RCH = 0.17                       # chromatid solenoid radius (the coiled arm)
-_KCH = 6.0                        # chromatid solenoid turns per arm (dense)
-_RUNGT = 0.22                     # base-pair rungs are drawn across the loose double helix (t < this)
-_RUNGSTEP = 2                     # a base-pair rung every this-many nodes
-_RR = 0.030                       # base-pair rung radius (thin)
-# A / T / G / C base-pair colours (the diagram's coloured rungs)
+# the beautiful DNA double helix (vertical, centred)
+_NH = 150                         # helix nodes per backbone
+_HH = 2.7                         # helix height (== chromosome height)
+_RHX = 0.52                       # helix radius
+_THX = 4.5                        # helix turns (open, elegant — a twisted ladder)
+_TR = 0.060                       # backbone tube radius
+_RR = 0.040                       # base-pair rung radius
+_RUNGSTEP = 2
+# the solid chromosome (the blue X — the end state)
+_CTX, _CTY = 0.55, 1.35           # half-width / half-height (telomere reach); height 2*_CTY == _HH
+_CK = 0.32                        # smooth-union blend (the smooth solid body + pinched centromere)
+_CBODY = wp.vec3(0.15, 0.46, 0.72)      # chromosome blue
+_CNODE = wp.vec3(0.62, 0.82, 0.94)      # lighter centromere nodes
 _BASECOL = ((0.92, 0.22, 0.20), (0.24, 0.86, 0.34), (0.26, 0.42, 0.96), (0.96, 0.86, 0.22))
 
 
@@ -105,8 +87,8 @@ def _build():
     tokvox = np.where(occ > 0, idx5[ii, jj, kk], -1).astype(np.int32)
     tok3d = np.repeat(np.repeat(np.repeat(tokvox, _UP, 0), _UP, 1), _UP, 2).astype(np.int32)
 
-    bwx = 7.4 / nbx
-    bwz = 3.0 / nbz
+    # the helix backbone colours come from the card's tokens, in proximity order (grown from the card)
+    bwx, bwz = 7.4 / nbx, 3.0 / nbz
     order = []
     for bk in range(nbz):
         rng = range(nbx) if (bk % 2 == 0) else range(nbx - 1, -1, -1)
@@ -114,9 +96,9 @@ def _build():
             if occ_col[bi, bk]:
                 order.append((bi, bk))
     npath = len(order)
-    idxs = np.linspace(0, npath - 1, _N).round().astype(int)
-    cardxyz = np.zeros((_N, 3), np.float32)
-    col = np.zeros((_N, 3), np.float32)
+    idxs = np.linspace(0, npath - 1, _NH).round().astype(int)
+    cardxyz = np.zeros((_NH, 3), np.float32)
+    col = np.zeros((_NH, 3), np.float32)
     for k, j in enumerate(idxs):
         bi, bk = order[j]
         cardxyz[k] = (-3.7 + (bi + 0.5) * bwx, _CARDY, -1.5 + (bk + 0.5) * bwz)
@@ -125,103 +107,27 @@ def _build():
             np.ascontiguousarray(tok3d))
 
 
-def _bead(i, amt=1.0):
-    return _TR * (1.0 + amt * _NBUMP * (0.5 + 0.5 * math.cos(2.0 * math.pi * i / _NPER)))
-
-
-def _coiled_arm(p0, p1, n):
-    """a dense solenoid (coiled chromatin) from p0 to p1 — one chromatid arm."""
-    u = np.linspace(0.0, 1.0, n)
-    axis = p0[None, :] * (1.0 - u)[:, None] + p1[None, :] * u[:, None]
-    d = p1 - p0; d = d / (np.linalg.norm(d) + 1e-9)
-    e1 = np.cross(d, np.array([0.0, 0.0, 1.0])); e1 = e1 / (np.linalg.norm(e1) + 1e-9)
-    e2 = np.cross(d, e1)
-    ph = 2.0 * math.pi * _KCH * u
-    coil = _RCH * (np.cos(ph)[:, None] * e1[None, :] + np.sin(ph)[:, None] * e2[None, :])
-    return axis + coil
-
-
-def _chain_struct():
-    """the fixed full journey as ONE continuous thread, stitched end-to-end: double helix -> nucleosome
-    beads -> several separate looped domains (plural, apart) -> the two coiled chromatids of the one
-    chromosome X. Built once."""
-    N = _N
-    t = np.linspace(0.0, 1.0, N)
-    n_h = int(np.sum(t < _ZH))                        # double-helix nodes
-    n_nu = int(np.sum((t >= _ZH) & (t < _ZNU)))       # nucleosome nodes
-    n_l = int(np.sum((t >= _ZNU) & (t < _ZL)))        # looped-domain nodes
-    n_x = N - n_h - n_nu - n_l                        # chromosome nodes
-    # zone 1 — the loose double helix, climbing gently
-    uh = np.linspace(0.0, 1.0, n_h)
-    helix = np.stack([_STARTX + _LXH * uh, _YC + _HRISE * uh, np.zeros(n_h)], 1)
-    # zone 2 — nucleosome string, continues from the helix end and climbs
-    un = np.linspace(0.0, 1.0, n_nu)
-    h0 = helix[-1]
-    nucleo = np.stack([h0[0] + _LXN * un, h0[1] + _NRISE * un, np.zeros(n_nu)], 1)
-    # zone 3 — looped domains: several SEPARATE loops (plural, apart) fanning off a climbing scaffold
-    ul = np.linspace(0.0, 1.0, n_l)
-    gm = ul * _NLOOP
-    m = np.clip(np.floor(gm).astype(int), 0, _NLOOP - 1)
-    lu = gm - m
-    ang = 2.0 * math.pi * m / _NLOOP + 0.5            # each loop fans a different way
-    th = 2.0 * math.pi * lu                           # a full loop that leaves and returns to the scaffold
-    loops_local = np.stack([_RLOOP * np.cos(ang) * (1.0 - np.cos(th)),
-                            _RLOOP * np.sin(th) + ul * _LSCAF,
-                            _RLOOP * np.sin(ang) * (1.0 - np.cos(th))], 1)
-    loops = loops_local + (nucleo[-1] - loops_local[0])   # stitch onto the nucleosome end
-    # zone 4 — chromosome X: two dense coiled chromatid arms crossing at the centromere, entry at origin
-    a2, y2 = 2.0 * _AXW, 2.0 * _AYW
-    n_arm = n_x // 2
-    armA = _coiled_arm(np.array([0.0, 0.0, 0.0]), np.array([a2, y2, 0.0]), n_arm)        # "/" through centre
-    armB = _coiled_arm(np.array([0.0, y2, 0.0]), np.array([a2, 0.0, 0.0]), n_x - n_arm)  # "\" through centre
-    xloc = np.vstack([armA, armB])
-    xg = xloc + (loops[-1] - xloc[0])                # stitch: chromosome entry == looped-domain end
-    sp = np.vstack([helix, nucleo, loops, xg])
-
-    wamp = np.zeros(N)
-    td = np.zeros(N)                               # fine double-helix turn-density
-    rad = np.full(N, _TR)
-    i0, i1, i2 = n_h, n_h + n_nu, n_h + n_nu + n_l
-    wamp[:i0] = 0.34; td[:i0] = 1.4
-    for i in range(i0, i1):                          # nucleosomes: backbones merge into one beaded string
-        wamp[i] = 0.05; td[i] = 1.1; rad[i] = _bead(i, 1.8)
-    for i in range(i1, i2):                          # looped domains: beaded fibre, a touch thicker
-        wamp[i] = 0.06; td[i] = 0.8
-        rad[i] = _TR * 1.15 * (1.0 + 0.30 * (0.5 + 0.5 * math.cos(2.0 * math.pi * float(i) / _NPER)))
-    for i in range(i2, N):                           # chromosome: thick coiled rod, faint bead texture
-        wamp[i] = 0.0; td[i] = 0.0
-        rad[i] = _TR * 1.95 * (1.0 + 0.20 * (0.5 + 0.5 * math.cos(2.0 * math.pi * float(i) / _NPER)))
-
-    # winding: perpendicular frame along the spine, phase from cumulative turn-density
-    tan = np.zeros_like(sp)
-    tan[1:-1] = sp[2:] - sp[:-2]
-    tan[0] = sp[1] - sp[0]
-    tan[-1] = sp[-1] - sp[-2]
-    tan /= (np.linalg.norm(tan, axis=1, keepdims=True) + 1e-9)
-    ref = np.tile(np.array([0.0, 0.0, 1.0]), (N, 1))
-    par = np.abs((tan * ref).sum(1)) > 0.9
-    ref[par] = np.array([1.0, 0.0, 0.0])
-    uu = np.cross(tan, ref); uu /= (np.linalg.norm(uu, axis=1, keepdims=True) + 1e-9)
-    vv = np.cross(tan, uu)
-    seg = np.zeros(N)
-    seg[1:] = np.linalg.norm(sp[1:] - sp[:-1], axis=1)
-    phi = np.cumsum(2.0 * math.pi * td * seg)
-    off = wamp[:, None] * (np.cos(phi)[:, None] * uu + np.sin(phi)[:, None] * vv)
-
-    # base-pair rungs across the loose double helix (a coloured A/T/G/C every few nodes)
-    rung_idx = [i for i in range(N) if t[i] < _RUNGT and i % _RUNGSTEP == 0]
+def _helix():
+    """a clean, beautiful vertical double helix — two backbones 180 deg apart, base-pair rungs across."""
+    t = np.linspace(0.0, 1.0, _NH)
+    y = (t - 0.5) * _HH
+    ang = 2.0 * math.pi * _THX * t
+    ca, sa = np.cos(ang), np.sin(ang)
+    pa = np.stack([_RHX * ca, y, _RHX * sa], 1).astype(np.float32)
+    pb = np.stack([-_RHX * ca, y, -_RHX * sa], 1).astype(np.float32)
+    rung_idx = np.array([i for i in range(_NH) if i % _RUNGSTEP == 0], np.int32)
     rcol = np.array([_BASECOL[k % 4] for k in range(len(rung_idx))], np.float32)
-    return (np.ascontiguousarray(sp), np.ascontiguousarray(off),
-            np.ascontiguousarray(rad.astype(np.float32)), np.ascontiguousarray(t),
-            np.array(rung_idx, np.int32), np.ascontiguousarray(rcol))
+    return np.ascontiguousarray(pa), np.ascontiguousarray(pb), rung_idx, np.ascontiguousarray(rcol)
 
 
 _CARDXYZ, _COL, _NPATH, _TOK3D = _build()
 _NX, _NY, _NZ = _TOK3D.shape
 _CX, _CY, _CZ = 7.4 / _NX, 0.44 / _NY, 3.0 / _NZ
 _NTOK = int((_TOK3D >= 0).sum())
-_SPINE, _OFF, _RAD, _TT, _RUNG_IDX, _RCOL = _chain_struct()
+_PA, _PB, _RUNG_IDX, _RCOL = _helix()
 _NR = int(_RUNG_IDX.shape[0])
+# the card positions for the rung nodes, for the lift/assembly
+_CARD_RUNG = np.ascontiguousarray(_CARDXYZ[_RUNG_IDX])
 
 
 def _ss(x):
@@ -229,19 +135,15 @@ def _ss(x):
     return x * x * (3.0 - 2.0 * x)
 
 
-def _positions(reveal):
-    """grow the journey from the card: node i assembles once the reveal front passes its t."""
-    asm = np.clip((reveal - _TT + 0.09) / 0.06, 0.0, 1.0)   # front over-runs so the tail fully assembles
-    asm = asm * asm * (3.0 - 2.0 * asm)
-    a = asm[:, None]
-    base = _CARDXYZ.astype(np.float64) * (1.0 - a) + _SPINE * a
-    off = _OFF * a
-    pa = (base + off).astype(np.float32)
-    pb = (base - off).astype(np.float32)
-    rad = (_RAD * asm).astype(np.float32)
+def _positions(lift):
+    """the helix lifts up out of the card (lift 0 -> the tokens still on the board; 1 -> full helix)."""
+    a = _ss(lift)
+    pa = (_CARDXYZ * (1.0 - a) + _PA * a).astype(np.float32)
+    pb = (_CARDXYZ * (1.0 - a) + _PB * a).astype(np.float32)
+    rad = np.full(_NH, _TR * a + 0.004, np.float32)
     ra = pa[_RUNG_IDX]
     rb = pb[_RUNG_IDX]
-    rr = (_RR * asm[_RUNG_IDX]).astype(np.float32)
+    rr = np.full(_NR, _RR * a, np.float32)
     return pa, pb, rad, ra, rb, rr
 
 
@@ -280,20 +182,48 @@ def _seam(p: wp.vec3) -> float:
 
 
 @wp.func
+def _arm(p: wp.vec3, tip: wp.vec3, k: float) -> float:
+    """one fat, rounded chromatid arm: thin at the centromere, bulging to a fat rounded telomere tip."""
+    c = wp.vec3(0.0, 0.0, 0.0)
+    d = sd_capsule(p, c, tip, 0.12)                      # thin core -> keeps the centromere pinched
+    d = op_smooth_union(d, sd_sphere(p - tip * 0.42, 0.24), k)   # inner-arm swell
+    d = op_smooth_union(d, sd_sphere(p - tip * 0.74, 0.33), k)   # mid-arm bulge
+    d = op_smooth_union(d, sd_sphere(p - tip, 0.38), k)          # fat rounded telomere tip
+    return d
+
+
+@wp.func
+def _chromo(p: wp.vec3) -> float:
+    """the solid chromosome — a smooth blue X: four fat arms pinched at the centromere."""
+    k = _CK
+    d = _arm(p, wp.vec3(-_CTX, _CTY, 0.0), k)
+    d = op_smooth_union(d, _arm(p, wp.vec3(_CTX, _CTY, 0.0), k), k)
+    d = op_smooth_union(d, _arm(p, wp.vec3(-_CTX, -_CTY, 0.0), k), k)
+    d = op_smooth_union(d, _arm(p, wp.vec3(_CTX, -_CTY, 0.0), k), k)
+    return d
+
+
+@wp.func
+def _nodes(p: wp.vec3) -> float:
+    """the two little centromere nodes at the waist."""
+    d = sd_sphere(p - wp.vec3(-0.17, 0.0, 0.22), 0.17)
+    d = wp.min(d, sd_sphere(p - wp.vec3(0.17, 0.0, 0.22), 0.17))
+    return d
+
+
+@wp.func
 def _tube(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3),
           rad: wp.array(dtype=float), n: int) -> float:
     best = _MAXD
     for i in range(n - 1):
         r = rad[i]
         if r > 0.006:
-            if wp.length(pa[i + 1] - pa[i]) < _MAXSEG:
-                d = sd_capsule(p, pa[i], pa[i + 1], r)
-                if d < best:
-                    best = d
-            if wp.length(pb[i + 1] - pb[i]) < _MAXSEG:
-                d = sd_capsule(p, pb[i], pb[i + 1], r)
-                if d < best:
-                    best = d
+            d = sd_capsule(p, pa[i], pa[i + 1], r)
+            if d < best:
+                best = d
+            d = sd_capsule(p, pb[i], pb[i + 1], r)
+            if d < best:
+                best = d
     return best
 
 
@@ -305,16 +235,14 @@ def _tubeseg(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3
     for i in range(n - 1):
         r = rad[i]
         if r > 0.006:
-            if wp.length(pa[i + 1] - pa[i]) < _MAXSEG:
-                d = sd_capsule(p, pa[i], pa[i + 1], r)
-                if d < best:
-                    best = d
-                    seg = i
-            if wp.length(pb[i + 1] - pb[i]) < _MAXSEG:
-                d = sd_capsule(p, pb[i], pb[i + 1], r)
-                if d < best:
-                    best = d
-                    seg = i
+            d = sd_capsule(p, pa[i], pa[i + 1], r)
+            if d < best:
+                best = d
+                seg = i
+            d = sd_capsule(p, pb[i], pb[i + 1], r)
+            if d < best:
+                best = d
+                seg = i
     return seg
 
 
@@ -348,13 +276,15 @@ def _rungseg(p: wp.vec3, ra: wp.array(dtype=wp.vec3), rb: wp.array(dtype=wp.vec3
 def _map(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3),
          rad: wp.array(dtype=float), n: int,
          ra: wp.array(dtype=wp.vec3), rb: wp.array(dtype=wp.vec3), rr: wp.array(dtype=float), nr: int,
-         cerode: float, shide: float) -> float:
+         cerode: float, shide: float, weave: float) -> float:
     d = _MAXD
     if cerode < 1.6:
         d = wp.min(d, board_map(p) + cerode)
     if shide < 1.6:
-        d = wp.min(d, _tube(p, pa, pb, rad, n) + shide)
-        d = wp.min(d, _rungs(p, ra, rb, rr, nr) + shide)
+        dh = _tube(p, pa, pb, rad, n)                         # the DNA double helix
+        dc = op_smooth_union(_chromo(p), _nodes(p), 0.10)     # the solid chromosome
+        d = wp.min(d, (dh * (1.0 - weave) + dc * weave) + shide)   # weave the helix into the chromosome
+        d = wp.min(d, _rungs(p, ra, rb, rr, nr) + shide + weave * 8.0)   # base pairs fade as it weaves
     return d
 
 
@@ -362,11 +292,11 @@ def _map(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3),
 def _normal(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3),
             rad: wp.array(dtype=float), n: int,
             ra: wp.array(dtype=wp.vec3), rb: wp.array(dtype=wp.vec3), rr: wp.array(dtype=float), nr: int,
-            cerode: float, shide: float) -> wp.vec3:
+            cerode: float, shide: float, weave: float) -> wp.vec3:
     e = 0.0015
-    dx = _map(p + wp.vec3(e, 0.0, 0.0), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide) - _map(p - wp.vec3(e, 0.0, 0.0), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
-    dy = _map(p + wp.vec3(0.0, e, 0.0), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide) - _map(p - wp.vec3(0.0, e, 0.0), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
-    dz = _map(p + wp.vec3(0.0, 0.0, e), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide) - _map(p - wp.vec3(0.0, 0.0, e), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
+    dx = _map(p + wp.vec3(e, 0.0, 0.0), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide, weave) - _map(p - wp.vec3(e, 0.0, 0.0), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide, weave)
+    dy = _map(p + wp.vec3(0.0, e, 0.0), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide, weave) - _map(p - wp.vec3(0.0, e, 0.0), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide, weave)
+    dz = _map(p + wp.vec3(0.0, 0.0, e), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide, weave) - _map(p - wp.vec3(0.0, 0.0, e), pa, pb, rad, n, ra, rb, rr, nr, cerode, shide, weave)
     return wp.normalize(wp.vec3(dx, dy, dz))
 
 
@@ -374,31 +304,31 @@ def _normal(p: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3)
 def _ao(p: wp.vec3, nrm: wp.vec3, pa: wp.array(dtype=wp.vec3), pb: wp.array(dtype=wp.vec3),
         rad: wp.array(dtype=float), n: int,
         ra: wp.array(dtype=wp.vec3), rb: wp.array(dtype=wp.vec3), rr: wp.array(dtype=float), nr: int,
-        cerode: float, shide: float) -> float:
+        cerode: float, shide: float, weave: float) -> float:
     o = float(0.0)
     sca = float(1.0)
     for k in range(5):
         hr = 0.012 + 0.05 * float(k)
-        d = _map(p + nrm * hr, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
+        d = _map(p + nrm * hr, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide, weave)
         o += (hr - d) * sca
         sca *= 0.85
     return wp.clamp(1.0 - 2.0 * o, 0.0, 1.0)
 
 
 @wp.func
-def _shade_tube(tc: wp.vec3, nrm: wp.vec3, rd: wp.vec3, ao: float) -> wp.vec3:
+def _shade(tc: wp.vec3, nrm: wp.vec3, rd: wp.vec3, ao: float) -> wp.vec3:
     """organic two-light shading: warm key + cool fill + fresnel rim + glossy highlight."""
     key = wp.normalize(wp.vec3(0.5, 0.82, 0.42))
     fill = wp.normalize(wp.vec3(-0.5, 0.28, -0.55))
     klit = wp.clamp(wp.dot(nrm, key), 0.0, 1.0)
     flit = wp.clamp(wp.dot(nrm, fill), 0.0, 1.0)
     ao2 = ao * ao
-    warm = wp.vec3(tc[0] * 1.00, tc[1] * 0.93, tc[2] * 0.80)
-    cool = wp.vec3(tc[0] * 0.55, tc[1] * 0.68, tc[2] * 1.00)
-    body = warm * ((0.12 + 0.90 * klit) * ao2) + cool * (0.30 * flit * ao2)
+    warm = wp.vec3(tc[0] * 1.00, tc[1] * 0.95, tc[2] * 0.85)
+    cool = wp.vec3(tc[0] * 0.55, tc[1] * 0.70, tc[2] * 1.00)
+    body = warm * ((0.14 + 0.90 * klit) * ao2) + cool * (0.32 * flit * ao2)
     hv = wp.normalize(key - rd)
-    spec = wp.pow(wp.clamp(wp.dot(nrm, hv), 0.0, 1.0), 44.0) * 1.1
-    rim = wp.pow(1.0 - wp.clamp(-wp.dot(nrm, rd), 0.0, 1.0), 2.5) * 0.45
+    spec = wp.pow(wp.clamp(wp.dot(nrm, hv), 0.0, 1.0), 40.0) * 1.0
+    rim = wp.pow(1.0 - wp.clamp(-wp.dot(nrm, rd), 0.0, 1.0), 2.5) * 0.40
     return body + wp.vec3(spec, spec, spec) + tc * rim
 
 
@@ -410,26 +340,25 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array3d(dtype=wp.int3
                    ra: wp.array(dtype=wp.vec3), rb: wp.array(dtype=wp.vec3), rr: wp.array(dtype=float),
                    rcol: wp.array(dtype=wp.vec3), nr: int,
                    eye: wp.vec3, fwd: wp.vec3, right: wp.vec3, up: wp.vec3, width: int, height: int,
-                   time: float, tanfov: float, cerode: float, shide: float, tokamt: float):
+                   time: float, tanfov: float, cerode: float, shide: float, tokamt: float, weave: float):
     i, j = wp.tid()
     aspect = float(width) / float(height)
     u = (2.0 * (float(j) + 0.5) / float(width) - 1.0) * tanfov * aspect
     v = (2.0 * (float(height - 1 - i) + 0.5) / float(height) - 1.0) * tanfov
     rd = wp.normalize(fwd + right * u + up * v)
 
-    # dark graded backdrop so the luminous strand pops (a soft cool glow low-centre)
     tsky = wp.clamp(rd[1] * 0.6 + 0.42, 0.0, 1.0)
     bg = wp.vec3(0.018, 0.024, 0.040) * (1.0 - tsky) + wp.vec3(0.050, 0.060, 0.095) * tsky
 
     t = float(0.0)
     hit = int(0)
-    for _ in range(210):
+    for _ in range(220):
         p = eye + rd * t
-        d = _map(p, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
+        d = _map(p, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide, weave)
         if d < 0.0006 * t + 0.0004:
             hit = 1
             break
-        t += d * 0.85
+        t += d * 0.80
         if t > _MAXD:
             break
 
@@ -438,29 +367,37 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array3d(dtype=wp.int3
         return
 
     p = eye + rd * t
-    nrm = _normal(p, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
-    ao = _ao(p, nrm, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
+    nrm = _normal(p, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide, weave)
+    ao = _ao(p, nrm, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide, weave)
     lit = wp.clamp(wp.dot(nrm, wp.normalize(wp.vec3(0.45, 0.8, 0.45))), 0.2, 1.0)
-    fog = wp.exp(-0.022 * t)                                  # depth: far parts recede into the backdrop
+    fog = wp.exp(-0.022 * t)
     dcard = _MAXD
     if cerode < 1.6:
         dcard = board_map(p) + cerode
-    dtube = _MAXD
+    dstr = _MAXD
     drung = _MAXD
     if shide < 1.6:
-        dtube = _tube(p, pa, pb, rad, n) + shide
-        drung = _rungs(p, ra, rb, rr, nr) + shide
+        dh = _tube(p, pa, pb, rad, n)
+        dc = op_smooth_union(_chromo(p), _nodes(p), 0.10)
+        dstr = (dh * (1.0 - weave) + dc * weave) + shide
+        drung = _rungs(p, ra, rb, rr, nr) + shide + weave * 8.0
 
-    if drung <= dcard and drung <= dtube:
+    if drung <= dcard and drung <= dstr:
         bc = rcol[_rungseg(p, ra, rb, rr, nr)]                # a base-pair rung (A/T/G/C)
-        img[i, j] = _shade_tube(bc, nrm, rd, ao) * fog + bg * (1.0 - fog)
+        img[i, j] = _shade(bc, nrm, rd, ao) * fog + bg * (1.0 - fog)
         return
-    if dtube <= dcard:
-        tc = col[_tubeseg(p, pa, pb, rad, n)]                 # the strand: a card token
-        img[i, j] = _shade_tube(tc, nrm, rd, ao) * fog + bg * (1.0 - fog)
+    if dstr <= dcard:
+        # DNA token colour weaves to chromosome blue; the two centromere nodes are lighter blue
+        tokc = col[_tubeseg(p, pa, pb, rad, n)]
+        bluec = _CBODY
+        if weave > 0.4:
+            if _nodes(p) < _chromo(p) - 0.02:
+                bluec = _CNODE
+        base = tokc * (1.0 - weave) + bluec * weave
+        img[i, j] = _shade(base, nrm, rd, ao) * fog + bg * (1.0 - fog)
         return
 
-    # the card surface — painted as ~a million token cells; tokamt fades the card look into the tokens
+    # the card surface — painted as ~a million token cells
     bshade = board_shade(p, nrm, rd, ao, time)
     tc = _tokcolor(_voxtok(p, tok, nx, ny, nz))
     toklook = tc * ((0.5 + 0.55 * lit) * ao) * _seam(p)
@@ -468,18 +405,22 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array3d(dtype=wp.int3
 
 
 def _fwd(s):
-    """forward half s in [0,1] -> (reveal, cerode, shide, tokamt). STRICT sequence, nothing parallel:
-    card -> million tokens -> the chain grows loose->packed (helix -> nucleosomes -> chromosome X)."""
+    """forward half s in [0,1] -> (lift, cerode, shide, tokamt, weave). card -> million tokens ->
+    the tokens rise into a beautiful DNA double helix -> it weaves into the solid chromosome."""
     if s < 0.08:                                    # 1. the real card
-        return 0.0, 0.0, 3.0, 0.0
+        return 0.0, 0.0, 3.0, 0.0, 0.0
     if s < 0.20:                                    # 2. the card becomes ~a million tokens
-        return 0.0, 0.0, 3.0, _ss((s - 0.08) / 0.12)
+        return 0.0, 0.0, 3.0, _ss((s - 0.08) / 0.12), 0.0
     if s < 0.28:                                    #    hold the million-token card
-        return 0.0, 0.0, 3.0, 1.0
-    if s < 0.92:                                    # 3-5. the journey grows: base pairs -> double helix
-        r = _ss((s - 0.28) / 0.64)                  #      -> nucleosomes -> chromosome X
-        return r, 2.0 * r, 0.0, 1.0
-    return 1.0, 2.0, 0.0, 1.0                       # hold the full chain (the whole journey visible)
+        return 0.0, 0.0, 3.0, 1.0, 0.0
+    if s < 0.50:                                    # 3. the tokens rise into the DNA double helix
+        f = _ss((s - 0.28) / 0.22)
+        return f, 2.0 * f, 3.0 * (1.0 - f), 1.0, 0.0
+    if s < 0.60:                                    #    admire the helix
+        return 1.0, 2.0, 0.0, 1.0, 0.0
+    if s < 0.85:                                    # 4. the helix weaves itself into the chromosome
+        return 1.0, 2.0, 0.0, 1.0, _ss((s - 0.60) / 0.25)
+    return 1.0, 2.0, 0.0, 1.0, 1.0                  # 5. the solid chromosome (held, turning)
 
 
 def _state(time):
@@ -489,8 +430,8 @@ def _state(time):
 
 
 def _render(width, height, time, mouse, device):
-    reveal, cerode, shide, tokamt = _state(time)
-    posA, posB, radn, raa, rbb, rrr = _positions(reveal)
+    lift, cerode, shide, tokamt, weave = _state(time)
+    posA, posB, radn, raa, rbb, rrr = _positions(lift)
     pa = wp.array(posA, dtype=wp.vec3, device=device)
     pb = wp.array(posB, dtype=wp.vec3, device=device)
     rad = wp.array(radn, dtype=float, device=device)
@@ -501,38 +442,37 @@ def _render(width, height, time, mouse, device):
     rcol = wp.array(_RCOL, dtype=wp.vec3, device=device)
     tok = wp.array3d(_TOK3D, dtype=wp.int32, device=device)
 
-    lift = reveal
-    az = 0.28 + 0.05 * math.sin(time * 0.10) + float(mouse[0]) * 0.006
-    el = 0.42 * (1.0 - lift) + 0.14 * lift
-    dist = 9.0 * (1.0 - lift) + 12.6 * lift
-    tgt = wp.vec3(-0.1 * (1.0 - lift) + (-2.1) * lift, 0.15 * (1.0 - lift) + (_YC + 2.1) * lift, 0.0)
+    # continuous slow orbit so the helix + chromosome clearly turn (a real animation, not static)
+    az = 0.5 + time * 0.30 + float(mouse[0]) * 0.006
+    el = 0.42 * (1.0 - lift) + 0.06 * lift
+    dist = 9.0 * (1.0 - lift) + 6.6 * lift
+    tgt = wp.vec3(-0.1 * (1.0 - lift), 0.15 * (1.0 - lift), 0.0)
     eye = tgt + wp.vec3(dist * math.cos(el) * math.sin(az), dist * math.sin(el),
                         dist * math.cos(el) * math.cos(az))
     fwd = wp.normalize(tgt - eye)
     right = wp.normalize(wp.cross(fwd, wp.vec3(0.0, 1.0, 0.0)))
     up = wp.cross(right, fwd)
-    tanfov = math.tan(math.radians(48.0) * 0.5)
+    tanfov = math.tan(math.radians(46.0) * 0.5)
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(_render_kernel, dim=(height, width),
-              inputs=[img, tok, _NX, _NY, _NZ, pa, pb, rad, col, _N, ra, rb, rr, rcol, _NR,
+              inputs=[img, tok, _NX, _NY, _NZ, pa, pb, rad, col, _NH, ra, rb, rr, rcol, _NR,
                       eye, fwd, right, up, width, height,
-                      float(time), tanfov, float(cerode), float(shide), float(tokamt)],
+                      float(time), tanfov, float(cerode), float(shide), float(tokamt), float(weave)],
               device=device)
     wp.synchronize_device(device)
     hdr = img.numpy()
-    hdr = post.bloom(hdr, threshold=0.55, strength=0.7, radius=6, passes=4)    # glow on highlights
-    out = post.tonemap(hdr, mode="aces", exposure=1.2, preserve_hue=True)
-    out = post.vignette(out, amount=0.34)                                      # cinematic falloff
+    hdr = post.bloom(hdr, threshold=0.6, strength=0.6, radius=6, passes=4)
+    out = post.tonemap(hdr, mode="aces", exposure=1.18, preserve_hue=True)
+    out = post.vignette(out, amount=0.32)
     return out
 
 
 SCENE = Scene(
     name="warp_tokenize_chromo",
-    description="C3, the whole journey as one chain (nothing skipped or parallel): the real RTX board "
-                "becomes ~a million token cells that connect into two backbones with coloured base-pair "
-                "rungs, wind into a DNA double helix, bead into nucleosomes, and coil into the two "
-                "chromatids of the metaphase chromosome X — every packing level visible at once — then "
-                "unwind back to the card.",
+    description="C3: the real RTX board becomes ~a million token cells that rise into a beautiful DNA "
+                "double helix (two backbones + coloured base-pair rungs, grown from the card's tokens), "
+                "which weaves itself into a single smooth solid chromosome — the blue metaphase X — then "
+                "unwinds back to the card.",
     renderer=_render,
 )

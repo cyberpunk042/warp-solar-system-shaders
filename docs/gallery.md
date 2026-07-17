@@ -99,16 +99,13 @@ exposed faces).
 
 ![the card folding in half five times into a 20x cube and back](engine/warp_fold_card.gif)
 
-**C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the whole chromosome-packing **journey as one
-chain**, in strict sequence (nothing skipped, nothing in parallel). The board is voxelised into **~a
-million token cells** (a real 1.2M-cell grid, one colour per element); the tokens **connect one to the
-next** into two backbones bridged by coloured **base-pair rungs** (A/T/G/C) — the **DNA double helix** —
-which **beads up into nucleosomes**, throws out **several separate looped domains** (plural, apart), and
-condenses into the **two chromatids** of the one metaphase **chromosome X** (coiled arms meeting at the
-centromere) — apart before being one. Read the chain from the loose end to the packed end and every
-packing level is visible at once; then it unwinds all the way back. Every backbone
-colour is a real card token, in the card's own order — the chromosome is *grown from* the card, not a
-picture of DNA poured full (`tokenchromo` codec, 5.4× lossless).
+**C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the board is voxelised into **~a million token
+cells** (a real 1.2M-cell grid, one colour per element), which **rise into a beautiful DNA double helix**
+— two backbones + coloured **base-pair rungs** (A/T/G/C), grown from the card's own tokens — that then
+**weaves itself into a single smooth solid chromosome**: the blue metaphase **X**, two curved chromatid
+arms fat and rounded at the telomere tips, pinched at the centromere with its two nodes. The whole thing
+turns as it forms; then it unwinds back to the card. The end state is just the chromosome (`tokenchromo`
+codec, 5.4× lossless).
 
 ![warp_tokenize_chromo — the card as a web of token-words](engine/warp_tokenize_chromo.png)
 

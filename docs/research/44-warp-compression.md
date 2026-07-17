@@ -24,12 +24,11 @@ fold currently in progress is a rigid hinge (`board_map` sampled on the point ro
 crease), so what lifts and stacks is the real board.
 
 **Card → chromosome (`warp_tokenize_chromo`).** The board is voxelised into **~a million token cells**
-(a real 1.2M-cell grid). Read as the chromosome-packing **journey — one continuous chain** — the tokens
-connect one to the next into two backbones bridged by coloured **base-pair rungs**, wind into a **DNA
-double helix**, **bead up into nucleosomes**, throw out **several separate looped domains** (plural,
-apart), and condense into the **two chromatids** of the one metaphase **chromosome X** (coiled arms at the
-pinched **centromere**) — one unbroken thread, every packing level visible at once, apart before being
-one, grown from the card's own tokens; unwinding lays it back flat. (Full write-up: research 45.)
+(a real 1.2M-cell grid). The tokens **rise into a beautiful DNA double helix** — two backbones bridged by
+coloured **base-pair rungs**, grown from the card's own tokens — which **weaves itself into a single
+smooth solid chromosome**: the blue metaphase **X**, two curved chromatid arms fat and rounded at the
+telomere tips, pinched at the **centromere** with its two nodes. The whole thing turns as it forms; the
+end state is just the chromosome, then it unwinds back to the card. (Full write-up: research 45.)
 
 ## The one idea, two shapes (the underlying byte/card codec)
 
