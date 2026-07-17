@@ -44,7 +44,7 @@ _N = 156                          # strand nodes along the whole journey
 _TR = 0.052                       # base tube radius (one double-helix backbone)
 _YC = 0.95                        # journey height
 _CARDY = 0.14
-_MAXSEG = 0.7                     # skip capsules longer than this (nucleosome->X + centromere crossover)
+_MAXSEG = 0.7                     # skip capsules longer than this (only the centromere crossover)
 _NPER = 4.0                       # strand nodes per nucleosome bead
 _NBUMP = 1.4                      # how much the tube bulges into a bead
 _ZH = 0.30                        # zone: double helix  (0 .. _ZH)
@@ -52,11 +52,11 @@ _ZNU = 0.52                       # zone: nucleosomes   (_ZH .. _ZNU) ; chromoso
 _STARTX = -5.4
 _LXH = 2.8                        # x-length of the loose double-helix run
 _LXN = 2.2                        # x-length of the nucleosome run
-_XGAP = 1.9                       # x from the nucleosome end to the chromosome-X centre
-_AXW, _AYW = 0.85, 1.28           # chromosome-X arm half-extents (telomere reach)
+_HRISE = 0.6                      # y the helix climbs over its run
+_NRISE = 0.95                     # y the nucleosome string climbs into the chromosome
+_AXW, _AYW = 0.94, 1.38           # chromosome-X arm half-extents (telomere reach)
 _RCH = 0.17                       # chromatid solenoid radius (the coiled arm)
-_KCH = 4.0                        # chromatid solenoid turns per arm
-_RISE = 1.9                       # the chain climbs loose->packed, like the packing diagram
+_KCH = 6.0                        # chromatid solenoid turns per arm (dense)
 _RUNGT = 0.30                     # base-pair rungs are drawn across the loose double helix (t < this)
 _RUNGSTEP = 2                     # a base-pair rung every this-many nodes
 _RR = 0.030                       # base-pair rung radius (thin)
@@ -125,45 +125,52 @@ def _bead(i, amt=1.0):
     return _TR * (1.0 + amt * _NBUMP * (0.5 + 0.5 * math.cos(2.0 * math.pi * i / _NPER)))
 
 
+def _coiled_arm(p0, p1, n):
+    """a dense solenoid (coiled chromatin) from p0 to p1 — one chromatid arm."""
+    u = np.linspace(0.0, 1.0, n)
+    axis = p0[None, :] * (1.0 - u)[:, None] + p1[None, :] * u[:, None]
+    d = p1 - p0; d = d / (np.linalg.norm(d) + 1e-9)
+    e1 = np.cross(d, np.array([0.0, 0.0, 1.0])); e1 = e1 / (np.linalg.norm(e1) + 1e-9)
+    e2 = np.cross(d, e1)
+    ph = 2.0 * math.pi * _KCH * u
+    coil = _RCH * (np.cos(ph)[:, None] * e1[None, :] + np.sin(ph)[:, None] * e2[None, :])
+    return axis + coil
+
+
 def _chain_struct():
-    """the fixed full journey: spine, winding offset, per-node radius, base-pair rungs. Built once."""
+    """the fixed full journey as ONE continuous thread, stitched end-to-end: double helix -> nucleosome
+    beads -> the two coiled chromatids of the chromosome X. Built once."""
     N = _N
     t = np.linspace(0.0, 1.0, N)
-    xnu_end = _STARTX + _LXH + _LXN
-    xcen = xnu_end + _XGAP                          # chromosome-X centre
-    # two chromatid diagonals (they cross at the centromere): A = "\", B = "/"
-    tips = (np.array([-_AXW, _AYW, 0.0]), np.array([_AXW, -_AYW, 0.0]),
-            np.array([_AXW, _AYW, 0.0]), np.array([-_AXW, -_AYW, 0.0]))
-    sp = np.zeros((N, 3))
+    n_h = int(np.sum(t < _ZH))                      # double-helix nodes
+    n_nu = int(np.sum((t >= _ZH) & (t < _ZNU)))     # nucleosome nodes
+    n_x = N - n_h - n_nu                            # chromosome nodes
+    # zone 1 — the loose double helix, climbing gently
+    uh = np.linspace(0.0, 1.0, n_h)
+    helix = np.stack([_STARTX + _LXH * uh, _YC + _HRISE * uh, np.zeros(n_h)], 1)
+    # zone 2 — nucleosome string, continues from the helix end and climbs into the chromosome
+    un = np.linspace(0.0, 1.0, n_nu)
+    h0 = helix[-1]
+    nucleo = np.stack([h0[0] + _LXN * un, h0[1] + _NRISE * un, np.zeros(n_nu)], 1)
+    # zone 3 — chromosome X: two dense coiled chromatid arms crossing at the centromere, entry at origin
+    a2, y2 = 2.0 * _AXW, 2.0 * _AYW
+    n_arm = n_x // 2
+    armA = _coiled_arm(np.array([0.0, 0.0, 0.0]), np.array([a2, y2, 0.0]), n_arm)        # "/" through centre
+    armB = _coiled_arm(np.array([0.0, y2, 0.0]), np.array([a2, 0.0, 0.0]), n_x - n_arm)  # "\" through centre
+    xloc = np.vstack([armA, armB])
+    xg = xloc + (nucleo[-1] - xloc[0])              # stitch: chromosome entry == nucleosome end
+    sp = np.vstack([helix, nucleo, xg])
+
     wamp = np.zeros(N)
     td = np.zeros(N)                               # fine double-helix turn-density
     rad = np.full(N, _TR)
-    for i in range(N):
-        ti = t[i]
-        if ti < _ZH:                                # bare double helix (the loose end)
-            u = ti / _ZH
-            sp[i] = [_STARTX + u * _LXH, _YC, 0.0]
-            wamp[i] = 0.34; td[i] = 1.2
-        elif ti < _ZNU:                             # nucleosomes (beads on a string)
-            u = (ti - _ZH) / (_ZNU - _ZH)
-            sp[i] = [_STARTX + _LXH + u * _LXN, _YC, 0.0]
-            wamp[i] = 0.20; td[i] = 1.2; rad[i] = _bead(i, 1.5)
-        else:                                       # chromosome X — two coiled chromatid arms
-            u = (ti - _ZNU) / (1.0 - _ZNU)
-            if u < 0.5:
-                p0, p1 = tips[0], tips[1]; la = u * 2.0
-            else:
-                p0, p1 = tips[2], tips[3]; la = (u - 0.5) * 2.0
-            axis = p0 * (1.0 - la) + p1 * la
-            d = p1 - p0; d = d / (np.linalg.norm(d) + 1e-9)
-            e1 = np.cross(d, np.array([0.0, 0.0, 1.0])); e1 = e1 / (np.linalg.norm(e1) + 1e-9)
-            e2 = np.cross(d, e1)
-            ph = 2.0 * math.pi * _KCH * la
-            coil = _RCH * (math.cos(ph) * e1 + math.sin(ph) * e2)   # solenoid arm (coiled nucleosomes)
-            sp[i] = [xcen + axis[0] + coil[0], _YC + axis[1] + coil[1], axis[2] + coil[2]]
-            wamp[i] = 0.0; td[i] = 0.0; rad[i] = _TR * 1.25 * (1.0 + 0.35 * (0.5 + 0.5 * math.cos(2.0 * math.pi * i / _NPER)))
+    wamp[:n_h] = 0.34; td[:n_h] = 1.4
+    for i in range(n_h, n_h + n_nu):                # nucleosomes: backbones merge into one beaded string
+        wamp[i] = 0.05; td[i] = 1.1; rad[i] = _bead(i, 1.8)
+    for i in range(n_h + n_nu, N):                  # chromosome: thick coiled rod, faint bead texture
+        wamp[i] = 0.0; td[i] = 0.0
+        rad[i] = _TR * 1.75 * (1.0 + 0.22 * (0.5 + 0.5 * math.cos(2.0 * math.pi * float(i) / _NPER)))
 
-    sp[:, 1] += _RISE * t                          # the whole chain climbs as it packs
     # winding: perpendicular frame along the spine, phase from cumulative turn-density
     tan = np.zeros_like(sp)
     tan[1:-1] = sp[2:] - sp[:-2]
@@ -457,10 +464,10 @@ def _render(width, height, time, mouse, device):
     tok = wp.array3d(_TOK3D, dtype=wp.int32, device=device)
 
     lift = reveal
-    az = 0.30 + 0.05 * math.sin(time * 0.10) + float(mouse[0]) * 0.006
-    el = 0.42 * (1.0 - lift) + 0.15 * lift
-    dist = 9.0 * (1.0 - lift) + 10.6 * lift
-    tgt = wp.vec3(-0.1 * (1.0 - lift) + 0.2 * lift, 0.15 * (1.0 - lift) + (_YC + 1.25) * lift, 0.0)
+    az = 0.28 + 0.05 * math.sin(time * 0.10) + float(mouse[0]) * 0.006
+    el = 0.42 * (1.0 - lift) + 0.14 * lift
+    dist = 9.0 * (1.0 - lift) + 12.2 * lift
+    tgt = wp.vec3(-0.1 * (1.0 - lift) + (-2.0) * lift, 0.15 * (1.0 - lift) + (_YC + 1.85) * lift, 0.0)
     eye = tgt + wp.vec3(dist * math.cos(el) * math.sin(az), dist * math.sin(el),
                         dist * math.cos(el) * math.cos(az))
     fwd = wp.normalize(tgt - eye)
