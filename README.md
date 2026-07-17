@@ -612,20 +612,33 @@ camera (slow tilt down, no spin) watches the wide bead carpet gather and coil in
 
 ![the bead carpet coiling and compacting into a band of 30 nm fibres](docs/engine/warp_fibre.gif)
 
-**C3 — genome, process 6 · the chromosome** (`warp_chromosome`): the final fold. This process **chains from
-Process 5's actual fibres** and folds them into the two sister **chromatids** of the metaphase chromosome —
-the ~47 fibres split between the sisters, laid head-to-tail along each bowed arm (telomere → centromere
-waist → telomere) and crushed to fill the condensed rod. The two chromatids meet at the **centromere**; the
-four tips are capped by the **telomeres** (cyan). The base-pair rungs band the arms — still painted by the
-card's own DNA. Every base pair is folded (not regenerated), nothing spawned. A fixed camera (slow dolly to
-present the X, no spin) watches the fibre band fold into the chromosome.
+**C3 — genome, process 6 · telomeres** (`warp_telomere`): this process **chains from Process 5's actual
+fibre** and caps its ends. A **telomere** is the DNA end-cap — TTAGGG-type repeats whose 3' overhang loops
+back into the duplex as a **t-loop** lasso. A linear strand has exactly two ends, so exactly two telomeres:
+each terminal stretch (green) curls into a t-loop. Only the terminal base pairs are reshaped — nothing
+spawned.
 
-![the fibre band folding into the two chromatids of the chromosome](docs/engine/warp_chromosome.gif)
+![the strand's two ends curling into telomere t-loops](docs/engine/warp_telomere.gif)
+
+**C3 — genome, process 7 · the chromosome (single chromatid)** (`warp_chromosome`): **chains from Process 6's
+telomere-capped strand** and condenses it into **one chromatid** — a rounded rod with a **centromere**
+constriction and the two real **telomere** t-loops (green) at its ends. One strand, **nothing copied** —
+fully conserving. A fixed 3/4 camera (no spin) watches the capped strand fold into the chromatid.
+
+![the capped strand folding into a single chromatid](docs/engine/warp_chromosome.gif)
+
+**C3 — genome, process 8 · replication → the metaphase X** (`warp_chromosome_x`): **chains from Process 7's
+chromatid** and makes the classic **X**. Biology first **replicates** the DNA (S-phase, the one place a copy
+is legitimately made) into two **identical sister chromatids**, which tilt into the X, joined at the
+**centromere**, four telomere caps in all. The copy is *shown, not hidden*; everything else conserving.
+
+![the chromatid replicating and tilting into the metaphase X](docs/engine/warp_chromosome_x.gif)
 
 > **The ladder is complete** — the card's own matter carried, one conserving process at a time, all the
 > way from tokens to a chromosome: **365744 tokens → 182872 base pairs → 1663 double helices → 1663
-> nucleosome beads → 47 fibres → 1 chromosome** (two chromatids, centromere, telomeres). Each step chains
-> from the previous one's real output, transforms and never spawns, and is shown whole.
+> nucleosome beads → 47 fibres → 2 telomere-capped ends → 1 chromatid → (replicate) → the metaphase X**.
+> Each step chains from the previous one's real output and transforms rather than spawns — the sole,
+> deliberate, shown exception being the DNA replication the X requires — and each is shown whole.
 
 ## Electricity in motion
 

@@ -1,13 +1,12 @@
-"""Process 7 scene — the telomere-capped fibre folds into a single-chromatid chromosome.
+"""Process 8 scene — replication: the chromatid copies itself into the metaphase X.
 
-Chains directly from Process 6: it starts from the exact telomere-capped strand Process 6 produced and
-condenses it into one chromatid — a rounded rod with a **centromere** constriction at the middle and the
-two real **telomere** t-loops (green) capping its two ends. One continuous strand, nothing copied — fully
-conserving. (The replicated metaphase X is its own scene, ``warp_chromosome_x``.)
+Chains from Process 7: it starts from the single chromatid and **replicates** it — the two identical sister
+chromatids begin coincident (looking like one), then separate and tilt into the classic **X**, joined at
+the centromere, each keeping its two telomere caps (four telomeres in all).
 
-Conserving and physical: every base pair is folded (not regenerated) onto the rod; the telomere caps are
-carried intact to the tips; no point is created or teleports. The camera holds a fixed 3/4 course (a slow
-dolly, no spin) as the fibre folds into the chromosome, whole fold in frame.
+This is the one place a copy is deliberately made (S-phase) — shown, not hidden. Everything else is
+conserving: the sister is an exact copy of Process 7's chromatid. The camera holds a fixed 3/4 course (a
+slow dolly, no spin) as one chromatid becomes two and the X forms.
 """
 
 from __future__ import annotations
@@ -16,47 +15,47 @@ import numpy as np
 import warp as wp
 
 from ..engine import post
-from ..genome import fold_chromosome
+from ..genome.replication import replicate_chromosome
 from ..scene import Scene
 
-_CR = fold_chromosome(sub=2, block=5)
-_P = _CR.n_pairs
+_RP = replicate_chromosome(sub=2, block=5)
+_N2 = int(_RP.single_a.shape[0])                          # 2 * n_pairs (both sisters)
 _SAMPLES = 4
-_M = _P * _SAMPLES
+_M = _N2 * _SAMPLES
 
-_ta = _tb = _ca = _cb = _a_col = _b_col = None
+_sa = _sb = _xa = _xb = _a_col = _b_col = None
 
 
 def _ensure(device):
-    global _ta, _tb, _ca, _cb, _a_col, _b_col
-    if _ta is None:
-        _ta = wp.array(_CR.tel_a, dtype=wp.vec3, device=device)
-        _tb = wp.array(_CR.tel_b, dtype=wp.vec3, device=device)
-        _ca = wp.array(_CR.chr_a, dtype=wp.vec3, device=device)
-        _cb = wp.array(_CR.chr_b, dtype=wp.vec3, device=device)
-        _a_col = wp.array(_CR.a_col, dtype=wp.vec3, device=device)
-        _b_col = wp.array(_CR.b_col, dtype=wp.vec3, device=device)
+    global _sa, _sb, _xa, _xb, _a_col, _b_col
+    if _sa is None:
+        _sa = wp.array(_RP.single_a, dtype=wp.vec3, device=device)
+        _sb = wp.array(_RP.single_b, dtype=wp.vec3, device=device)
+        _xa = wp.array(_RP.x_a, dtype=wp.vec3, device=device)
+        _xb = wp.array(_RP.x_b, dtype=wp.vec3, device=device)
+        _a_col = wp.array(_RP.a_col, dtype=wp.vec3, device=device)
+        _b_col = wp.array(_RP.b_col, dtype=wp.vec3, device=device)
 
 
 _INIT = wp.constant(0x7FFFFFFF)
-_IDX_BITS = wp.constant(20)
-_IDX_MASK = wp.constant(0xFFFFF)
+_IDX_BITS = wp.constant(21)                               # 2P*4 ≈ 1.46M elements — needs 21 index bits
+_IDX_MASK = wp.constant(0x1FFFFF)
 _BACKBONE = wp.constant(wp.vec3(0.62, 0.68, 0.82))
 
 
 @wp.kernel
-def _fold_kernel(
-    ta: wp.array(dtype=wp.vec3),
-    tb: wp.array(dtype=wp.vec3),
-    ca: wp.array(dtype=wp.vec3),
-    cb: wp.array(dtype=wp.vec3),
+def _repl_kernel(
+    sa: wp.array(dtype=wp.vec3),
+    sb: wp.array(dtype=wp.vec3),
+    xa: wp.array(dtype=wp.vec3),
+    xb: wp.array(dtype=wp.vec3),
     a_col: wp.array(dtype=wp.vec3),
     b_col: wp.array(dtype=wp.vec3),
     zbuf: wp.array2d(dtype=wp.int32),
     elemcol: wp.array(dtype=wp.vec3),
     width: int,
     height_px: int,
-    to_chr: float,
+    to_x: float,
     ro: wp.vec3,
     uu: wp.vec3,
     vv: wp.vec3,
@@ -69,12 +68,12 @@ def _fold_kernel(
     pr = e / 4
     s = e - pr * 4
 
-    pa = wp.lerp(ta[pr], ca[pr], to_chr)
-    pb = wp.lerp(tb[pr], cb[pr], to_chr)
+    pa = wp.lerp(sa[pr], xa[pr], to_x)
+    pb = wp.lerp(sb[pr], xb[pr], to_x)
 
     ac = a_col[pr]
     bc = b_col[pr]
-    tel = ac[1] > 0.9                                     # telomere-green pairs lift the backbone too
+    tel = ac[1] > 0.9
 
     if s == 0:
         pos = pa
@@ -140,7 +139,7 @@ def _resolve_kernel(
         return
     idx = key & _IDX_MASK
     depthq = float((key >> _IDX_BITS) & 0x3FF) / 1022.0
-    shade = 1.34 - 1.02 * depthq                          # near side bright, far side dark -> round rod
+    shade = 1.34 - 1.02 * depthq
     fog = wp.clamp((depthq - 0.34) * 1.7, 0.0, 0.82)
     img[i, j] = wp.lerp(elemcol[idx] * shade, bg, fog)
 
@@ -151,13 +150,11 @@ def _schedule(time: float):
 
 
 def _camera(time: float):
-    # fixed 3/4 course, no spin: dolly in from the capped strand to the folded chromatid, a side-and-above
-    # angle so the rod reads as round (not a flat blade).
     u = min(max((time - 0.3) / 4.4, 0.0), 1.0)
     u = u * u * (3.0 - 2.0 * u)
-    dist = 40.0 * (1.0 - u) + 24.0 * u
-    target = np.array([0.0, 0.7, 0.0], np.float32)
-    direction = np.array([0.5, 0.12, 1.0], np.float32)
+    dist = 38.0 * (1.0 - u) + 26.0 * u
+    target = np.array([0.0, 0.0, 0.0], np.float32)
+    direction = np.array([0.42, 0.12, 1.0], np.float32)
     direction = direction / np.linalg.norm(direction)
     ro = target + dist * direction
     ww = target - ro
@@ -171,10 +168,10 @@ def _camera(time: float):
 def _render(width, height, time, mouse, device):
     _ensure(device)
     W, H = int(width), int(height)
-    to_chr = _schedule(float(time))
+    to_x = _schedule(float(time))
     ro, uu, vv, ww, dist = _camera(float(time))
-    dnear = float(dist) - 6.0                             # tight range: shade the rod's near/far -> round
-    dfar = float(dist) + 6.0
+    dnear = float(dist) - 7.0
+    dfar = float(dist) + 7.0
 
     zbuf = wp.full((H, W), 0x7FFFFFFF, dtype=wp.int32, device=device)
     elemcol = wp.zeros(_M, dtype=wp.vec3, device=device)
@@ -182,10 +179,10 @@ def _render(width, height, time, mouse, device):
     cam = (wp.vec3(*[float(x) for x in ro]), wp.vec3(*[float(x) for x in uu]),
            wp.vec3(*[float(x) for x in vv]), wp.vec3(*[float(x) for x in ww]))
     wp.launch(
-        _fold_kernel,
+        _repl_kernel,
         dim=_M,
-        inputs=[_ta, _tb, _ca, _cb, _a_col, _b_col, zbuf, elemcol, W, H,
-                float(to_chr), *cam, 1.7, dnear, dfar],
+        inputs=[_sa, _sb, _xa, _xb, _a_col, _b_col, zbuf, elemcol, W, H,
+                float(to_x), *cam, 1.7, dnear, dfar],
         device=device,
     )
     wp.launch(_resolve_kernel, dim=(H, W), inputs=[zbuf, elemcol, img, W, H], device=device)
@@ -199,12 +196,12 @@ def _render(width, height, time, mouse, device):
 
 
 SCENE = Scene(
-    name="warp_chromosome",
+    name="warp_chromosome_x",
     description=(
-        "Process 7 — the chromosome (single chromatid). The telomere-capped fibre from Process 6 condenses "
-        "into one chromatid: a rounded rod with a centromere constriction and the two real telomere t-loops "
-        "(green) capping its ends. One strand, nothing copied — fully conserving; chained from Process 6's "
-        "actual output, every base pair folded not regenerated, nothing spawned, fixed 3/4 camera."
+        "Process 8 — replication into the metaphase X. Process 7's single chromatid replicates: two "
+        "identical sister chromatids begin coincident, then separate and tilt into the classic X, joined at "
+        "the centromere, four telomere caps in all. The one place a copy is deliberately made (S-phase), "
+        "shown not hidden; everything else conserving. Chained from Process 7, fixed 3/4 camera, no spin."
     ),
     renderer=_render,
 )

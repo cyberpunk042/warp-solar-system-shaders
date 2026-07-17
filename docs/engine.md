@@ -8,6 +8,6 @@
 > - **[Concepts](concepts.md)** — architecture, device/host split, quality tiers, portability, Warp gotchas
 > - **[Writing a scene](guides/writing-a-scene.md)** — the full authoring guide
 > - **[API reference](api/index.md)** — every public symbol by subsystem
-> - **[Gallery](gallery.md)** — all 305 scenes
+> - **[Gallery](gallery.md)** — all 307 scenes
 >
 > Build the browsable site with `pip install -r docs/requirements.txt && mkdocs serve`.

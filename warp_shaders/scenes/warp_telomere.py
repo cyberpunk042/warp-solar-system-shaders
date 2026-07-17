@@ -1,13 +1,13 @@
-"""Process 7 scene — the telomere-capped fibre folds into a single-chromatid chromosome.
+"""Process 6 scene — the DNA strand's ends curl into telomere t-loops.
 
-Chains directly from Process 6: it starts from the exact telomere-capped strand Process 6 produced and
-condenses it into one chromatid — a rounded rod with a **centromere** constriction at the middle and the
-two real **telomere** t-loops (green) capping its two ends. One continuous strand, nothing copied — fully
-conserving. (The replicated metaphase X is its own scene, ``warp_chromosome_x``.)
+Chains directly from Process 5: it starts from the exact fibre Process 5 produced and curls its two ends.
+A linear strand has exactly two ends, so there are exactly two telomeres; the terminal stretch at each end
+(tinted telomere-green) leaves the fibre, arcs a lasso, and the free 3' tip tucks back into the duplex — a
+**t-loop**, the protective cap. The camera features the near end's t-loop, the fibre trailing away, with
+the far end's cap visible down the strand.
 
-Conserving and physical: every base pair is folded (not regenerated) onto the rod; the telomere caps are
-carried intact to the tips; no point is created or teleports. The camera holds a fixed 3/4 course (a slow
-dolly, no spin) as the fibre folds into the chromosome, whole fold in frame.
+Conserving and physical: only the terminal base pairs are reshaped — the strand curls back on itself; no
+point is created or teleports. The camera holds a fixed course (a slow dolly, no spin) as the ends curl.
 """
 
 from __future__ import annotations
@@ -16,47 +16,48 @@ import numpy as np
 import warp as wp
 
 from ..engine import post
-from ..genome import fold_chromosome
+from ..genome.telomere import cap_telomeres
 from ..scene import Scene
 
-_CR = fold_chromosome(sub=2, block=5)
-_P = _CR.n_pairs
+_TL = cap_telomeres(sub=2, block=5)
+_P = _TL.n_pairs
 _SAMPLES = 4
 _M = _P * _SAMPLES
+_END = _TL.ends[1]                                        # feature the second end's t-loop
 
-_ta = _tb = _ca = _cb = _a_col = _b_col = None
+_fa = _fb = _ta = _tb = _a_col = _b_col = None
 
 
 def _ensure(device):
-    global _ta, _tb, _ca, _cb, _a_col, _b_col
-    if _ta is None:
-        _ta = wp.array(_CR.tel_a, dtype=wp.vec3, device=device)
-        _tb = wp.array(_CR.tel_b, dtype=wp.vec3, device=device)
-        _ca = wp.array(_CR.chr_a, dtype=wp.vec3, device=device)
-        _cb = wp.array(_CR.chr_b, dtype=wp.vec3, device=device)
-        _a_col = wp.array(_CR.a_col, dtype=wp.vec3, device=device)
-        _b_col = wp.array(_CR.b_col, dtype=wp.vec3, device=device)
+    global _fa, _fb, _ta, _tb, _a_col, _b_col
+    if _fa is None:
+        _fa = wp.array(_TL.fib_a, dtype=wp.vec3, device=device)
+        _fb = wp.array(_TL.fib_b, dtype=wp.vec3, device=device)
+        _ta = wp.array(_TL.tel_a, dtype=wp.vec3, device=device)
+        _tb = wp.array(_TL.tel_b, dtype=wp.vec3, device=device)
+        _a_col = wp.array(_TL.a_col, dtype=wp.vec3, device=device)
+        _b_col = wp.array(_TL.b_col, dtype=wp.vec3, device=device)
 
 
 _INIT = wp.constant(0x7FFFFFFF)
 _IDX_BITS = wp.constant(20)
 _IDX_MASK = wp.constant(0xFFFFF)
-_BACKBONE = wp.constant(wp.vec3(0.62, 0.68, 0.82))
+_BACKBONE = wp.constant(wp.vec3(0.46, 0.53, 0.66))
 
 
 @wp.kernel
-def _fold_kernel(
+def _curl_kernel(
+    fa: wp.array(dtype=wp.vec3),
+    fb: wp.array(dtype=wp.vec3),
     ta: wp.array(dtype=wp.vec3),
     tb: wp.array(dtype=wp.vec3),
-    ca: wp.array(dtype=wp.vec3),
-    cb: wp.array(dtype=wp.vec3),
     a_col: wp.array(dtype=wp.vec3),
     b_col: wp.array(dtype=wp.vec3),
     zbuf: wp.array2d(dtype=wp.int32),
     elemcol: wp.array(dtype=wp.vec3),
     width: int,
     height_px: int,
-    to_chr: float,
+    to_tel: float,
     ro: wp.vec3,
     uu: wp.vec3,
     vv: wp.vec3,
@@ -69,8 +70,8 @@ def _fold_kernel(
     pr = e / 4
     s = e - pr * 4
 
-    pa = wp.lerp(ta[pr], ca[pr], to_chr)
-    pb = wp.lerp(tb[pr], cb[pr], to_chr)
+    pa = wp.lerp(fa[pr], ta[pr], to_tel)
+    pb = wp.lerp(fb[pr], tb[pr], to_tel)
 
     ac = a_col[pr]
     bc = b_col[pr]
@@ -140,24 +141,23 @@ def _resolve_kernel(
         return
     idx = key & _IDX_MASK
     depthq = float((key >> _IDX_BITS) & 0x3FF) / 1022.0
-    shade = 1.34 - 1.02 * depthq                          # near side bright, far side dark -> round rod
-    fog = wp.clamp((depthq - 0.34) * 1.7, 0.0, 0.82)
+    shade = 1.30 - 1.05 * depthq
+    fog = wp.clamp((depthq - 0.28) * 1.7, 0.0, 0.9)
     img[i, j] = wp.lerp(elemcol[idx] * shade, bg, fog)
 
 
 def _schedule(time: float):
-    u = min(max((time - 0.5) / 4.2, 0.0), 1.0)
+    u = min(max((time - 0.6) / 4.0, 0.0), 1.0)
     return u * u * (3.0 - 2.0 * u)
 
 
 def _camera(time: float):
-    # fixed 3/4 course, no spin: dolly in from the capped strand to the folded chromatid, a side-and-above
-    # angle so the rod reads as round (not a flat blade).
-    u = min(max((time - 0.3) / 4.4, 0.0), 1.0)
+    # fixed course, no spin: dolly in toward the near end's t-loop as the ends curl, the fibre trailing away
+    u = min(max((time - 0.3) / 4.2, 0.0), 1.0)
     u = u * u * (3.0 - 2.0 * u)
-    dist = 40.0 * (1.0 - u) + 24.0 * u
-    target = np.array([0.0, 0.7, 0.0], np.float32)
-    direction = np.array([0.5, 0.12, 1.0], np.float32)
+    dist = 26.0 * (1.0 - u) + 15.0 * u
+    target = np.array([_END[0], _END[1] + 0.4, _END[2] - 3.0], np.float32)
+    direction = np.array([0.22, 0.34, 1.0], np.float32)
     direction = direction / np.linalg.norm(direction)
     ro = target + dist * direction
     ww = target - ro
@@ -171,10 +171,10 @@ def _camera(time: float):
 def _render(width, height, time, mouse, device):
     _ensure(device)
     W, H = int(width), int(height)
-    to_chr = _schedule(float(time))
+    to_tel = _schedule(float(time))
     ro, uu, vv, ww, dist = _camera(float(time))
-    dnear = float(dist) - 6.0                             # tight range: shade the rod's near/far -> round
-    dfar = float(dist) + 6.0
+    dnear = float(dist) - 8.0
+    dfar = float(dist) + 60.0
 
     zbuf = wp.full((H, W), 0x7FFFFFFF, dtype=wp.int32, device=device)
     elemcol = wp.zeros(_M, dtype=wp.vec3, device=device)
@@ -182,10 +182,10 @@ def _render(width, height, time, mouse, device):
     cam = (wp.vec3(*[float(x) for x in ro]), wp.vec3(*[float(x) for x in uu]),
            wp.vec3(*[float(x) for x in vv]), wp.vec3(*[float(x) for x in ww]))
     wp.launch(
-        _fold_kernel,
+        _curl_kernel,
         dim=_M,
-        inputs=[_ta, _tb, _ca, _cb, _a_col, _b_col, zbuf, elemcol, W, H,
-                float(to_chr), *cam, 1.7, dnear, dfar],
+        inputs=[_fa, _fb, _ta, _tb, _a_col, _b_col, zbuf, elemcol, W, H,
+                float(to_tel), *cam, 1.7, dnear, dfar],
         device=device,
     )
     wp.launch(_resolve_kernel, dim=(H, W), inputs=[zbuf, elemcol, img, W, H], device=device)
@@ -199,12 +199,12 @@ def _render(width, height, time, mouse, device):
 
 
 SCENE = Scene(
-    name="warp_chromosome",
+    name="warp_telomere",
     description=(
-        "Process 7 — the chromosome (single chromatid). The telomere-capped fibre from Process 6 condenses "
-        "into one chromatid: a rounded rod with a centromere constriction and the two real telomere t-loops "
-        "(green) capping its ends. One strand, nothing copied — fully conserving; chained from Process 6's "
-        "actual output, every base pair folded not regenerated, nothing spawned, fixed 3/4 camera."
+        "Process 6 — telomeres. The DNA strand from Process 5 has two ends, so two telomeres: each terminal "
+        "stretch (telomere-green) leaves the fibre and curls into a t-loop lasso, the free 3' tip tucking "
+        "back to cap and protect the end. Conserving: chained from Process 5's actual fibre, only the ends "
+        "reshaped, nothing spawned, fixed camera featuring the cap."
     ),
     renderer=_render,
 )
