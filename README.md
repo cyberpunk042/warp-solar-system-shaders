@@ -589,6 +589,13 @@ nothing spawned — the strand is very long (that length is why the next steps c
 
 ![the base pairs winding up from a loose ladder into the double helix](docs/engine/warp_helix.gif)
 
+**C3 — genome, process 4 · nucleosomes** (`warp_nucleosome`): the DNA's first level of packing — every
+**~200 bp**, ~146 wrap into a **nucleosome bead** joined by linkers: *beads on a string* (**915 beads**).
+The extended strand draws in and winds into the beads as the camera travels. Conserving: the beads are
+the DNA wound tighter — nothing added at the centre (no histone spawned).
+
+![the extended DNA strand winding into nucleosome beads on a string](docs/engine/warp_nucleosome.gif)
+
 **C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the board is voxelised into **~a million token
 cells** (a real 1.2M-cell grid, one colour per element), which **rise into a beautiful DNA double helix**
 — two backbones + coloured **base-pair rungs** (A/T/G/C), grown from the card's own tokens — that then

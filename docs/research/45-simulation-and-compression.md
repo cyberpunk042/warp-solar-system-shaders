@@ -255,9 +255,18 @@ one before it.
   is very long — that length is exactly why the next steps coil it (nucleosomes → chromatid →
   chromosome). *Stops at the double helix.*
 
+- **Process 4 — nucleosomes** (`warp_shaders/genome/nucleosome.py`, scene `warp_nucleosome`). The DNA's
+  first level of packing. The double helix is far too long to stay extended, so every **~200 base pairs**
+  a stretch of **~146** wraps ~1.75 turns into a tight super-coil — a **nucleosome bead** — joined by a
+  short **linker**: the classic *beads on a string* (**915 beads** over 182872 bp). Over time the
+  extended strand draws in and winds into the beads. Conserving: the beads are made **only of the DNA
+  wound tighter** — nothing is added at the centre (no histone spawned; we use what we transform). Every
+  base pair placed once, continuous motion. *Stops at beads on a string.*
+
 The earlier monolithic `warp_tokenize_chromo` (card → helix → chromosome in one scene) remains as the
 end-to-end vision; the genome library is the same idea rebuilt as conserving, one-at-a-time processes,
-each verified on the real board before the next is started (the coiling into a chromosome to follow).
+each verified on the real board before the next is started (coiling the fibre further, then folding it
+into the metaphase chromosome, to follow).
 
 **Open spec questions (for the operator to steer — flagged, not assumed):**
 - What is **"the item"** precisely — the card's 3-D geometry (voxels), its rendered visual output

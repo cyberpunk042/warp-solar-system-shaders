@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (303 scenes).
+`python render.py --list` for the full, current list (304 scenes).
 
 ## Engine showcase
 
@@ -131,6 +131,17 @@ next steps coil it into a chromosome).
 ![warp_helix — the base pairs wound into a DNA double helix](engine/warp_helix.png)
 
 ![the base pairs winding up from a loose ladder into the double helix](engine/warp_helix.gif)
+
+**C3 — genome, process 4 · nucleosomes** (`warp_nucleosome`): a separate process does the DNA's first
+level of packing. The double helix is far too long to stay extended, so every **~200 base pairs** a
+stretch of **~146** wraps into a tight little super-coil — a **nucleosome bead** — joined to the next by
+a short **linker**: the classic *beads on a string* (**915 beads** over 182872 bp). Over time the
+extended strand draws in and winds into the beads as the camera travels along it. Conserving: the beads
+are made **only of the DNA wound tighter** — nothing added at the centre (no histone spawned).
+
+![warp_nucleosome — the double helix coiled into beads on a string](engine/warp_nucleosome.png)
+
+![the extended DNA strand winding into nucleosome beads on a string](engine/warp_nucleosome.gif)
 
 **C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the board is voxelised into **~a million token
 cells** (a real 1.2M-cell grid, one colour per element), which **rise into a beautiful DNA double helix**
