@@ -42,6 +42,8 @@ class DoubleHelix:
     height: float
     dtheta: float
     groove: float
+    grid_nx: int = 0
+    grid_nz: int = 0
 
     @property
     def n_pairs(self) -> int:
@@ -86,7 +88,7 @@ def wind_helix(sub: int = 2, block: int = 5, bp_per_helix: int = 110,
 
     return DoubleHelix(field_a=bp.field_a, field_b=bp.field_b, a_col=bp.a_col, b_col=bp.b_col,
                        centers=centers, bp_per_helix=g, radius=radius, height=height,
-                       dtheta=dtheta, groove=groove)
+                       dtheta=dtheta, groove=groove, grid_nx=nx, grid_nz=nz)
 
 
 def wound_positions(hx: DoubleHelix):

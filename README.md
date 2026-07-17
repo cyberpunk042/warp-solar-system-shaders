@@ -603,9 +603,18 @@ flat carpet of beads.
 
 ![the field of double helices wrapping down into beads on a string](docs/engine/warp_nucleosome.gif)
 
-> **Processes 5–6 (30nm fibre → chromosome) are being rebuilt** as honest, chained transforms — each
-> consuming the previous process's real output, each shown whole. Next: the ~1663 beads coil ~6 per turn
-> into the 30 nm fibre, then fold into the two chromatids of the chromosome (centromere + telomere caps).
+**C3 — genome, process 5 · 30 nm fibre** (`warp_fibre`): this process **chains from Process 4's actual
+beads** and coils them into **30 nm solenoid fibres** at ~6 nucleosomes per turn. A whole row of ~36 beads
+coils into one fibre, so the **1663 beads funnel into ~47 fibres** — the first real drop in count — while
+compacting ~6× along the fibre axis. Each bead moves as a **rigid unit** (its wrapped ring carried along)
+and its linker DNA re-routes to the new neighbours — every base pair reused, nothing spawned. A fixed
+camera (slow tilt down, no spin) watches the wide bead carpet gather and coil into a tidy band of fibres.
+
+![the bead carpet coiling and compacting into a band of 30 nm fibres](docs/engine/warp_fibre.gif)
+
+> **Process 6 (the chromosome) is being rebuilt** as an honest, chained transform — consuming Process 5's
+> real output, shown whole. Next: the ~47 fibres fold into the two chromatids of the chromosome, meeting
+> at the centromere, capped by telomeres.
 
 ## Electricity in motion
 

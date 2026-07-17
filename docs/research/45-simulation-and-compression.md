@@ -263,16 +263,26 @@ one before it.
   spin) watches the tall forest of helices collapse into the flat carpet of beads-on-a-string, whole field
   in frame. *Stops at beads on a string.*
 
+- **Process 5 — the 30 nm fibre** (`warp_shaders/genome/fibre.py`, scene `warp_fibre`). **Chains from
+  Process 4's actual output** (the nucleosome beads). It coils the "beads on a string" into **~30 nm
+  solenoid fibres** at ~6 nucleosomes per turn. This is where the packing finally **funnels**: a whole
+  row of ~36 beads coils into one fibre, so the **1663 beads become ~47 fibres** (the first real drop in
+  count) and compact ~6× along the fibre axis. Conserving: each nucleosome bead moves as a **rigid unit**
+  — its wrapped ring is carried along onto the solenoid — and its linker DNA is re-routed to the bead's
+  new neighbours (the fibre laid out serpentine so the continuous strand never stretches across the band),
+  so every base pair is reused, nothing spawned, nothing teleports. A fixed camera (slow tilt down, no
+  spin) watches the wide bead carpet gather and coil into a tidy band of fibres, whole field in frame.
+  *Stops at the field of 30 nm fibres.*
+
 At every step matter is conserved (transform, never spawn), physics and logic are not broken, the motion
 is continuous, and each process consumes the previous one's real output.
 
-**Processes 5–6 (30nm fibre → chromosome) are being rebuilt.** Earlier drafts cut corners — they generated
-idealised shapes by index (or sprayed points into a chromosome silhouette) instead of folding the real
-strand, did not strictly chain from the prior output, and showed only a moving section rather than the
-whole process. They have been retired and will return one at a time, each chaining honestly from the
-process before it and shown whole: the ~1663 nucleosome beads coil ~6 per turn into the **30 nm fibre**
-(the big count-funnel begins here), which folds into the two chromatids of the metaphase **chromosome**
-with its centromere and **telomere** caps. The tokenize→chromosome **codec**
+**Process 6 (the chromosome) is being rebuilt.** Earlier drafts cut corners — they generated idealised
+shapes by index (or sprayed points into a chromosome silhouette) instead of folding the real strand, did
+not strictly chain from the prior output, and showed only a moving section rather than the whole process.
+It has been retired and will return chaining honestly from Process 5 and shown whole: the ~47 fibres
+folding into the two chromatids of the metaphase **chromosome**, meeting at the centromere, capped by
+**telomeres**. The tokenize→chromosome **codec**
 (`warp_compress/tokenchromo.py`, lossless round-trip, 5.4×) is unaffected — that is a separate,
 verified compression result.
 

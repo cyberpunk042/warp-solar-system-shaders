@@ -41,6 +41,8 @@ class Nucleosomes:
     wrap_turns: float
     core_radius: float
     link_frac: float
+    grid_nx: int = 0
+    grid_nz: int = 0
 
     @property
     def n_pairs(self) -> int:
@@ -110,4 +112,5 @@ def wrap_nucleosomes(sub: int = 2, block: int = 5, wrap_turns: float = 1.75,
 
     return Nucleosomes(helix_a=helix_a, helix_b=helix_b, nuc_a=nuc_a, nuc_b=nuc_b,
                        a_col=hx.a_col, b_col=hx.b_col, centers=centers, bp_per_nuc=g,
-                       wrap_turns=wrap_turns, core_radius=core_radius, link_frac=link_frac)
+                       wrap_turns=wrap_turns, core_radius=core_radius, link_frac=link_frac,
+                       grid_nx=hx.grid_nx, grid_nz=hx.grid_nz)
