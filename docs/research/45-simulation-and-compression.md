@@ -202,23 +202,13 @@ Three algorithms compress **the item** (the card / its visual-information conten
   *phrases* (a whole row of identical memory, a repeated VRM motif) that C1's flat index cannot — it
   **beats flat C1 by 1.41×**. Lossless end to end (uncoil → the DNA → place the vocabulary pieces back →
   the exact card). **Watchable process (the on-screen animation), built step by step** — following the
-  real chromosome hierarchy (base pairs → double helix → nucleosomes → chromatid → chromosome), one
-  verified step at a time. **Step 1 — turn the card into ~a million tokens:** the real board is voxelised
-  fine (`block=5` token grid upsampled ×3 per axis → a real **1.2M-cell grid**, 1,234,386 occupied) and its
-  surface is **painted as that grid** — every element becomes its own tiny token cell of its own colour
-  (`_voxtok` at the hit point, dark `_seam` between cells so the million tokens read as discrete). The
-  board geometry stays (it marches correctly); `tokamt` fades the board look into the token mosaic. **Step
-  2 — the DNA double helix:** the tokens **rise into a beautiful vertical double helix** — two backbones
-  (`_tube`) 180° apart bridged by coloured **base-pair rungs** (`_rungs`, A/T/G/C), an open twisted ladder,
-  its colours the card's own tokens in proximity order (grown from the card). **Step 3 — weave into the
-  chromosome:** the helix `_tube` distance is blended (`weave`) into a solid chromosome SDF `_chromo` — a
-  smooth blue **X** built from four fat, smoothly-tapered arms (`op_smooth_union` of a thin core + swelling
-  spheres) pinched at the centromere, plus the two little centromere `_nodes`. As `weave` runs 0→1 the
-  helix coils and condenses into the solid chromosome and the token colours shift to chromosome blue; the
-  whole thing turns on a continuous orbit (a real animation, not a static layout). The end state is **just
-  the chromosome**; then the cycle reverses back to the card. Crucially the helix is never a fabricated
-  shape poured full — its backbone colours are always the card's real tokens in the card's own order, so
-  the chromosome is *grown from* the card.
+  real chromosome hierarchy (tokens → base pairs → double helices → nucleosomes → 30nm fibre →
+  chromosome), one verified step at a time. An earlier draft crammed the whole thing into a single
+  monolithic scene (one giant double helix woven into a rotating chromosome **X**); it cut corners — it
+  cheated the physics (a double helix cannot hold 182872 base pairs), it spun the subject gratuitously,
+  and it showed only a moving section rather than the whole process. That monolithic scene has been retired
+  in favour of the **separate conserving library processes** below (`warp_shaders/genome/`), each chaining
+  from the previous one's real output and shown whole.
 - **Future — the semantic lossy tier.** Merge near-synonym tokens (blocks that agree *within tolerance*)
   before coiling — compressing the card's *sense*, not just its exact bytes. The lossy dial noted below.
 
@@ -246,15 +236,20 @@ one before it.
   drift, continuously, into an **ordered field of vertical rungs — an unwound ladder**, order emerging
   from the token cloud. *Stops at the base-pair field.*
 
-- **Process 3 — the double helix** (`warp_shaders/genome/helix.py`, scene `warp_helix`). **Chains from
+- **Process 3 — the double helices** (`warp_shaders/genome/helix.py`, scene `warp_helix`). **Chains from
   Process 2's actual output.** It takes the ordered base-pair field (`BasePairs.field_a` / `field_b` —
-  every pair's two tokens on a rung) and physically winds it: the field of rungs first gathers, in
-  sequence, into one straight **ladder**, then the ladder **twists** about its axis into the right-handed
-  **double helix**, the two tokens of each rung tracing the two backbones. Conserving and physical: no
-  point is created or teleports — each token moves continuously from where Process 2 left it, through the
-  flat ladder, onto the helix. The camera is fixed (only a straight push-in), so the **whole strand** (all
-  182872 base pairs) is in frame the whole way and the entire winding is visible. *Stops at the double
-  helix.*
+  every pair's two tokens on a rung) and physically winds it. The physical fact that fixed the earlier
+  mistake: **a double helix only holds ~100 base pairs** (up to ~1000 at most), so 182872 pairs do not
+  make one giant helix — they make **many** short ones. The pairs are grouped in sequence (110 per helix →
+  **1663 helices**) and every group's rungs gather into their own straight **ladder**, then **twist** into
+  a real-proportioned right-handed **double helix** — 10.5 base pairs per turn, pitch ≈ 3.4× the radius
+  (real B-DNA) — the two tokens of each rung tracing the two backbones. The helices stand on a grid that
+  spans the same footprint Process 2's flat sheet occupied, so each strip winds up roughly **in place** (a
+  gentle, physical gather, no flying across the room). Conserving and physical: no point is created or
+  teleports — each token moves continuously from where Process 2 left it, through its ladder, onto its
+  helix. The camera is fixed (a slow dolly, no spin), so the **whole field** (all 182872 base pairs
+  becoming a receding forest of double helices) is in frame the whole way and the entire winding is
+  visible. *Stops at the field of double helices.*
 
 At every step matter is conserved (transform, never spawn), physics and logic are not broken, the motion
 is continuous, and each process consumes the previous one's real output.

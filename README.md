@@ -581,15 +581,17 @@ pair (nothing spawned); the pairs drift, continuously, into an ordered field of 
 
 ![the floating tokens streaming into an ordered field of base-pair rungs](docs/engine/warp_basepair.gif)
 
-**C3 — genome, process 3 · double helix** (`warp_helix`): this process **chains from Process 2's actual
+**C3 — genome, process 3 · double helices** (`warp_helix`): this process **chains from Process 2's actual
 output** — it takes the ordered base-pair field (every pair's two tokens on a rung) and physically winds
-it: the field of rungs gathers, in sequence, into one straight **ladder**, then the ladder **twists**
-about its axis into the right-handed **double helix**, the two tokens of each rung tracing the two
-backbones. Conserving and physical: no point is created or teleports — each moves continuously from where
-Process 2 left it. The camera is fixed (only a straight push-in), so the **whole strand** — all 182872
-base pairs — is in frame and the entire winding is visible.
+it. A double helix holds only **~100 base pairs**, so the 182872 pairs are grouped (110 each) into **1663
+short helices**, not one giant one: each group gathers into its own **ladder**, then **twists** into a
+real-proportioned right-handed **double helix** (10.5 base pairs per turn), the two tokens of each rung
+tracing the two backbones. Conserving and physical: the helices stand where their pairs were, so each
+strip winds up roughly **in place** — no point is created or teleports. The camera is fixed (only a slow
+dolly, no spin), so the **whole field** — all 182872 base pairs becoming a receding forest of double
+helices — is in frame and the entire winding is visible.
 
-![the whole base-pair field gathering into a ladder and twisting into the double helix](docs/engine/warp_helix.gif)
+![the whole base-pair field gathering into ladders and twisting into a field of double helices](docs/engine/warp_helix.gif)
 
 > **Processes 4–6 (nucleosomes → 30nm fibre → chromosome) are being rebuilt** as honest, chained
 > transforms — each consuming the previous process's real output, each shown whole. The earlier versions

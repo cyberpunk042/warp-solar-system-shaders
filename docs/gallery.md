@@ -120,18 +120,20 @@ order emerging from the token cloud.
 
 ![the floating tokens streaming into an ordered field of base-pair rungs](engine/warp_basepair.gif)
 
-**C3 — genome, process 3 · double helix** (`warp_helix`): this process **chains from Process 2's actual
+**C3 — genome, process 3 · double helices** (`warp_helix`): this process **chains from Process 2's actual
 output** — it takes the ordered base-pair field (every pair's two tokens on a rung) and physically winds
-it. First the field of rungs gathers, in sequence, into one straight **ladder**; then the ladder
-**twists** about its axis into the right-handed **double helix**, the two tokens of each rung tracing the
-two backbones. Conserving and physical: no point is created or teleports — each token moves continuously
-from where Process 2 left it, through the flat ladder, onto the helix. The camera is fixed (only a
-straight push-in), so the **whole strand** — all 182872 base pairs — is in frame the whole way and the
-entire winding is visible.
+it. A double helix only holds **~100 base pairs**, so the 182872 pairs are grouped in sequence (110 each)
+into **1663 short helices** — not one giant one. Each group's rungs gather into their own straight
+**ladder**, then **twist** into a real-proportioned right-handed **double helix** (10.5 base pairs per
+turn, pitch ≈ 3.4× the radius), the two tokens of each rung tracing the two backbones. The helices stand
+on the same footprint the flat sheet occupied, so each strip winds up roughly **in place** — a gentle,
+physical gather; no point is created or teleports. The camera is fixed (only a slow dolly, no spin), so
+the **whole field** — all 182872 base pairs becoming a receding forest of double helices — is in frame
+the whole way and the entire winding is visible.
 
-![warp_helix — the base-pair field wound into the DNA double helix](engine/warp_helix.png)
+![warp_helix — the base-pair field wound into a whole field of DNA double helices](engine/warp_helix.png)
 
-![the whole base-pair field gathering into a ladder and twisting into the double helix](engine/warp_helix.gif)
+![the whole base-pair field gathering into ladders and twisting into a field of double helices](engine/warp_helix.gif)
 
 > **Processes 4–6 (nucleosomes → 30nm fibre → chromosome) are being rebuilt** as honest, chained
 > transforms — each consuming the previous process's real output, each shown whole. The earlier versions
