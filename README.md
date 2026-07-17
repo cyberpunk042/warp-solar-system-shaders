@@ -566,6 +566,21 @@ crease — into a laminated stack of its own card layers (built up Docker-style)
 
 ![the real card folding into layers and squishing into a cube](docs/engine/warp_fold_card.gif)
 
+**C3 — genome, process 1 · tokenize** (`warp_tokenize`): the **real board** is turned into **tokens** —
+every occupied bit of the card becomes a token (45718 voxels × 8 = **365744 tokens**, coloured by
+merge-codec type). Rendered with a Warp z-buffered splat (all ~366k at once), the tokens lift and spread
+into a **cloud of tokens floating in the air**. A conserving transform — the tokens are the card's own
+matter, nothing spawned. (Engine library `warp_shaders/genome`.)
+
+![the card lifting and fraying into a cloud of coloured tokens](docs/engine/warp_tokenize.gif)
+
+**C3 — genome, process 2 · base pairs** (`warp_basepair`): a separate process binds the floating tokens
+**in twos** — 365744 tokens become **182872 base pairs** (A-T / G-C rungs). Every token joins exactly one
+pair (nothing spawned); the pairs drift, continuously, into an ordered field of vertical rungs — an
+**unwound ladder**, order emerging from the token cloud.
+
+![the floating tokens streaming into an ordered field of base-pair rungs](docs/engine/warp_basepair.gif)
+
 **C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the board is voxelised into **~a million token
 cells** (a real 1.2M-cell grid, one colour per element), which **rise into a beautiful DNA double helix**
 — two backbones + coloured **base-pair rungs** (A/T/G/C), grown from the card's own tokens — that then

@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (301 scenes).
+`python render.py --list` for the full, current list (302 scenes).
 
 ## Engine showcase
 
@@ -98,6 +98,27 @@ exposed faces).
 ![warp_fold_card — the RTX board folded into a 20x cube](engine/warp_fold_card.png)
 
 ![the card folding in half five times into a 20x cube and back](engine/warp_fold_card.gif)
+
+**C3 — genome, process 1 · tokenize** (`warp_tokenize`): the **real board** is turned into **tokens** —
+every occupied bit of the card becomes a token (45718 voxels × 8 = **365744 tokens**, coloured by
+merge-codec type so identical pieces of the card share a hue). Rendered with a Warp z-buffered splat
+(all ~366k at once). Over time the tokens lift and spread from their home voxels into a **cloud of
+tokens floating in the air** — the card that is no more a card. A **conserving transform**: the tokens
+are the card's own matter, nothing spawned, the count constant. (Engine library `warp_shaders/genome`.)
+
+![warp_tokenize — the RTX board turned into a floating cloud of tokens](engine/warp_tokenize.png)
+
+![the card lifting and fraying into a cloud of coloured tokens](engine/warp_tokenize.gif)
+
+**C3 — genome, process 2 · base pairs** (`warp_basepair`): a separate process takes the floating token
+cloud and binds the tokens **in twos** — 365744 tokens become **182872 base pairs** (A-T / G-C coloured
+rungs). Every token joins exactly one pair (nothing spawned); partners are chosen by spatial adjacency,
+and the pairs drift, continuously, into an ordered field of vertical rungs — an **unwound ladder**,
+order emerging from the token cloud.
+
+![warp_basepair — the tokens bound into a vast field of base pairs](engine/warp_basepair.png)
+
+![the floating tokens streaming into an ordered field of base-pair rungs](engine/warp_basepair.gif)
 
 **C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the board is voxelised into **~a million token
 cells** (a real 1.2M-cell grid, one colour per element), which **rise into a beautiful DNA double helix**

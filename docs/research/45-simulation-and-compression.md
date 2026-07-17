@@ -222,6 +222,34 @@ Three algorithms compress **the item** (the card / its visual-information conten
 - **Future — the semantic lossy tier.** Merge near-synonym tokens (blocks that agree *within tolerance*)
   before coiling — compressing the card's *sense*, not just its exact bytes. The lossy dial noted below.
 
+#### C3 as separate engine-library processes (`warp_shaders/genome/`)
+
+This is an **engine**, so C3 is being rebuilt as **separate library processes** — each a conserving
+transform of the real board, done and rendered **one at a time** — instead of one monolithic scene.
+The non-negotiable law across all of them: **do not break physics, do not break logic, do not spawn
+anything — use what you transform.** Matter is conserved end to end; every stage uses the output of the
+one before it.
+
+- **Process 1 — tokenization** (`warp_shaders/genome/tokenize.py`, scene `warp_tokenize`). Turn the
+  graphics card into tokens: every occupied bit of the board becomes a token (45718 voxels × sub³ =
+  **365744 tokens**, in the operator's 100k–1M band), each carrying a merge-codec type id (identical
+  card pieces share a colour). Rendered with a Warp **z-buffered splat** — all ~366k tokens projected
+  and depth-tested at once (raymarching that many is infeasible). Over time the tokens lift and spread
+  from their home voxels into a **cloud of tokens floating in the air**. Conserving: the token count is
+  exactly the matter it started from, nothing spawned; the motion is continuous (no teleport). *Stops at
+  the token cloud.*
+- **Process 2 — base-pair bounding** (`warp_shaders/genome/basepair.py`, scene `warp_basepair`). Take
+  the floating token cloud and bind the tokens **in twos** — 365744 tokens → **182872 base pairs** (past
+  the operator's "at least 50000"). Every token joins exactly one pair (nothing spawned, nothing
+  dropped); partners are chosen by spatial adjacency (a Morton walk of the cloud, so tokens that float
+  near each other bind), and each is tagged with a DNA base (A-T / G-C complementary rungs). The pairs
+  drift, continuously, into an **ordered field of vertical rungs — an unwound ladder**, order emerging
+  from the token cloud. *Stops at the base-pair field.*
+
+The earlier monolithic `warp_tokenize_chromo` (card → helix → chromosome in one scene) remains as the
+end-to-end vision; the genome library is the same idea rebuilt as conserving, one-at-a-time processes,
+each verified on the real board before the next is started (double helix and chromosome to follow).
+
 **Open spec questions (for the operator to steer — flagged, not assumed):**
 - What is **"the item"** precisely — the card's 3-D geometry (voxels), its rendered visual output
   (pixels/frames), or its information content (the scene data)? The three algorithms may target different
