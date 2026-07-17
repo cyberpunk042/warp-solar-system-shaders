@@ -612,9 +612,20 @@ camera (slow tilt down, no spin) watches the wide bead carpet gather and coil in
 
 ![the bead carpet coiling and compacting into a band of 30 nm fibres](docs/engine/warp_fibre.gif)
 
-> **Process 6 (the chromosome) is being rebuilt** as an honest, chained transform — consuming Process 5's
-> real output, shown whole. Next: the ~47 fibres fold into the two chromatids of the chromosome, meeting
-> at the centromere, capped by telomeres.
+**C3 — genome, process 6 · the chromosome** (`warp_chromosome`): the final fold. This process **chains from
+Process 5's actual fibres** and folds them into the two sister **chromatids** of the metaphase chromosome —
+the ~47 fibres split between the sisters, laid head-to-tail along each bowed arm (telomere → centromere
+waist → telomere) and crushed to fill the condensed rod. The two chromatids meet at the **centromere**; the
+four tips are capped by the **telomeres** (cyan). The base-pair rungs band the arms — still painted by the
+card's own DNA. Every base pair is folded (not regenerated), nothing spawned. A fixed camera (slow dolly to
+present the X, no spin) watches the fibre band fold into the chromosome.
+
+![the fibre band folding into the two chromatids of the chromosome](docs/engine/warp_chromosome.gif)
+
+> **The ladder is complete** — the card's own matter carried, one conserving process at a time, all the
+> way from tokens to a chromosome: **365744 tokens → 182872 base pairs → 1663 double helices → 1663
+> nucleosome beads → 47 fibres → 1 chromosome** (two chromatids, centromere, telomeres). Each step chains
+> from the previous one's real output, transforms and never spawns, and is shown whole.
 
 ## Electricity in motion
 

@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (304 scenes).
+`python render.py --list` for the full, current list (305 scenes).
 
 ## Engine showcase
 
@@ -162,10 +162,24 @@ into a tidy band of fibres — the whole field, the whole coil, in frame.
 
 ![the bead carpet coiling and compacting into a band of 30 nm fibres](engine/warp_fibre.gif)
 
-> **Process 6 (the chromosome) is being rebuilt** as an honest, chained transform — consuming Process 5's
-> real output, shown whole. The earlier version was retired for cutting corners (an idealised X-shape
-> sprayed by index rather than folding the real fibre); it'll return verified — the ~47 fibres folding
-> into the two chromatids of the metaphase chromosome, meeting at the centromere, capped by telomeres.
+**C3 — genome, process 6 · the chromosome** (`warp_chromosome`): the final fold. This process **chains from
+Process 5's actual fibres** and folds them into the two sister **chromatids** of the metaphase chromosome —
+the ~47 fibres split between the sisters, laid head-to-tail along each bowed arm (telomere tip → centromere
+waist → telomere tip) and crushed to fill the condensed rod. The two chromatids meet at the **centromere**
+(the central pinch); the four arm-tips are capped by the **telomeres** (tinted cyan). The base-pair rungs
+band the arms — the chromosome is still painted by the card's own DNA. Conserving: every base pair is
+folded (not regenerated) onto its arm, continuously; nothing spawned, nothing teleports. A fixed camera
+(slow dolly to present the X, no spin) watches the wide fibre band fold into the chromosome, whole fold in
+frame.
+
+![warp_chromosome — the 30 nm fibres folded into the metaphase chromosome X](engine/warp_chromosome.png)
+
+![the fibre band folding into the two chromatids of the chromosome](engine/warp_chromosome.gif)
+
+> **The ladder is complete** — the card's own matter carried, one conserving process at a time, all the way
+> from tokens to a chromosome: **365744 tokens → 182872 base pairs → 1663 double helices → 1663 nucleosome
+> beads → 47 fibres → 1 chromosome** (two chromatids, centromere, telomeres). Each step chains from the
+> previous one's real output, transforms and never spawns, and is shown whole.
 
 ## Simulation of reality — the card, by real physics
 

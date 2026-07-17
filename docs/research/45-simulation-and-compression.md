@@ -274,17 +274,24 @@ one before it.
   spin) watches the wide bead carpet gather and coil into a tidy band of fibres, whole field in frame.
   *Stops at the field of 30 nm fibres.*
 
+- **Process 6 — the chromosome** (`warp_shaders/genome/chromosome.py`, scene `warp_chromosome`). **Chains
+  from Process 5's actual output** (the 30 nm fibres). The final fold: the ~47 fibres split between the two
+  sister **chromatids** of the metaphase chromosome, laid head-to-tail along each bowed arm (telomere tip →
+  centromere waist → telomere tip) and crushed to fill the condensed rod — the last ~40× of compaction.
+  The two chromatids meet at the **centromere** (the primary constriction); the four arm-tips are capped by
+  the **telomeres** (tinted so they read). The base-pair rungs band the arms, so the chromosome is still
+  painted by the card's own DNA. Conserving: every base pair is folded (not regenerated) onto its arm,
+  continuously; nothing spawned, nothing teleports. A fixed camera (slow dolly to present the X, no spin)
+  watches the wide fibre band fold into the chromosome, whole fold in frame. *Stops at the chromosome.*
+
 At every step matter is conserved (transform, never spawn), physics and logic are not broken, the motion
 is continuous, and each process consumes the previous one's real output.
 
-**Process 6 (the chromosome) is being rebuilt.** Earlier drafts cut corners — they generated idealised
-shapes by index (or sprayed points into a chromosome silhouette) instead of folding the real strand, did
-not strictly chain from the prior output, and showed only a moving section rather than the whole process.
-It has been retired and will return chaining honestly from Process 5 and shown whole: the ~47 fibres
-folding into the two chromatids of the metaphase **chromosome**, meeting at the centromere, capped by
-**telomeres**. The tokenize→chromosome **codec**
-(`warp_compress/tokenchromo.py`, lossless round-trip, 5.4×) is unaffected — that is a separate,
-verified compression result.
+**The ladder is complete.** The card's own matter is carried, one conserving process at a time, all the way
+from tokens to a chromosome: **365744 tokens → 182872 base pairs → 1663 double helices → 1663 nucleosome
+beads → 47 fibres → 1 chromosome** (two chromatids, centromere, telomeres). Separately, the
+tokenize→chromosome **codec** (`warp_compress/tokenchromo.py`, lossless round-trip, 5.4×) remains a
+verified compression result in its own right.
 
 **Open spec questions (for the operator to steer — flagged, not assumed):**
 - What is **"the item"** precisely — the card's 3-D geometry (voxels), its rendered visual output

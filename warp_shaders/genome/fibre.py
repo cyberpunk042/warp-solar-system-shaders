@@ -39,6 +39,8 @@ class Fibre:
     beads_per_turn: float
     fibre_radius: float
     n_fibres: int
+    beads_per_fibre: int = 0
+    bp_per_bead: int = 0
 
     @property
     def n_pairs(self) -> int:
@@ -96,4 +98,5 @@ def coil_fibre(sub: int = 2, block: int = 5, beads_per_turn: float = 6.0,
 
     return Fibre(bead_a=nc.nuc_a, bead_b=nc.nuc_b, fib_a=fib_a.astype(np.float32),
                  fib_b=fib_b.astype(np.float32), a_col=nc.a_col, b_col=nc.b_col, centers=new_center,
-                 beads_per_turn=beads_per_turn, fibre_radius=fibre_radius, n_fibres=n_fibres)
+                 beads_per_turn=beads_per_turn, fibre_radius=fibre_radius, n_fibres=n_fibres,
+                 beads_per_fibre=nx, bp_per_bead=g)
