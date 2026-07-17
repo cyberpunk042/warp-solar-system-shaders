@@ -570,9 +570,10 @@ crease — into a laminated stack of its own card layers (built up Docker-style)
 chain**, in **strict sequence** (nothing skipped, nothing in parallel). The board is voxelised into **~a
 million token cells** (a real 1.2M-cell grid, one colour per element); the tokens **connect one to the
 next** into two backbones bridged by coloured **base-pair rungs** (A/T/G/C) — the **DNA double helix** —
-which **beads up into nucleosomes** and coils into the **two chromatids** of the metaphase **chromosome
-X** (plural coiled arms — apart — meeting at the one centromere). Read the chain from the loose end to the
-packed end and every level is visible at once; then it unwinds all the way back. Every backbone colour is
+which **beads up into nucleosomes**, throws out **several separate looped domains** (plural, apart), and
+condenses into the **two chromatids** of the one metaphase **chromosome X** (coiled arms meeting at the
+centromere) — apart before being one. Read the chain from the loose end to the packed end and every level
+is visible at once; then it unwinds all the way back. Every backbone colour is
 a real card token in the card's own order — the chromosome is *grown from* the card, not a picture of DNA
 poured full. Codec 5.4× lossless.
 

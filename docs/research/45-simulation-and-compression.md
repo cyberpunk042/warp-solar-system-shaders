@@ -210,11 +210,13 @@ Three algorithms compress **the item** (the card / its visual-information conten
   board geometry stays (it marches correctly); `tokamt` fades the board look into the token mosaic. **Step
   2 — the packing journey as one chain:** the tokens **connect one to the next** into a single strand,
   rendered as two backbones (`_tube`) bridged by coloured **base-pair rungs** (`_rungs`, A/T/G/C). The
-  strand's node positions are built once (`_chain_struct`) as the whole chromosome-packing hierarchy laid
-  out **loose→packed, low→high** like the classic diagram: a bare **DNA double helix** (with base-pair
-  rungs), then **nucleosomes** (per-node radius bumps — beads on a string), then the beaded string coils
-  into the **two chromatids** of the metaphase **chromosome X** (each arm a well-sampled solenoid — plural
-  coiled arms, apart, meeting at the one centromere). Over `time` the chain **grows out of the card**
+  strand's node positions are built once (`_chain_struct`), stitched end-to-end into **one unbroken
+  thread**, as the whole chromosome-packing hierarchy laid out **loose→packed, low→high** like the classic
+  diagram: a bare **DNA double helix** (with base-pair rungs), then **nucleosomes** (the backbones merge
+  into one beaded string — beads on a string), then **several separate looped domains** (a rosette of
+  distinct loops — plural, apart), which condense into the **two chromatids** of the one metaphase
+  **chromosome X** (each arm a well-sampled dense solenoid, meeting at the one centromere — apart before
+  being one). Over `time` the chain **grows out of the card**
   loose→packed (a reveal front, `_positions`), each level forming in strict order — nothing skipped,
   nothing in parallel — and the held state shows the whole journey at once. The board erodes (`cerode`) as
   the chain lifts out; the whole cycle reverses back to the card. Crucially the strand is never a

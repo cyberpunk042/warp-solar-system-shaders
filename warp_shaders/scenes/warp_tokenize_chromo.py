@@ -47,17 +47,21 @@ _CARDY = 0.14
 _MAXSEG = 0.7                     # skip capsules longer than this (only the centromere crossover)
 _NPER = 4.0                       # strand nodes per nucleosome bead
 _NBUMP = 1.4                      # how much the tube bulges into a bead
-_ZH = 0.30                        # zone: double helix  (0 .. _ZH)
-_ZNU = 0.52                       # zone: nucleosomes   (_ZH .. _ZNU) ; chromosome X (_ZNU .. 1)
+_ZH = 0.22                        # zone: double helix   (0 .. _ZH)
+_ZNU = 0.40                       # zone: nucleosomes    (_ZH .. _ZNU)
+_ZL = 0.66                        # zone: looped domains (_ZNU .. _ZL) ; chromosome X (_ZL .. 1)
 _STARTX = -5.4
-_LXH = 2.8                        # x-length of the loose double-helix run
-_LXN = 2.2                        # x-length of the nucleosome run
-_HRISE = 0.6                      # y the helix climbs over its run
-_NRISE = 0.95                     # y the nucleosome string climbs into the chromosome
+_LXH = 2.6                        # x-length of the loose double-helix run
+_LXN = 1.9                        # x-length of the nucleosome run
+_HRISE = 0.55                     # y the helix climbs over its run
+_NRISE = 0.85                     # y the nucleosome string climbs
+_NLOOP = 3                        # separate looped domains (plural, apart, before the one chromosome)
+_RLOOP = 0.72                     # looped-domain radius
+_LSCAF = 0.5                      # how much the loop rosette climbs toward the chromosome
 _AXW, _AYW = 0.94, 1.38           # chromosome-X arm half-extents (telomere reach)
 _RCH = 0.17                       # chromatid solenoid radius (the coiled arm)
 _KCH = 6.0                        # chromatid solenoid turns per arm (dense)
-_RUNGT = 0.30                     # base-pair rungs are drawn across the loose double helix (t < this)
+_RUNGT = 0.22                     # base-pair rungs are drawn across the loose double helix (t < this)
 _RUNGSTEP = 2                     # a base-pair rung every this-many nodes
 _RR = 0.030                       # base-pair rung radius (thin)
 # A / T / G / C base-pair colours (the diagram's coloured rungs)
@@ -139,35 +143,52 @@ def _coiled_arm(p0, p1, n):
 
 def _chain_struct():
     """the fixed full journey as ONE continuous thread, stitched end-to-end: double helix -> nucleosome
-    beads -> the two coiled chromatids of the chromosome X. Built once."""
+    beads -> several separate looped domains (plural, apart) -> the two coiled chromatids of the one
+    chromosome X. Built once."""
     N = _N
     t = np.linspace(0.0, 1.0, N)
-    n_h = int(np.sum(t < _ZH))                      # double-helix nodes
-    n_nu = int(np.sum((t >= _ZH) & (t < _ZNU)))     # nucleosome nodes
-    n_x = N - n_h - n_nu                            # chromosome nodes
+    n_h = int(np.sum(t < _ZH))                        # double-helix nodes
+    n_nu = int(np.sum((t >= _ZH) & (t < _ZNU)))       # nucleosome nodes
+    n_l = int(np.sum((t >= _ZNU) & (t < _ZL)))        # looped-domain nodes
+    n_x = N - n_h - n_nu - n_l                        # chromosome nodes
     # zone 1 — the loose double helix, climbing gently
     uh = np.linspace(0.0, 1.0, n_h)
     helix = np.stack([_STARTX + _LXH * uh, _YC + _HRISE * uh, np.zeros(n_h)], 1)
-    # zone 2 — nucleosome string, continues from the helix end and climbs into the chromosome
+    # zone 2 — nucleosome string, continues from the helix end and climbs
     un = np.linspace(0.0, 1.0, n_nu)
     h0 = helix[-1]
     nucleo = np.stack([h0[0] + _LXN * un, h0[1] + _NRISE * un, np.zeros(n_nu)], 1)
-    # zone 3 — chromosome X: two dense coiled chromatid arms crossing at the centromere, entry at origin
+    # zone 3 — looped domains: several SEPARATE loops (plural, apart) fanning off a climbing scaffold
+    ul = np.linspace(0.0, 1.0, n_l)
+    gm = ul * _NLOOP
+    m = np.clip(np.floor(gm).astype(int), 0, _NLOOP - 1)
+    lu = gm - m
+    ang = 2.0 * math.pi * m / _NLOOP + 0.5            # each loop fans a different way
+    th = 2.0 * math.pi * lu                           # a full loop that leaves and returns to the scaffold
+    loops_local = np.stack([_RLOOP * np.cos(ang) * (1.0 - np.cos(th)),
+                            _RLOOP * np.sin(th) + ul * _LSCAF,
+                            _RLOOP * np.sin(ang) * (1.0 - np.cos(th))], 1)
+    loops = loops_local + (nucleo[-1] - loops_local[0])   # stitch onto the nucleosome end
+    # zone 4 — chromosome X: two dense coiled chromatid arms crossing at the centromere, entry at origin
     a2, y2 = 2.0 * _AXW, 2.0 * _AYW
     n_arm = n_x // 2
     armA = _coiled_arm(np.array([0.0, 0.0, 0.0]), np.array([a2, y2, 0.0]), n_arm)        # "/" through centre
     armB = _coiled_arm(np.array([0.0, y2, 0.0]), np.array([a2, 0.0, 0.0]), n_x - n_arm)  # "\" through centre
     xloc = np.vstack([armA, armB])
-    xg = xloc + (nucleo[-1] - xloc[0])              # stitch: chromosome entry == nucleosome end
-    sp = np.vstack([helix, nucleo, xg])
+    xg = xloc + (loops[-1] - xloc[0])                # stitch: chromosome entry == looped-domain end
+    sp = np.vstack([helix, nucleo, loops, xg])
 
     wamp = np.zeros(N)
     td = np.zeros(N)                               # fine double-helix turn-density
     rad = np.full(N, _TR)
-    wamp[:n_h] = 0.34; td[:n_h] = 1.4
-    for i in range(n_h, n_h + n_nu):                # nucleosomes: backbones merge into one beaded string
+    i0, i1, i2 = n_h, n_h + n_nu, n_h + n_nu + n_l
+    wamp[:i0] = 0.34; td[:i0] = 1.4
+    for i in range(i0, i1):                          # nucleosomes: backbones merge into one beaded string
         wamp[i] = 0.05; td[i] = 1.1; rad[i] = _bead(i, 1.8)
-    for i in range(n_h + n_nu, N):                  # chromosome: thick coiled rod, faint bead texture
+    for i in range(i1, i2):                          # looped domains: beaded fibre, a touch thicker
+        wamp[i] = 0.06; td[i] = 0.8
+        rad[i] = _TR * 1.15 * (1.0 + 0.30 * (0.5 + 0.5 * math.cos(2.0 * math.pi * float(i) / _NPER)))
+    for i in range(i2, N):                           # chromosome: thick coiled rod, faint bead texture
         wamp[i] = 0.0; td[i] = 0.0
         rad[i] = _TR * 1.75 * (1.0 + 0.22 * (0.5 + 0.5 * math.cos(2.0 * math.pi * float(i) / _NPER)))
 
@@ -466,8 +487,8 @@ def _render(width, height, time, mouse, device):
     lift = reveal
     az = 0.28 + 0.05 * math.sin(time * 0.10) + float(mouse[0]) * 0.006
     el = 0.42 * (1.0 - lift) + 0.14 * lift
-    dist = 9.0 * (1.0 - lift) + 12.2 * lift
-    tgt = wp.vec3(-0.1 * (1.0 - lift) + (-2.0) * lift, 0.15 * (1.0 - lift) + (_YC + 1.85) * lift, 0.0)
+    dist = 9.0 * (1.0 - lift) + 12.6 * lift
+    tgt = wp.vec3(-0.1 * (1.0 - lift) + (-2.1) * lift, 0.15 * (1.0 - lift) + (_YC + 2.1) * lift, 0.0)
     eye = tgt + wp.vec3(dist * math.cos(el) * math.sin(az), dist * math.sin(el),
                         dist * math.cos(el) * math.cos(az))
     fwd = wp.normalize(tgt - eye)
