@@ -284,8 +284,18 @@ board before the next — the complete ladder from the card to a chromosome:
 > chromosome (P6).**
 
 At every step matter is conserved (transform, never spawn), physics and logic are not broken, and the
-motion is continuous. The earlier monolithic `warp_tokenize_chromo` (card → helix → chromosome in one
-scene) remains as the end-to-end vision alongside it.
+motion is continuous.
+
+- **The journey** (`warp_shaders/genome/journey.py`, scene `warp_genome`). All six processes chained
+  into **one continuous morph**: the same 182872 base-pair points are carried through every stage
+  (tokens → base pairs → double helix → nucleosomes → 30nm fibre → chromosome), the colour warming to
+  chromosome blue, the camera orbiting the three-dimensional stages then settling face-on to the X. The
+  intermediate stages are drawn as compact, readable versions of each structure so the morph shows each
+  stage's character; the endpoints are the real Process-1 token cloud and Process-6 chromosome. It is the
+  whole ladder in a single scene — the card, become a chromosome, conserved end to end.
+
+The earlier monolithic `warp_tokenize_chromo` (card → helix → chromosome in one scene) remains as the
+original end-to-end vision alongside the genome library.
 
 **Open spec questions (for the operator to steer — flagged, not assumed):**
 - What is **"the item"** precisely — the card's 3-D geometry (voxels), its rendered visual output

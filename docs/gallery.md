@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (306 scenes).
+`python render.py --list` for the full, current list (307 scenes).
 
 ## Engine showcase
 
@@ -165,6 +165,16 @@ the card, become a chromosome (molecule → tokens → base pairs → double hel
 ![warp_chromosome — the fibre folded into the blue metaphase chromosome X](engine/warp_chromosome.png)
 
 ![the 30nm fibre folding and condensing into the blue chromosome X](engine/warp_chromosome.gif)
+
+**C3 — genome, the journey** (`warp_genome`): all six conserving processes chained into **one continuous
+morph** — the RTX board's **182872 base pairs** carried, as a single point cloud, **tokens → base pairs →
+double helix → nucleosomes → 30nm fibre → chromosome**, the colour warming from the token palette to
+chromosome blue as the camera orbits and finally settles face-on to the X. Conserving throughout: the
+same points, reconfiguring, never spawned — the whole ladder in one scene.
+
+![warp_genome — the six processes as one continuous morph, the card to a chromosome](engine/warp_genome.png)
+
+![the card's base pairs morphing through the whole ladder into the chromosome](engine/warp_genome.gif)
 
 **C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the board is voxelised into **~a million token
 cells** (a real 1.2M-cell grid, one colour per element), which **rise into a beautiful DNA double helix**

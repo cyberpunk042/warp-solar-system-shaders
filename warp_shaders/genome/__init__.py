@@ -10,3 +10,4 @@ from .helix import wind_helix, DoubleHelix  # noqa: F401
 from .nucleosome import wrap_nucleosomes, Nucleosomes  # noqa: F401
 from .fiber import coil_fiber, Fiber  # noqa: F401
 from .chromosome import fold_chromosome, Chromosome  # noqa: F401
+from .journey import genome_journey, STAGE_NAMES  # noqa: F401

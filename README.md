@@ -610,6 +610,13 @@ nucleosomes → 30nm fibre → chromosome.
 
 ![the 30nm fibre folding and condensing into the blue chromosome X](docs/engine/warp_chromosome.gif)
 
+**C3 — genome, the journey** (`warp_genome`): all six conserving processes chained into **one continuous
+morph** — the board's **182872 base pairs** carried as a single point cloud **tokens → base pairs →
+double helix → nucleosomes → 30nm fibre → chromosome**, colour warming to chromosome blue. Conserving
+throughout: the same points, reconfiguring, never spawned — the whole ladder in one scene.
+
+![the card's base pairs morphing through the whole ladder into the chromosome](docs/engine/warp_genome.gif)
+
 **C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the board is voxelised into **~a million token
 cells** (a real 1.2M-cell grid, one colour per element), which **rise into a beautiful DNA double helix**
 — two backbones + coloured **base-pair rungs** (A/T/G/C), grown from the card's own tokens — that then
