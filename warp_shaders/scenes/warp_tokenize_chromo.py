@@ -43,8 +43,8 @@ _TR = 0.060                       # backbone tube radius
 _RR = 0.040                       # base-pair rung radius
 _RUNGSTEP = 2
 # the solid chromosome (the blue X — the end state)
-_CTX, _CTY = 0.52, 1.45           # half-width / half-height (telomere reach); height 2*_CTY == _HH
-_CK = 0.34                        # smooth-union blend (the smooth solid body + pinched centromere)
+_CTX, _CTY = 0.54, 1.42           # half-width / half-height (telomere reach); height 2*_CTY == _HH
+_CK = 0.36                        # smooth-union blend (the smooth solid body + pinched centromere)
 _CBODY = wp.vec3(0.15, 0.46, 0.72)      # chromosome blue
 _CNODE = wp.vec3(0.62, 0.82, 0.94)      # lighter centromere nodes
 _BASECOL = ((0.92, 0.22, 0.20), (0.24, 0.86, 0.34), (0.26, 0.42, 0.96), (0.96, 0.86, 0.22))
@@ -185,10 +185,10 @@ def _seam(p: wp.vec3) -> float:
 def _arm(p: wp.vec3, tip: wp.vec3, k: float) -> float:
     """one fat, rounded chromatid arm: thin at the centromere, bulging to a fat rounded telomere tip."""
     c = wp.vec3(0.0, 0.0, 0.0)
-    d = sd_capsule(p, c, tip, 0.095)                     # thin core -> keeps the centromere pinched
-    d = op_smooth_union(d, sd_sphere(p - tip * 0.35, 0.19), k)   # inner-arm swell (slender)
-    d = op_smooth_union(d, sd_sphere(p - tip * 0.65, 0.29), k)   # mid-arm bulge
-    d = op_smooth_union(d, sd_sphere(p - tip, 0.36), k)          # fat rounded telomere tip
+    d = sd_capsule(p, c, tip, 0.11)                      # thin core -> keeps the centromere pinched
+    d = op_smooth_union(d, sd_sphere(p - tip * 0.34, 0.24), k)   # inner-arm swell (full)
+    d = op_smooth_union(d, sd_sphere(p - tip * 0.66, 0.35), k)   # mid-arm bulge
+    d = op_smooth_union(d, sd_sphere(p - tip, 0.42), k)          # fat rounded telomere tip
     return d
 
 
@@ -206,8 +206,11 @@ def _chromo(p: wp.vec3) -> float:
 @wp.func
 def _nodes(p: wp.vec3) -> float:
     """the two little centromere nodes at the waist."""
-    d = sd_sphere(p - wp.vec3(-0.19, 0.0, 0.20), 0.155)
-    d = wp.min(d, sd_sphere(p - wp.vec3(0.19, 0.0, 0.20), 0.155))
+    # two little nodes at the waist, on both faces so they read as the centromere from any angle
+    d = sd_sphere(p - wp.vec3(-0.19, 0.0, 0.21), 0.150)
+    d = wp.min(d, sd_sphere(p - wp.vec3(0.19, 0.0, 0.21), 0.150))
+    d = wp.min(d, sd_sphere(p - wp.vec3(-0.19, 0.0, -0.21), 0.150))
+    d = wp.min(d, sd_sphere(p - wp.vec3(0.19, 0.0, -0.21), 0.150))
     return d
 
 
