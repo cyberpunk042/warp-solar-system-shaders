@@ -581,6 +581,14 @@ pair (nothing spawned); the pairs drift, continuously, into an ordered field of 
 
 ![the floating tokens streaming into an ordered field of base-pair rungs](docs/engine/warp_basepair.gif)
 
+**C3 — genome, process 3 · double helix** (`warp_helix`): a separate process winds the base pairs into
+**DNA** — each pair a **rung**, its two tokens the two spiraling **backbones** (**~10.5 bp/turn**). The
+strand winds up from a loose ladder into the tight double helix, two smooth backbone ribbons with
+coloured rungs between them, as the camera climbs it. Conserving: all **182872** pairs placed once,
+nothing spawned — the strand is very long (that length is why the next steps coil it into a chromosome).
+
+![the base pairs winding up from a loose ladder into the double helix](docs/engine/warp_helix.gif)
+
 **C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the board is voxelised into **~a million token
 cells** (a real 1.2M-cell grid, one colour per element), which **rise into a beautiful DNA double helix**
 — two backbones + coloured **base-pair rungs** (A/T/G/C), grown from the card's own tokens — that then

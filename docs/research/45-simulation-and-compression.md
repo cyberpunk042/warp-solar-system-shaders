@@ -246,9 +246,18 @@ one before it.
   drift, continuously, into an **ordered field of vertical rungs — an unwound ladder**, order emerging
   from the token cloud. *Stops at the base-pair field.*
 
+- **Process 3 — the double helix** (`warp_shaders/genome/helix.py`, scene `warp_helix`). Wind the base
+  pairs into DNA: each pair becomes a **rung**, and the pair's two tokens become the two points on the
+  two **backbones** that spiral around the axis (**~10.5 base pairs per turn**, a real right-handed
+  helix). Over time the strand winds up from a loose ladder into the tight double helix — two smooth
+  backbone ribbons with the coloured base-pair rungs crossing between them — while the camera climbs it.
+  Conserving: all **182872** pairs (and so every token) placed exactly once, nothing spawned. The strand
+  is very long — that length is exactly why the next steps coil it (nucleosomes → chromatid →
+  chromosome). *Stops at the double helix.*
+
 The earlier monolithic `warp_tokenize_chromo` (card → helix → chromosome in one scene) remains as the
 end-to-end vision; the genome library is the same idea rebuilt as conserving, one-at-a-time processes,
-each verified on the real board before the next is started (double helix and chromosome to follow).
+each verified on the real board before the next is started (the coiling into a chromosome to follow).
 
 **Open spec questions (for the operator to steer — flagged, not assumed):**
 - What is **"the item"** precisely — the card's 3-D geometry (voxels), its rendered visual output

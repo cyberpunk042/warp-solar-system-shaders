@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (302 scenes).
+`python render.py --list` for the full, current list (303 scenes).
 
 ## Engine showcase
 
@@ -119,6 +119,18 @@ order emerging from the token cloud.
 ![warp_basepair — the tokens bound into a vast field of base pairs](engine/warp_basepair.png)
 
 ![the floating tokens streaming into an ordered field of base-pair rungs](engine/warp_basepair.gif)
+
+**C3 — genome, process 3 · double helix** (`warp_helix`): a separate process winds the base pairs into
+**DNA**. Each pair becomes a **rung**, and the pair's two tokens become the two points on the two
+**backbones** that spiral around the axis (**~10.5 base pairs per turn**). Over time the strand winds up
+from a loose ladder into the tight right-handed double helix — two smooth backbone ribbons with the
+coloured base-pair rungs crossing between them — while the camera climbs the molecule. Conserving: all
+**182872** pairs placed once, nothing spawned; the strand is very long (that length is exactly why the
+next steps coil it into a chromosome).
+
+![warp_helix — the base pairs wound into a DNA double helix](engine/warp_helix.png)
+
+![the base pairs winding up from a loose ladder into the double helix](engine/warp_helix.gif)
 
 **C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the board is voxelised into **~a million token
 cells** (a real 1.2M-cell grid, one colour per element), which **rise into a beautiful DNA double helix**
