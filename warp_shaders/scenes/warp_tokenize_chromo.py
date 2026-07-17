@@ -417,6 +417,10 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array3d(dtype=wp.int3
     v = (2.0 * (float(height - 1 - i) + 0.5) / float(height) - 1.0) * tanfov
     rd = wp.normalize(fwd + right * u + up * v)
 
+    # dark graded backdrop so the luminous strand pops (a soft cool glow low-centre)
+    tsky = wp.clamp(rd[1] * 0.6 + 0.42, 0.0, 1.0)
+    bg = wp.vec3(0.018, 0.024, 0.040) * (1.0 - tsky) + wp.vec3(0.050, 0.060, 0.095) * tsky
+
     t = float(0.0)
     hit = int(0)
     for _ in range(210):
@@ -430,13 +434,14 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array3d(dtype=wp.int3
             break
 
     if hit == 0:
-        img[i, j] = ec.studio_sky(rd)
+        img[i, j] = bg
         return
 
     p = eye + rd * t
     nrm = _normal(p, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
     ao = _ao(p, nrm, pa, pb, rad, n, ra, rb, rr, nr, cerode, shide)
     lit = wp.clamp(wp.dot(nrm, wp.normalize(wp.vec3(0.45, 0.8, 0.45))), 0.2, 1.0)
+    fog = wp.exp(-0.022 * t)                                  # depth: far parts recede into the backdrop
     dcard = _MAXD
     if cerode < 1.6:
         dcard = board_map(p) + cerode
@@ -448,18 +453,18 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), tok: wp.array3d(dtype=wp.int3
 
     if drung <= dcard and drung <= dtube:
         bc = rcol[_rungseg(p, ra, rb, rr, nr)]                # a base-pair rung (A/T/G/C)
-        img[i, j] = _shade_tube(bc, nrm, rd, ao)
+        img[i, j] = _shade_tube(bc, nrm, rd, ao) * fog + bg * (1.0 - fog)
         return
     if dtube <= dcard:
         tc = col[_tubeseg(p, pa, pb, rad, n)]                 # the strand: a card token
-        img[i, j] = _shade_tube(tc, nrm, rd, ao)
+        img[i, j] = _shade_tube(tc, nrm, rd, ao) * fog + bg * (1.0 - fog)
         return
 
     # the card surface — painted as ~a million token cells; tokamt fades the card look into the tokens
     bshade = board_shade(p, nrm, rd, ao, time)
     tc = _tokcolor(_voxtok(p, tok, nx, ny, nz))
     toklook = tc * ((0.5 + 0.55 * lit) * ao) * _seam(p)
-    img[i, j] = bshade * (1.0 - tokamt) + toklook * tokamt
+    img[i, j] = (bshade * (1.0 - tokamt) + toklook * tokamt) * fog + bg * (1.0 - fog)
 
 
 def _fwd(s):
