@@ -8,3 +8,4 @@ from .tokenize import tokenize_card, TokenCloud  # noqa: F401
 from .basepair import bind_pairs, BasePairs  # noqa: F401
 from .helix import wind_helix, DoubleHelix  # noqa: F401
 from .nucleosome import wrap_nucleosomes, Nucleosomes  # noqa: F401
+from .fiber import coil_fiber, Fiber  # noqa: F401

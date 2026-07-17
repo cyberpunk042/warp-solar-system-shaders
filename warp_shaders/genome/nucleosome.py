@@ -38,6 +38,8 @@ class Nucleosomes:
     wrapped: np.ndarray
     colors: np.ndarray
     n_beads: int
+    centers: np.ndarray = None       # (n_beads,3) string-arranged bead centres
+    bead_index: np.ndarray = None    # (P,) which bead each base pair belongs to
 
     @property
     def n_pairs(self) -> int:
@@ -97,4 +99,5 @@ def wrap_nucleosomes(sub: int = 2, block: int = 5) -> Nucleosomes:
     is_link = (l >= _WRAP)[:, None]
     wrapped = np.where(is_link, linker_pos, wrapped_pos).astype(np.float32)
 
-    return Nucleosomes(extended=extended, wrapped=wrapped, colors=colors, n_beads=n_beads)
+    return Nucleosomes(extended=extended, wrapped=wrapped, colors=colors, n_beads=n_beads,
+                       centers=centre.astype(np.float32), bead_index=n.astype(np.int64))

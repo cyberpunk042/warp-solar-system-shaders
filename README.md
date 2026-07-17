@@ -596,6 +596,12 @@ the DNA wound tighter — nothing added at the centre (no histone spawned).
 
 ![the extended DNA strand winding into nucleosome beads on a string](docs/engine/warp_nucleosome.gif)
 
+**C3 — genome, process 5 · 30nm fibre** (`warp_fiber`): the next level of packing — the beads-on-a-string
+**coils into a solenoid** (~6 nucleosomes per turn) into the thick **30nm chromatin fibre**. Conserving:
+each bead is carried whole from the string onto the fibre, nothing spawned; the strand condenses ~5×.
+
+![the nucleosome string reeling onto the 30nm solenoid fibre](docs/engine/warp_fiber.gif)
+
 **C3 — tokenize → chromosome** (`warp_tokenize_chromo`): the board is voxelised into **~a million token
 cells** (a real 1.2M-cell grid, one colour per element), which **rise into a beautiful DNA double helix**
 — two backbones + coloured **base-pair rungs** (A/T/G/C), grown from the card's own tokens — that then

@@ -263,10 +263,17 @@ one before it.
   wound tighter** — nothing is added at the centre (no histone spawned; we use what we transform). Every
   base pair placed once, continuous motion. *Stops at beads on a string.*
 
+- **Process 5 — the 30nm fibre** (`warp_shaders/genome/fiber.py`, scene `warp_fiber`). The next level of
+  packing. The beads-on-a-string itself **coils into a solenoid** — ~6 nucleosomes per turn wound around
+  a common axis into the thick **30nm chromatin fibre**. Conserving: each nucleosome bead is carried
+  **whole** from the string onto the solenoid (a rigid translation of the bead; its inner wrap is
+  untouched; linkers stretch between the relocated beads). Every base pair placed once; the strand
+  condenses ~5× along its length. *Stops at the 30nm fibre.*
+
 The earlier monolithic `warp_tokenize_chromo` (card → helix → chromosome in one scene) remains as the
 end-to-end vision; the genome library is the same idea rebuilt as conserving, one-at-a-time processes,
-each verified on the real board before the next is started (coiling the fibre further, then folding it
-into the metaphase chromosome, to follow).
+each verified on the real board before the next is started (folding the fibre into the metaphase
+chromosome to follow).
 
 **Open spec questions (for the operator to steer — flagged, not assumed):**
 - What is **"the item"** precisely — the card's 3-D geometry (voxels), its rendered visual output
