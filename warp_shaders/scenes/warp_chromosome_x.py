@@ -104,11 +104,11 @@ def _repl_kernel(
     px = int(wp.round(pfx))
     py = int(wp.round(pfy))
 
-    base = 0.030
+    base = 0.052                                        # fat splats so each dense chromatid reads as opaque
     if s >= 2:
-        base = 0.016
+        base = 0.046
     rpx = zoom * base / cz * float(height_px)
-    rad = int(wp.clamp(rpx, 1.0, 7.0))
+    rad = int(wp.clamp(rpx, 1.0, 9.0))
 
     depthq = int(wp.clamp((cz - dnear) / (dfar - dnear) * 1022.0, 0.0, 1022.0))
     key = (depthq << _IDX_BITS) | e

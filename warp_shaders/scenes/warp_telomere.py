@@ -106,11 +106,11 @@ def _curl_kernel(
     px = int(wp.round(pfx))
     py = int(wp.round(pfy))
 
-    base = 0.030
+    base = 0.055                                        # fat splats: the fibre packs solid/opaque, no see-through holes
     if s >= 2:
-        base = 0.016
+        base = 0.050
     rpx = zoom * base / cz * float(height_px)
-    rad = int(wp.clamp(rpx, 1.0, 7.0))
+    rad = int(wp.clamp(rpx, 1.0, 11.0))
 
     depthq = int(wp.clamp((cz - dnear) / (dfar - dnear) * 1022.0, 0.0, 1022.0))
     key = (depthq << _IDX_BITS) | e

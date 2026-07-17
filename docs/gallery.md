@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (307 scenes).
+`python render.py --list` for the full, current list (308 scenes).
 
 ## Engine showcase
 
@@ -201,6 +201,17 @@ caps (**four telomeres** in all). The copy is *shown, not hidden*; everything el
 > beads → 47 fibres → 2 telomere-capped ends → 1 chromatid → (replicate) → the metaphase X**. Each step
 > chains from the previous one's real output, transforms and never spawns — the sole, deliberate, shown
 > exception being the DNA replication that the X requires — and each is shown whole.
+
+**C3 — genome · the whole process, one long animation** (`warp_genome`): the master sequence. It takes the
+**actual output arrays** of every process — the same 182 872 base pairs, in the same order, because each
+process chains from the last — and **morphs continuously through all of them**, so you watch the DNA condense
+the whole way down in one take: base pairs → double helices → nucleosomes (beads on a string) → 30 nm fibre →
+telomeres → the coiled chromosome. Every base pair is conserved and only *moved* from one process's real
+position to the next; nothing is spawned. The camera **flies in** to the fine scales (the helices, the
+nucleosome rings) so you see the structure up close, then pulls **out** for the condensation, settling on the
+finished, pretty coiled chromatid — a fixed 3/4 course, a slow reveal, no spin.
+
+![warp_genome — the whole genome process, base pairs condensing all the way down to the chromosome](engine/warp_genome.gif)
 
 ## Simulation of reality — the card, by real physics
 

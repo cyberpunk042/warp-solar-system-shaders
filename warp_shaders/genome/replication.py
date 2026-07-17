@@ -46,7 +46,7 @@ def _rot_z(pts, ang):
     return np.stack([x, y, pts[:, 2]], 1).astype(np.float32)
 
 
-def replicate_chromosome(sub: int = 2, block: int = 5, tilt_deg: float = 13.0) -> Replication:
+def replicate_chromosome(sub: int = 2, block: int = 5, tilt_deg: float = 21.0) -> Replication:
     """Replicate Process 7's chromatid into two identical sisters and tilt them into the metaphase X,
     joined at the centromere (the origin, y=0)."""
     cr = fold_chromosome(sub=sub, block=block)

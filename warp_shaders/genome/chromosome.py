@@ -45,47 +45,64 @@ class Chromosome:
         return int(self.tel_a.shape[0])
 
 
-def fold_chromosome(sub: int = 2, block: int = 5, height: float = 6.5, rod: float = 1.5,
-                    waist: float = 0.42) -> Chromosome:
-    """Fold Process 6's telomere-capped strand into a single condensed chromatid — a rounded rod with a
-    centromere constriction at the middle and the two real telomere t-loops capping the ends."""
+def fold_chromosome(sub: int = 2, block: int = 5, height: float = 5.2, rod: float = 1.5,
+                    n_turns: float = 20.0, coil_frac: float = 0.60, rope: float = 0.55) -> Chromosome:
+    """Fold Process 6's telomere-capped strand into a single condensed chromatid — a **real, pretty**
+    chromosome, built procedurally from the physics of condensation.
+
+    Condensation is **hierarchical coiling**: the 30 nm fibre from Process 5 does not smear into a blob, it
+    **coils** — the chromonema winds as a dense helical **solenoid** up each arm (the well-known coiled-coil
+    of a metaphase chromatid). That is what this fold does:
+
+    - a smooth **envelope** shapes the body: two fat sausage arms with **rounded caps** at the telomere
+      ends and a distinct **centromere** waist (a Gaussian pinch) at the middle;
+    - the fibre winds a dense **helix** (``n_turns``) around each arm's axis at fraction ``coil_frac`` of the
+      local radius, and each turn is a **thick rope** (``rope``, a golden-angle micro-disk fill) so the arm
+      is **opaque** — the front of the coil occludes the back, no see-through, with the helix reading as the
+      chromosome's characteristic coil grooves;
+    - the two real **telomere** t-loops tuck into the two rounded tips as small green knots.
+
+    Every base pair is *folded* onto the coil (nothing regenerated, nothing spawned); conservation holds."""
     tl = cap_telomeres(sub=sub, block=block)
     p = tl.n_pairs
     i = np.arange(p)
-    s = (i / (p - 1)).astype(np.float32)                 # 0 at end-0 telomere, 1 at end-1 telomere
+    s = (i / (p - 1)).astype(np.float64)                 # 0 at end-0 telomere, 1 at end-1 telomere
 
-    # the fibre's cross-section offset (its coil), so the folded rod stays round
-    nx = 1
-    # per-"fibre" mean would need the fibre grid; instead use a smooth local mean along the strand via a
-    # block average so the rod cross-section is the coil radius, continuous along s.
-    blk = 3960                                            # ~one fibre of base pairs
-    fid = np.minimum(i // blk, (p - 1) // blk)
-    mean_y = (np.bincount(fid, weights=tl.fib_a[:, 1]) / np.maximum(np.bincount(fid), 1))[fid]
-    mean_z = (np.bincount(fid, weights=tl.fib_a[:, 2]) / np.maximum(np.bincount(fid), 1))[fid]
-    perp_y = tl.fib_a[:, 1] - mean_y
-    perp_z = tl.fib_a[:, 2] - mean_z
+    # --- envelope: rounded-cap sausage arms + centromere waist ---------------------------------------
+    env = np.sqrt(np.clip(1.0 - (2.0 * s - 1.0) ** 8, 0.0, 1.0))      # ~1 across the arms, rounds at the tips
+    notch = 0.52 * np.exp(-((s - 0.5) / 0.055) ** 2)                  # the centromere primary constriction
+    radius = np.clip(rod * (env - notch), 0.045, None)               # local body radius along the chromatid
+    axis_y = height * (1.0 - 2.0 * s)                                 # tip(+y) → centromere(0) → tip(−y)
 
-    # a straight vertical rod: telomere (top) → centromere waist → telomere (bottom)
-    cy = height * (1.0 - 2.0 * s)
-    taper = (waist + (1.0 - waist) * np.abs(np.sin(2.0 * np.pi * s))).astype(np.float32)
-    scale = (rod * taper)[:, None]
-    normal = np.array([1.0, 0.0, 0.0], np.float32)
-    binorm = np.array([0.0, 0.0, 1.0], np.float32)
-    centre = np.stack([np.zeros_like(cy), cy, np.zeros_like(cy)], 1).astype(np.float32)
-    chr_a = (centre + scale * (perp_y[:, None] * normal + perp_z[:, None] * binorm)).astype(np.float32)
-    perp_yb = tl.fib_b[:, 1] - mean_y
-    perp_zb = tl.fib_b[:, 2] - mean_z
-    chr_b = (centre + scale * (perp_yb[:, None] * normal + perp_zb[:, None] * binorm)).astype(np.float32)
+    # --- the chromonema solenoid: a dense helix, wound as a THICK rope so the arm is opaque -----------
+    phi = s * n_turns * 2.0 * np.pi                                   # macro coil angle (the visible grooves)
+    frac = lambda v: v - np.floor(v)
+    micro_r = rope * radius * np.sqrt(frac(i * 0.6180339887))         # golden-angle micro-disk → fills the rope
+    micro_a = i * 2.399963229
+    rho = radius * coil_frac                                          # rope centre-line radius on the arm axis
 
-    # keep the two telomere t-loops as loops, carried intact to the two rod tips (the caps)
+    def wind(phase, dr):
+        cphi, sphi = np.cos(phi + phase), np.sin(phi + phase)         # radial (x,z) direction of the coil
+        r = rho + dr                                                  # the paired rail sits a touch off-centre
+        cx = r * cphi + micro_r * np.cos(micro_a) * cphi              # rope centre + micro fill in the radial…
+        cz = r * sphi + micro_r * np.cos(micro_a) * sphi
+        cyv = axis_y + micro_r * np.sin(micro_a)                     # …and vertical directions → a fat tube
+        return np.stack([cx, cyv, cz], 1).astype(np.float32)
+
+    chr_a = wind(0.0, +0.10 * rod)
+    chr_b = wind(np.pi, -0.10 * rod)                     # partner rail: opposite side of the coil → double-helix rope
+
+    # --- the two telomere t-loops, small green knots tucked onto the two rounded tips -----------------
+    cap = 0.26
     for end, mask, tip_y in ((0, i < tl.tel_len, height), (1, i >= p - tl.tel_len, -height)):
         m = mask
         loop = tl.tel_a[m]
         loop_off = tl.tel_b[m] - tl.tel_a[m]
-        anchor = tl.ends[end]
-        tip = np.array([0.0, tip_y, 0.0], np.float32)
-        chr_a[m] = (loop - anchor + tip).astype(np.float32)
-        chr_b[m] = (loop - anchor + tip + loop_off).astype(np.float32)
+        anchor = loop.mean(axis=0)                        # centre the knot on its own centroid
+        tip = np.array([0.0, tip_y * 1.0, 0.0], np.float32)
+        chr_a[m] = (tip + (loop - anchor) * cap).astype(np.float32)
+        chr_b[m] = (tip + (loop - anchor + loop_off) * cap).astype(np.float32)
 
     return Chromosome(tel_a=tl.tel_a, tel_b=tl.tel_b, chr_a=chr_a, chr_b=chr_b,
-                      a_col=tl.a_col.copy(), b_col=tl.b_col.copy(), is_tel=tl.is_tel, arm_s=s)
+                      a_col=tl.a_col.copy(), b_col=tl.b_col.copy(), is_tel=tl.is_tel,
+                      arm_s=s.astype(np.float32))

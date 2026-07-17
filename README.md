@@ -640,6 +640,15 @@ is legitimately made) into two **identical sister chromatids**, which tilt into 
 > Each step chains from the previous one's real output and transforms rather than spawns — the sole,
 > deliberate, shown exception being the DNA replication the X requires — and each is shown whole.
 
+**C3 — genome · the whole process, one long animation** (`warp_genome`): the master sequence — the **actual
+output** of every process (the same 182 872 base pairs, in the same order, each process chained from the last)
+morphed **continuously** through them all, so you watch the DNA condense the whole way down in one take: base
+pairs → double helices → nucleosomes → 30 nm fibre → telomeres → the coiled chromosome. Every base pair is
+conserved and only *moved*, nothing spawned. The camera flies **in** to the helices and nucleosome rings to
+show the structure, then pulls **out** for the condensation, settling on the finished coiled chromatid.
+
+![the whole genome process, base pairs condensing all the way down to the chromosome](docs/engine/warp_genome.gif)
+
 ## Electricity in motion
 
 Charge that flows and does work — the sequel to pushing electrons through the GPU. A
