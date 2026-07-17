@@ -40,13 +40,6 @@ def _rprof(yn: float) -> float:
 
 
 @wp.func
-def _rotz(p: wp.vec3, ang: float) -> wp.vec3:
-    c = wp.cos(ang)
-    s = wp.sin(ang)
-    return wp.vec3(p[0] * c - p[1] * s, p[0] * s + p[1] * c, p[2])
-
-
-@wp.func
 def _rod(p: wp.vec3, hh: float, rmax: float, wob: float) -> float:
     y = p[1]
     ax = wob * wp.sin(y * 2.3 + 0.6)                              # wavy axis when loose, straight when condensed
@@ -59,29 +52,32 @@ def _rod(p: wp.vec3, hh: float, rmax: float, wob: float) -> float:
 
 
 @wp.func
-def _map(p: wp.vec3, hh: float, rmax: float, tilt: float, wob: float) -> float:
-    a = _rod(_rotz(p, -tilt), hh, rmax, wob)                      # sister A (object tilted +tilt)
-    b = _rod(_rotz(p, tilt), hh, rmax, wob)                       # sister B (object tilted -tilt)
-    return op_smooth_union(a, b, 0.30)                            # joined at the centromere
+def _map(p: wp.vec3, hh: float, rmax: float, sep: float, wob: float) -> float:
+    # two sister chromatids lying side by side, pulled TOGETHER at the centromere (gap -> 0 near y=0) and
+    # bowing apart along the arms — the defining doubled look, joined only at the primary constriction.
+    gy = sep * wp.pow(wp.clamp(wp.abs(p[1]) / hh, 0.0, 1.0), 0.7)
+    a = _rod(wp.vec3(p[0] - gy, p[1], p[2]), hh, rmax, wob)       # sister A (bows right)
+    b = _rod(wp.vec3(p[0] + gy, p[1], p[2]), hh, rmax, wob)       # sister B (bows left)
+    return op_smooth_union(a, b, 0.12)                            # small blend → the cleft between sisters stays visible
 
 
 @wp.func
-def _normal(p: wp.vec3, hh: float, rmax: float, tilt: float, wob: float) -> wp.vec3:
+def _normal(p: wp.vec3, hh: float, rmax: float, sep: float, wob: float) -> wp.vec3:
     ex = wp.vec3(0.004, 0.0, 0.0)
     ey = wp.vec3(0.0, 0.004, 0.0)
     ez = wp.vec3(0.0, 0.0, 0.004)
-    dx = _map(p + ex, hh, rmax, tilt, wob) - _map(p - ex, hh, rmax, tilt, wob)
-    dy = _map(p + ey, hh, rmax, tilt, wob) - _map(p - ey, hh, rmax, tilt, wob)
-    dz = _map(p + ez, hh, rmax, tilt, wob) - _map(p - ez, hh, rmax, tilt, wob)
+    dx = _map(p + ex, hh, rmax, sep, wob) - _map(p - ex, hh, rmax, sep, wob)
+    dy = _map(p + ey, hh, rmax, sep, wob) - _map(p - ey, hh, rmax, sep, wob)
+    dz = _map(p + ez, hh, rmax, sep, wob) - _map(p - ez, hh, rmax, sep, wob)
     return wp.normalize(wp.vec3(dx, dy, dz))
 
 
 @wp.func
-def _soft_shadow(p: wp.vec3, ld: wp.vec3, hh: float, rmax: float, tilt: float, wob: float) -> float:
+def _soft_shadow(p: wp.vec3, ld: wp.vec3, hh: float, rmax: float, sep: float, wob: float) -> float:
     res = float(1.0)
     t = float(0.03)
     for _ in range(38):
-        h = _map(p + ld * t, hh, rmax, tilt, wob)
+        h = _map(p + ld * t, hh, rmax, sep, wob)
         if h < 0.001:
             return 0.0
         res = wp.min(res, 12.0 * h / t)
@@ -92,12 +88,12 @@ def _soft_shadow(p: wp.vec3, ld: wp.vec3, hh: float, rmax: float, tilt: float, w
 
 
 @wp.func
-def _ao(p: wp.vec3, n: wp.vec3, hh: float, rmax: float, tilt: float, wob: float) -> float:
+def _ao(p: wp.vec3, n: wp.vec3, hh: float, rmax: float, sep: float, wob: float) -> float:
     occ = float(0.0)
     sca = float(1.0)
     for k in range(5):
         hr = 0.02 + 0.11 * float(k)
-        dd = _map(p + n * hr, hh, rmax, tilt, wob)
+        dd = _map(p + n * hr, hh, rmax, sep, wob)
         occ += (hr - dd) * sca
         sca *= 0.82
     return wp.clamp(1.0 - 2.2 * occ, 0.0, 1.0)
@@ -117,7 +113,7 @@ def _render_kernel(
     ld: wp.vec3,
     hh: float,
     rmax: float,
-    tilt: float,
+    sep: float,
     wob: float,
 ):
     i, j = wp.tid()
@@ -132,7 +128,7 @@ def _render_kernel(
     hit = int(0)
     for _ in range(_STEPS):
         p = ro + rd * t
-        d = _map(p, hh, rmax, tilt, wob)
+        d = _map(p, hh, rmax, sep, wob)
         if d < 0.0009 * t + 0.0004:
             hit = 1
             break
@@ -145,19 +141,20 @@ def _render_kernel(
         return
 
     p = ro + rd * t
-    n = _normal(p, hh, rmax, tilt, wob)
-    sh = _soft_shadow(p + n * 0.02, ld, hh, rmax, tilt, wob)
-    ao = _ao(p, n, hh, rmax, tilt, wob)
+    n = _normal(p, hh, rmax, sep, wob)
+    sh = _soft_shadow(p + n * 0.02, ld, hh, rmax, sep, wob)
+    ao = _ao(p, n, hh, rmax, sep, wob)
 
-    # material: a stained-chromosome violet with darker G-bands running across the arms (radial from the
-    # centromere), a touch brighter toward the telomere tips. No cartoon colours — a specimen look.
-    radial = wp.sqrt(p[0] * p[0] + p[1] * p[1])
-    gb = 0.5 + 0.5 * wp.sin(radial * 4.6 + 0.4)
-    dark = wp.vec3(0.26, 0.17, 0.42)
-    lite = wp.vec3(0.74, 0.58, 0.86)
+    # material: a stained-chromosome violet with distinct G-bands running ACROSS the arms (transverse, by
+    # distance from the centromere), a touch brighter toward the telomere tips. A specimen look, no cartoon.
+    bc = wp.abs(p[1])
+    raw = 0.60 * wp.sin(bc * 3.05 + 0.5) + 0.40 * wp.sin(bc * 1.73 + 2.1)   # two frequencies → irregular band widths
+    gb = wp.clamp((raw * 0.5 + 0.5 - 0.36) / 0.28, 0.0, 1.0)                # sharpen into distinct G-bands
+    dark = wp.vec3(0.24, 0.15, 0.40)
+    lite = wp.vec3(0.78, 0.62, 0.88)
     albedo = wp.lerp(dark, lite, gb)
-    tip = wp.clamp((radial - hh * 0.72) / (hh * 0.45), 0.0, 1.0)
-    albedo = wp.lerp(albedo, wp.vec3(0.90, 0.82, 0.95), 0.35 * tip)
+    tip = wp.clamp((bc - hh * 0.70) / (hh * 0.42), 0.0, 1.0)
+    albedo = wp.lerp(albedo, wp.vec3(0.90, 0.83, 0.95), 0.30 * tip)
 
     v_dir = -rd
     lcol = wp.vec3(1.0, 0.96, 0.90)
@@ -170,16 +167,16 @@ def _render_kernel(
 
 
 def _condense(time: float):
-    # phase 1 (condense a wavy thread into one chromatid), then phase 2 (the sister splays into the X)
+    # phase 1 (condense a wavy thread into one chromatid), then phase 2 (the sister chromatid separates)
     c = min(max((float(time) - 0.4) / 3.2, 0.0), 1.0)
     c = c * c * (3.0 - 2.0 * c)
     x = min(max((float(time) - 3.8) / 2.2, 0.0), 1.0)
     x = x * x * (3.0 - 2.0 * x)
-    hh = 4.6 * (1.0 - c) + 2.85 * c
-    rmax = 0.30 * (1.0 - c) + 1.02 * c
+    hh = 5.0 * (1.0 - c) + 3.35 * c                              # long thin thread → compact chromatid arms
+    rmax = 0.26 * (1.0 - c) + 0.82 * c
     wob = 0.58 * (1.0 - c)
-    tilt = np.radians(21.0) * x
-    return hh, rmax, tilt, wob
+    sep = 0.86 * x                                               # sisters bow apart along the arms
+    return hh, rmax, sep, wob
 
 
 def _camera(time: float):
@@ -200,7 +197,7 @@ def _camera(time: float):
 
 def _render(width, height, time, mouse, device):
     W, H = int(width), int(height)
-    hh, rmax, tilt, wob = _condense(float(time))
+    hh, rmax, sep, wob = _condense(float(time))
     ro, uu, vv, ww = _camera(float(time))
     ld = np.array([0.42, 0.72, 0.55], np.float32)
     ld = ld / np.linalg.norm(ld)
@@ -215,7 +212,7 @@ def _render(width, height, time, mouse, device):
                 wp.vec3(*[float(x) for x in ro]), wp.vec3(*[float(x) for x in uu]),
                 wp.vec3(*[float(x) for x in vv]), wp.vec3(*[float(x) for x in ww]),
                 tanh, aspect, wp.vec3(*[float(x) for x in ld]),
-                float(hh), float(rmax), float(tilt), float(wob)],
+                float(hh), float(rmax), float(sep), float(wob)],
         device=device,
     )
     wp.synchronize_device(device)
