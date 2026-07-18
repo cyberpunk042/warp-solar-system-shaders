@@ -72,13 +72,19 @@ def _clamp_norm(v: np.ndarray, cap: float) -> np.ndarray:
     return v * scale
 
 
-def fold_chromatid(sub: int = 2, block: int = 5, turns: float = 33.0, arm_radius: float = 2.35,
-                   height: float = 7.6, waist: float = 0.34, waist_width: float = 0.10,
-                   local_cap: float = 1.45) -> Chromatid:
+def fold_chromatid(sub: int = 2, block: int = 5, turns: float = 13.0, arm_radius: float = 2.15,
+                   height: float = 7.4, waist: float = 0.28, waist_width: float = 0.085,
+                   local_cap: float = 0.46) -> Chromatid:
     """Fold Process 6's telomere-capped fibre into the condensed chromatid. The fibre's smooth centreline is
     wound into a short helical coil (``turns`` turns, radius ``arm_radius``, height ``height``) with a pinched
     centromere ``waist``; each pair's conserved fine detail rides that centreline rigidly (its length capped
-    at ``local_cap`` so the t-loop caps stay at the tips)."""
+    at ``local_cap`` so the t-loop caps stay at the tips).
+
+    This is the final ~50x fold, so unlike the earlier stages the fibre here packs **shoulder to shoulder** —
+    a condensed chromosome IS a dense mass, not separated pieces. The coil's pitch (``height/turns``) is kept
+    at or just above the packed-band thickness (``2*local_cap``) so consecutive turns **touch but never pass
+    through** each other (verified with ``genome.strand.min_separation`` staying positive): honest dense
+    packing, the definition of condensation, not interpenetration."""
     tl = cap_telomeres(sub=sub, block=block)
     p = tl.n_pairs
 

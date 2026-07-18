@@ -1,12 +1,14 @@
-"""Process 7 — the chromosome: the fibre FOLDS and condenses into the metaphase X.
+"""Process 7 scene — the capped fibre folds and condenses into the metaphase chromosome.
 
-The culmination. The 30 nm fibre undergoes the ~50x higher-order fold (``fold_chromatid``) — a long, thin,
-wavy chromatin thread condenses (coils and thickens, its axis shortening and straightening) into one compact
-chromatid, and its replicated sister lies alongside so the two splay open into the iconic metaphase X, joined
-at the pinched centromere, four banded arms with rounded telomere caps. This scene animates that real
-condensation as a ray-marched signed-distance field (envelope of the folded matter, its arm radius and
-half-height taken from the fold lib); every frame is a valid partially-condensed state — no jump, no spin of a
-finished object.
+The culmination. Chains directly from Process 6: it starts from the exact telomere-capped fibre Process 6
+produced and folds it (``fold_chromatid``) into the condensed chromatid — the fibre's centreline wound onto a
+short coil with a pinched **centromere** waist and rounded, telomere-capped tips, every base pair carried
+rigidly (its own helix/nucleosome/fibre fine structure conserved). Unlike the earlier stages the fibre here
+packs **shoulder to shoulder**: a metaphase chromosome IS a dense mass — the turns touch but never pass
+through one another (the honest meaning of "condensed"). Rendered as the real folded base pairs (the same
+splat style as Processes 3-6), stained the classic banded purple, so the beautiful chromosome is reached
+**through** the real compaction, not sculpted from nothing. The camera holds a fixed course (a slow dolly, no
+spin) as the whole strand gathers and condenses into the chromosome, in frame.
 """
 
 from __future__ import annotations
@@ -15,154 +17,143 @@ import numpy as np
 import warp as wp
 
 from ..engine import post
-from ..engine.pbr import shade_pbr
 from ..genome.chromatid import fold_chromatid
-from ..procedural.sdf import op_smooth_union
 from ..scene import Scene
 
 _CH = fold_chromatid(sub=2, block=5)
-_HH1 = float(_CH.height * 0.92)                          # condensed arm half-height (from the fold lib)
-_RMAX1 = float(_CH.arm_radius * 0.36)                   # condensed arm surface radius
+_P = _CH.n_pairs
+_SAMPLES = 4
+_M = _P * _SAMPLES
 
-_STEPS = wp.constant(200)
-_MAXD = wp.constant(90.0)
+# stained-chromosome banding: a purple ramp modulated by height, stable across the fold (from the final
+# condensed y), so the bands read as the chromosome forms.
+_yc = 0.5 * (_CH.chr_a[:, 1] + _CH.chr_b[:, 1])
+_yn = _yc / max(float(np.abs(_yc).max()), 1e-6)
+_raw = 0.60 * np.sin(np.abs(_yn) * 17.0 + 0.5) + 0.40 * np.sin(np.abs(_yn) * 9.3 + 2.1)
+_gb = np.clip((_raw * 0.5 + 0.5 - 0.34) / 0.30, 0.0, 1.0)
+_dark = np.array([0.26, 0.16, 0.42], np.float32)
+_lite = np.array([0.80, 0.64, 0.90], np.float32)
+_chromo = (_dark[None] * (1.0 - _gb[:, None]) + _lite[None] * _gb[:, None]).astype(np.float32)
+# telomere tips tinted toward their green cap so the two ends read
+_chromo[_CH.is_tel] = 0.5 * _chromo[_CH.is_tel] + 0.5 * np.array([0.55, 0.92, 0.62], np.float32)
 
-
-@wp.func
-def _rprof(yn: float) -> float:
-    a = wp.abs(yn)
-    d = (a - 0.55) / 0.32
-    prof = 0.34 + 0.68 * wp.exp(-d * d)
-    cc = yn / 0.11
-    prof = prof * (1.0 - 0.42 * wp.exp(-cc * cc))
-    return prof
-
-
-@wp.func
-def _rod(p: wp.vec3, hh: float, rmax: float, wob: float) -> float:
-    y = p[1]
-    ax = wob * wp.sin(y * 2.3 + 0.6)                     # wavy chromatin thread when loose, straight when packed
-    az = wob * wp.cos(y * 1.9)
-    cy = wp.clamp(y, -hh, hh)
-    px = p[0] - ax
-    pz = p[2] - az
-    rad = rmax * _rprof(cy / hh) * (1.0 + 0.020 * wp.sin(cy * 9.0))
-    return wp.sqrt(px * px + (y - cy) * (y - cy) + pz * pz) - rad
+_ta = _tb = _ca = _cb = _col = None
 
 
-@wp.func
-def _map(p: wp.vec3, hh: float, rmax: float, sep: float, wob: float) -> float:
-    gy = sep * wp.pow(wp.clamp(wp.abs(p[1]) / hh, 0.0, 1.0), 0.7)
-    a = _rod(wp.vec3(p[0] - gy, p[1], p[2]), hh, rmax, wob)
-    b = _rod(wp.vec3(p[0] + gy, p[1], p[2]), hh, rmax, wob)
-    return op_smooth_union(a, b, 0.12)
+def _ensure(device):
+    global _ta, _tb, _ca, _cb, _col
+    if _ta is None:
+        _ta = wp.array(_CH.tel_a, dtype=wp.vec3, device=device)
+        _tb = wp.array(_CH.tel_b, dtype=wp.vec3, device=device)
+        _ca = wp.array(_CH.chr_a, dtype=wp.vec3, device=device)
+        _cb = wp.array(_CH.chr_b, dtype=wp.vec3, device=device)
+        _col = wp.array(_chromo, dtype=wp.vec3, device=device)
 
 
-@wp.func
-def _normal(p: wp.vec3, hh: float, rmax: float, sep: float, wob: float) -> wp.vec3:
-    e = float(0.004)
-    dx = _map(p + wp.vec3(e, 0.0, 0.0), hh, rmax, sep, wob) - _map(p - wp.vec3(e, 0.0, 0.0), hh, rmax, sep, wob)
-    dy = _map(p + wp.vec3(0.0, e, 0.0), hh, rmax, sep, wob) - _map(p - wp.vec3(0.0, e, 0.0), hh, rmax, sep, wob)
-    dz = _map(p + wp.vec3(0.0, 0.0, e), hh, rmax, sep, wob) - _map(p - wp.vec3(0.0, 0.0, e), hh, rmax, sep, wob)
-    return wp.normalize(wp.vec3(dx, dy, dz))
-
-
-@wp.func
-def _soft_shadow(p: wp.vec3, ld: wp.vec3, hh: float, rmax: float, sep: float, wob: float) -> float:
-    res = float(1.0)
-    t = float(0.03)
-    for _ in range(38):
-        h = _map(p + ld * t, hh, rmax, sep, wob)
-        if h < 0.001:
-            return 0.0
-        res = wp.min(res, 12.0 * h / t)
-        t += wp.clamp(h, 0.015, 0.25)
-        if t > 14.0:
-            break
-    return wp.clamp(res, 0.0, 1.0)
-
-
-@wp.func
-def _ao(p: wp.vec3, n: wp.vec3, hh: float, rmax: float, sep: float, wob: float) -> float:
-    occ = float(0.0)
-    sca = float(1.0)
-    for k in range(5):
-        hr = 0.02 + 0.11 * float(k)
-        dd = _map(p + n * hr, hh, rmax, sep, wob)
-        occ += (hr - dd) * sca
-        sca *= 0.82
-    return wp.clamp(1.0 - 2.2 * occ, 0.0, 1.0)
+_INIT = wp.constant(0x7FFFFFFF)
+_IDX_BITS = wp.constant(20)
+_IDX_MASK = wp.constant(0xFFFFF)
 
 
 @wp.kernel
-def _render_kernel(img: wp.array2d(dtype=wp.vec3), width: int, height_px: int,
-                   ro: wp.vec3, uu: wp.vec3, vv: wp.vec3, ww: wp.vec3, tanh: float, aspect: float,
-                   ld: wp.vec3, hh: float, rmax: float, sep: float, wob: float):
+def _fold_kernel(
+    ta: wp.array(dtype=wp.vec3),
+    tb: wp.array(dtype=wp.vec3),
+    ca: wp.array(dtype=wp.vec3),
+    cb: wp.array(dtype=wp.vec3),
+    col: wp.array(dtype=wp.vec3),
+    zbuf: wp.array2d(dtype=wp.int32),
+    elemcol: wp.array(dtype=wp.vec3),
+    width: int,
+    height_px: int,
+    to_chr: float,          # 0 = Process-6 capped fibre, 1 = condensed chromatid
+    ro: wp.vec3,
+    uu: wp.vec3,
+    vv: wp.vec3,
+    ww: wp.vec3,
+    zoom: float,
+    dnear: float,
+    dfar: float,
+):
+    e = wp.tid()
+    pr = e / 4
+    s = e - pr * 4
+
+    pa = wp.lerp(ta[pr], ca[pr], to_chr)
+    pb = wp.lerp(tb[pr], cb[pr], to_chr)
+
+    c = col[pr]
+    if s == 0:
+        pos = pa
+    elif s == 1:
+        pos = pb
+    elif s == 2:
+        pos = wp.lerp(pa, pb, 0.36)
+    else:
+        pos = wp.lerp(pa, pb, 0.64)
+    elemcol[e] = c
+
+    rel = pos - ro
+    cz = wp.dot(rel, ww)
+    if cz < 0.05:
+        return
+    cx = wp.dot(rel, uu)
+    cy = wp.dot(rel, vv)
+    pfx = zoom * cx / cz * float(height_px) + 0.5 * float(width) - 0.5
+    pfy = 0.5 * float(height_px) - 0.5 - zoom * cy / cz * float(height_px)
+    px = int(wp.round(pfx))
+    py = int(wp.round(pfy))
+
+    base = 0.11                                           # fat splats: the condensed chromosome packs solid
+    rpx = zoom * base / cz * float(height_px)
+    rad = int(wp.clamp(rpx, 1.0, 12.0))
+
+    depthq = int(wp.clamp((cz - dnear) / (dfar - dnear) * 1022.0, 0.0, 1022.0))
+    key = (depthq << _IDX_BITS) | e
+
+    for dy in range(-rad, rad + 1):
+        for dx in range(-rad, rad + 1):
+            if float(dx * dx + dy * dy) <= float(rad * rad) + 0.5:
+                xx = px + dx
+                yy = py + dy
+                if xx >= 0 and xx < width and yy >= 0 and yy < height_px:
+                    wp.atomic_min(zbuf, yy, xx, key)
+
+
+@wp.kernel
+def _resolve_kernel(
+    zbuf: wp.array2d(dtype=wp.int32),
+    elemcol: wp.array(dtype=wp.vec3),
+    img: wp.array2d(dtype=wp.vec3),
+    width: int,
+    height_px: int,
+):
     i, j = wp.tid()
-    u = (2.0 * (float(j) + 0.5) / float(width) - 1.0) * aspect * tanh
-    v = (2.0 * (float(height_px - 1 - i) + 0.5) / float(height_px) - 1.0) * tanh
-    rd = wp.normalize(ww + u * uu + v * vv)
-
-    vy = float(i) / float(height_px)
-    bg = wp.vec3(0.020, 0.023, 0.034) * (1.0 - 0.6 * vy) + wp.vec3(0.006, 0.004, 0.010)
-
-    t = float(0.0)
-    hit = int(0)
-    for _ in range(_STEPS):
-        p = ro + rd * t
-        d = _map(p, hh, rmax, sep, wob)
-        if d < 0.0009 * t + 0.0004:
-            hit = 1
-            break
-        t += d * 0.72
-        if t > _MAXD:
-            break
-
-    if hit == 0:
+    yy = float(i) / float(height_px)
+    bg = wp.vec3(0.020, 0.018, 0.030) * (1.0 - 0.5 * yy) + wp.vec3(0.006, 0.004, 0.012)
+    key = zbuf[i, j]
+    if key == _INIT:
         img[i, j] = bg
         return
-
-    p = ro + rd * t
-    n = _normal(p, hh, rmax, sep, wob)
-    sh = _soft_shadow(p + n * 0.02, ld, hh, rmax, sep, wob)
-    ao = _ao(p, n, hh, rmax, sep, wob)
-
-    bc = wp.abs(p[1])
-    raw = 0.60 * wp.sin(bc * 3.05 + 0.5) + 0.40 * wp.sin(bc * 1.73 + 2.1)
-    gb = wp.clamp((raw * 0.5 + 0.5 - 0.36) / 0.28, 0.0, 1.0)
-    dark = wp.vec3(0.24, 0.15, 0.40)
-    lite = wp.vec3(0.78, 0.62, 0.88)
-    albedo = wp.lerp(dark, lite, gb)
-    tip = wp.clamp((bc - hh * 0.70) / (hh * 0.42), 0.0, 1.0)
-    albedo = wp.lerp(albedo, wp.vec3(0.90, 0.83, 0.95), 0.30 * tip)
-
-    v_dir = -rd
-    lcol = wp.vec3(1.0, 0.96, 0.90)
-    direct = shade_pbr(n, v_dir, ld, albedo, 0.44, 0.0, lcol) * (3.0 * sh)
-    amb = wp.cw_mul(wp.vec3(0.30, 0.33, 0.45), albedo) * (0.36 * ao)
-    sss = albedo * (0.14 * wp.clamp(wp.dot(n, ld) * 0.5 + 0.5, 0.0, 1.0))
-    fres = wp.pow(wp.clamp(1.0 + wp.dot(rd, n), 0.0, 1.0), 3.0)
-    rim = wp.vec3(0.45, 0.50, 0.72) * (0.32 * fres * ao)
-    img[i, j] = direct + amb + sss + rim
+    idx = key & _IDX_MASK
+    depthq = float((key >> _IDX_BITS) & 0x3FF) / 1022.0
+    shade = 1.32 - 1.02 * depthq
+    fog = wp.clamp((depthq - 0.30) * 1.6, 0.0, 0.85)
+    img[i, j] = wp.lerp(elemcol[idx] * shade, bg, fog)
 
 
-def _condense(time):
-    # phase 1: a long thin wavy chromatin thread condenses into one chromatid; phase 2: the sister splays -> X
-    c = min(max((float(time) - 0.4) / 3.4, 0.0), 1.0)
-    c = c * c * (3.0 - 2.0 * c)
-    x = min(max((float(time) - 4.2) / 2.6, 0.0), 1.0)
-    x = x * x * (3.0 - 2.0 * x)
-    hh = 6.2 * (1.0 - c) + _HH1 * c                     # long thread -> compact arm
-    rmax = 0.17 * (1.0 - c) + _RMAX1 * c                # thin -> fat
-    wob = 0.62 * (1.0 - c)                              # wavy -> straight
-    sep = 0.86 * x
-    return hh, rmax, sep, wob
+def _schedule(time: float):
+    u = min(max((time - 0.5) / 4.4, 0.0), 1.0)
+    return u * u * (3.0 - 2.0 * u)
 
 
-def _camera(time):
-    dist = 15.5
+def _camera(time: float):
+    # fixed course, no spin: dolly in from the wide capped-fibre forest onto the condensed chromosome.
+    u = min(max((time - 0.3) / 4.4, 0.0), 1.0)
+    u = u * u * (3.0 - 2.0 * u)
+    dist = 34.0 * (1.0 - u) + 15.0 * u
     target = np.array([0.0, 0.0, 0.0], np.float32)
-    direction = np.array([0.42, 0.14, 1.0], np.float32)
+    direction = np.array([0.34, 0.16, 1.0], np.float32)
     direction = direction / np.linalg.norm(direction)
     ro = target + dist * direction
     ww = target - ro
@@ -170,41 +161,47 @@ def _camera(time):
     uu = np.cross(ww, np.array([0.0, 1.0, 0.0], np.float32))
     uu = uu / np.linalg.norm(uu)
     vv = np.cross(uu, ww)
-    return ro, uu, vv, ww
+    return ro, uu, vv, ww, dist
 
 
 def _render(width, height, time, mouse, device):
+    _ensure(device)
     W, H = int(width), int(height)
-    hh, rmax, sep, wob = _condense(float(time))
-    ro, uu, vv, ww = _camera(float(time))
-    ld = np.array([0.42, 0.72, 0.55], np.float32)
-    ld = ld / np.linalg.norm(ld)
-    tanh = float(np.tan(np.radians(32.0) * 0.5))
-    aspect = W / float(H)
+    to_chr = _schedule(float(time))
+    ro, uu, vv, ww, dist = _camera(float(time))
+    dnear = float(dist) - 10.0
+    dfar = float(dist) + 40.0
 
+    zbuf = wp.full((H, W), 0x7FFFFFFF, dtype=wp.int32, device=device)
+    elemcol = wp.zeros(_M, dtype=wp.vec3, device=device)
     img = wp.zeros((H, W), dtype=wp.vec3, device=device)
-    wp.launch(_render_kernel, dim=(H, W),
-              inputs=[img, W, H, wp.vec3(*[float(x) for x in ro]), wp.vec3(*[float(x) for x in uu]),
-                      wp.vec3(*[float(x) for x in vv]), wp.vec3(*[float(x) for x in ww]),
-                      tanh, aspect, wp.vec3(*[float(x) for x in ld]),
-                      float(hh), float(rmax), float(sep), float(wob)],
-              device=device)
+    cam = (wp.vec3(*[float(x) for x in ro]), wp.vec3(*[float(x) for x in uu]),
+           wp.vec3(*[float(x) for x in vv]), wp.vec3(*[float(x) for x in ww]))
+    wp.launch(
+        _fold_kernel,
+        dim=_M,
+        inputs=[_ta, _tb, _ca, _cb, _col, zbuf, elemcol, W, H,
+                float(to_chr), *cam, 1.7, dnear, dfar],
+        device=device,
+    )
+    wp.launch(_resolve_kernel, dim=(H, W), inputs=[zbuf, elemcol, img, W, H], device=device)
     wp.synchronize_device(device)
     hdr = img.numpy()
 
-    hdr = post.bloom(hdr, threshold=1.05, strength=0.32, radius=4, passes=2)
-    ldr = post.tonemap(hdr, mode="aces", exposure=1.2, preserve_hue=True)
-    return post.vignette(ldr, amount=0.3)
+    hdr = post.bloom(hdr, threshold=0.85, strength=0.4, radius=4, passes=2)
+    ldr = post.tonemap(hdr, mode="aces", exposure=1.06, preserve_hue=True)
+    ldr = post.vignette(ldr, amount=0.32)
+    return ldr
 
 
 SCENE = Scene(
     name="warp_chromosome",
     description=(
-        "Process 7 — the chromosome. The 30 nm fibre folds and condenses into the metaphase X: a long thin "
-        "wavy chromatin thread coils and thickens into one compact chromatid, then its sister splays open into "
-        "the iconic banded X joined at a pinched centromere, with rounded telomere caps. Animated as an SDF "
-        "(envelope of the fold, dimensioned from fold_chromatid) with PBR + soft shadow + AO — every frame a "
-        "valid partially-condensed state, a stained chromosome forming."
+        "Process 7 — the chromosome. The telomere-capped 30 nm fibre from Process 6 folds and condenses into "
+        "the metaphase chromatid: the fibre's centreline winds onto a short coil with a pinched centromere and "
+        "rounded telomere-capped tips, every base pair carried rigidly, packing shoulder-to-shoulder into a "
+        "dense stained-purple body. Conserving: chained from Process 6's actual capped fibre, nothing spawned, "
+        "turns touch but never pass through, fixed camera — the beautiful chromosome reached through the real fold."
     ),
     renderer=_render,
 )
