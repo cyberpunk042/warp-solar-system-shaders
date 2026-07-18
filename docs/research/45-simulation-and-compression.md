@@ -283,14 +283,28 @@ one before it.
   the terminal base pairs are reshaped — the strand curls back on itself; nothing spawned. *Stops at the
   capped strand.*
 
-- **Process 6 — the chromosome (continuous compression)** (scene `warp_genome`). The whole run is one
-  continuous animation of **hierarchical coiling** — the process that compacts DNA ~10 000×. A single
-  continuous thread of the 182 872 base pairs is shaped as a **nested supercoil** (double helix → nucleosome
-  coil → fibre coil → chromatid axis); one **condensation** parameter shortens the axis (that shortening *is*
-  the compression) while each level of coil engages in turn (fine → coarse), so the thread weaves ever
-  tighter — **every frame a real partially-coiled state**, no lerp between poses, nothing flashed into
-  existence — from the extended strand down to a dense chromatid with a centromere waist and its two telomere
-  ends. A **single chromatid**, not the X: an X needs replication (a copy), and a copy would be a cheat.
+- **Process 7 — the chromatid fold** (`warp_shaders/genome/chromatid.py`). **Chains from Process 6's actual
+  output** (the telomere-capped fibre). The last ~50× compaction is a **higher-order fold**: the 30 nm fibre
+  is thrown into loops off a scaffold and the whole array coils, condensing the long fibre band into the
+  short, dense metaphase **chromatid** with a pinched **centromere** waist and a **telomere** cap at each tip.
+  Conserving: not one base pair is created — each pair keeps the exact fine structure Process 6 gave it (its
+  double-helix / nucleosome / fibre-solenoid detail), carried **rigidly** as the fibre's smooth *centreline*
+  is re-placed onto a short helical coil (position = smooth centreline + conserved local offset; the offset's
+  length is capped so the t-loop caps tuck at the tips). So the chromatid is the real matter wound tighter —
+  never a fresh coil drawn from nothing. This lib supplies the fold's two end states (fibre band → chromatid).
+
+- **The whole genome compression as one continuous animation** (scene `warp_genome`). Not a hand-rolled coil
+  and not a lerp between arbitrary poses — it is literally the **six library processes run back-to-back on one
+  timeline and one camera**, each chaining from the previous one's *actual* output (verified: each stage's end
+  state equals the next stage's start state exactly, the same 182 872 pairs throughout). One master kernel
+  selects the running transition per frame: the tokenized base pairs **twist** into real 10.5-bp/turn double
+  helices (`warp_helix`'s in-kernel `_helix_end`, twist 0→1 — a true winding, not a morph); the helices **lerp**
+  onto nucleosome beads, the beads onto 30 nm fibres, the fibre ends into telomere t-loops (the same continuous
+  motion the individual stage scenes use — the two end states are geometrically adjacent by construction, so it
+  is a real motion, not a teleport); and the capped fibre **folds** onto the coil scaffold into a dense, opaque
+  chromatid with a centromere waist and a telomere tip at each end. Every frame is a real, physically-valid
+  intermediate state of the *same* thread; the camera holds a fixed 3/4 look and only dollies in as it packs.
+  A **single chromatid**, not the X: an X needs replication (a copy), and a copy would be a cheat.
 
 At every step matter is conserved — the same thread, only ever coiled tighter, never copied, never spawned;
 physics and logic are respected the whole way, the motion is continuous.
@@ -298,10 +312,11 @@ physics and logic are respected the whole way, the motion is continuous.
 **The ladder — six stages, token to chromosome.** The card's own matter is carried, one conserving process at
 a time: **tokenization → base pairs → double helices → nucleosomes → telomeres → the chromosome** (365 744
 tokens → 182 872 base pairs → 1663 double helices → 1663 nucleosome beads → the two telomere-capped ends →
-the condensed chromatid; the 30 nm fibre is the intermediate the telomere layout is built from). Stages 1-5
-have their own scenes; `warp_genome` is the whole run as one continuous coil. Separately, the
-tokenize→chromosome **codec** (`warp_compress/tokenchromo.py`, lossless round-trip, 5.4×) remains a verified
-compression result in its own right.
+the condensed chromatid; the 30 nm fibre is the intermediate the telomere layout is built from, and the
+chromatid fold is the final higher-order coil). Each stage has its own scene; `warp_genome` runs all six
+back-to-back as one continuous compression. Separately, the tokenize→chromosome **codec**
+(`warp_compress/tokenchromo.py`, lossless round-trip, 5.4×) remains a verified compression result in its own
+right.
 
 **Open spec questions (for the operator to steer — flagged, not assumed):**
 - What is **"the item"** precisely — the card's 3-D geometry (voxels), its rendered visual output

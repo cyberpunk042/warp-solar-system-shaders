@@ -175,22 +175,23 @@ trailing away, the far end's cap down the strand.
 ![the strand's two ends curling into telomere t-loops](engine/warp_telomere.gif)
 
 **C3 — genome · the whole thing, one continuous compression** (`warp_genome`): the payoff, and the honest
-one. This is not a morph and not a cut — it is the real **hierarchical coiling** that compacts DNA ~10 000×.
-A single continuous thread of the card's **182 872 base pairs** is shaped as a **nested supercoil** (double
-helix → nucleosome coil → fibre coil → chromatid), and a single **condensation** parameter drives the whole
-run: as it rises, the outer axis **shortens** (that shortening *is* the compression) while each level of
-coil **engages** in turn (fine → coarse), so the thread weaves ever tighter — **every frame a real,
-partially-coiled state** — from the extended strand down to a dense chromatid with a centromere waist and its
-two telomere ends. The matter is conserved throughout: the same thread, only ever coiled tighter, never
-copied (a copy would be replication → the X, which we do not do), never flashed into existence.
+one. This is not a morph and not a cut — it is literally the engine's **six genome library processes run
+back-to-back on one timeline and one camera**, each chaining from the previous one's *actual* output (each
+stage's end state equals the next stage's start state exactly, the same **182 872 base pairs** throughout).
+One master kernel picks the running transition per frame: the tokenized base pairs **twist** into real
+10.5-bp/turn double helices (a true winding, not a lerp), **wrap** onto nucleosome beads, **coil** into 30 nm
+fibres, **curl** their two ends into telomere t-loop caps, and **fold** onto a coil scaffold into a dense,
+opaque chromatid with a centromere waist and a telomere tip at each end. **Every frame is a real,
+physically-valid intermediate state** of the same thread — matter conserved, never copied (a copy would be
+replication → the X, which we do not do), never flashed into existence; the camera only dollies in as it packs.
 
-![warp_genome — one thread coiling continuously into the condensed chromatid](engine/genome_to_chromosome.gif)
+![warp_genome — one thread condensing continuously into the packed chromatid](engine/genome_to_chromosome.gif)
 
 > **The ladder — six stages, token to chromosome.** The card's own matter carried, one conserving process at
 > a time: **tokenization → base pairs → double helices → nucleosomes → telomeres → the chromosome** (365 744
 > tokens → 182 872 base pairs → 1663 double helices → 1663 nucleosome beads → the two telomere-capped ends →
-> the condensed chromatid). Stages 1-5 are shown individually above; `warp_genome` is the whole run as one
-> continuous coil.
+> the condensed chromatid; the 30 nm fibre is the intermediate, the chromatid fold the final coil). Each stage
+> has its own scene above; `warp_genome` runs all six back-to-back as one continuous compression.
 
 ## Simulation of reality — the card, by real physics
 
