@@ -1,4 +1,4 @@
-# Research 44 — AdS/CFT: holographic duality made visible
+# Research 46 — AdS/CFT: holographic duality made visible
 
 > The relativity set (research 42–43) rendered *solutions* of general relativity — holes,
 > binaries, wormholes. This note renders an idea **about** gravity itself: the **holographic

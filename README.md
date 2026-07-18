@@ -542,6 +542,67 @@ One GDDR block up close — filling layer by layer, then a small mushroom off it
 
 ![a single memory block overflowing](docs/engine/memory_overflow.gif)
 
+## Virtual compression of the card — three ways
+
+The card's job is to compress visual information, so the real `gpu_board` is itself
+**compressed** three ways, each a watchable process on the real board (research +
+verification: [Research 45](docs/research/45-simulation-and-compression.md), and
+`warp_compress/`). The only law ever waived is self-collision (the fold).
+
+**C1 — merge** (`warp_scan_merge`): a scan sweeps the board and classifies every element
+(identical pieces glow the **same colour** = the same token); each repeated element's copies
+then **merge in place — where the card is** — into a **digit-cube that grows right there on the
+board**, sized by how many copies merged, while the redundant copies fade to ghosts. Once the
+card's elements are absorbed into those atomic mini-cubes, they **gather into one dense storage
+cube** resting on the board. The whole process plays forward **and in reverse** (decompress back
+to the card) — never a floating cube beside it. Codec 4.8× lossless.
+
+![the scan classifying the card, duplicates merging, the digit cube growing](docs/engine/warp_scan_merge.gif)
+
+**C2 — fold** (`warp_fold_card`): the **real board** (chips, GDDR7, die, the mounting hole)
+is **folded** — creased in half five times, never torn, each half staying joined at its
+crease — into a laminated stack of its own card layers (built up Docker-style), then
+**squished** into a compact cube. Codec measures **20.3× smaller by total surface**.
+
+![the real card folding into layers and squishing into a cube](docs/engine/warp_fold_card.gif)
+
+**C3 — genome, process 1 · tokenize** (`warp_tokenize`): the **real board** is turned into **tokens** —
+every occupied bit of the card becomes a token (45718 voxels × 8 = **365744 tokens**, coloured by
+merge-codec type). Rendered with a Warp z-buffered splat (all ~366k at once), the tokens lift and spread
+into a **cloud of tokens floating in the air**. A conserving transform — the tokens are the card's own
+matter, nothing spawned. (Engine library `warp_shaders/genome`.)
+
+![the card lifting and fraying into a cloud of coloured tokens](docs/engine/warp_tokenize.gif)
+
+**C3 — genome, process 2 · base pairs** (`warp_basepair`): a separate process binds the floating tokens
+**in twos** — 365744 tokens become **182872 base pairs** (A-T / G-C rungs). Every token joins exactly one
+pair (nothing spawned); the pairs drift, continuously, into an ordered field of vertical rungs — an
+**unwound ladder**, order emerging from the token cloud.
+
+![the floating tokens streaming into an ordered field of base-pair rungs](docs/engine/warp_basepair.gif)
+
+**C3 — genome, process 3 · double helices** (`warp_helix`): this process **chains from Process 2's actual
+output** — it takes the ordered base-pair field (every pair's two tokens on a rung) and physically winds
+it. A double helix holds only **~100 base pairs**, so the 182872 pairs are grouped (110 each) into **1663
+short helices**, not one giant one: each group gathers into its own **ladder**, then **twists** into a
+real-proportioned right-handed **double helix** (10.5 base pairs per turn), the two tokens of each rung
+tracing the two backbones. Conserving and physical: the helices stand where their pairs were, so each
+strip winds up roughly **in place** — no point is created or teleports. The camera is fixed (only a slow
+dolly, no spin), so the **whole field** — all 182872 base pairs becoming a receding forest of double
+helices — is in frame and the entire winding is visible.
+
+![the whole base-pair field gathering into ladders and twisting into a field of double helices](docs/engine/warp_helix.gif)
+
+**C3 — genome, process 4 · nucleosomes** (`warp_nucleosome`): this process **chains from Process 3's actual
+wound helices** and wraps them into **"beads on a string."** A nucleosome is ~one double helix's worth of
+DNA (~150 bp) coiled ~1.75 turns around a histone core, with **linker** DNA to the next bead — so the 1663
+helices become **1663 beads on a string** (count barely changes; the win is spatial, ~6× smaller). Every
+base pair is reused — the middle of each helix wraps its bead, the ends are the linker — nothing spawned,
+nothing teleports. A fixed camera (slow tilt down, no spin) watches the forest of helices collapse into a
+flat carpet of beads.
+
+![the field of double helices wrapping down into beads on a string](docs/engine/warp_nucleosome.gif)
+
 ## Electricity in motion
 
 Charge that flows and does work — the sequel to pushing electrons through the GPU. A
@@ -598,7 +659,7 @@ duality** on a Poincaré-disk slice of AdS₃ — a `{7,3}` hyperbolic tiling bu
 glowing **conformal boundary**, the same tiling mirrored outside through `z → z/|z|²` (the
 hologram, literally), and **Ryu–Takayanagi entanglement geodesics** hanging from boundary
 intervals, all flowing under a Möbius isometry = a boundary conformal transformation.
-See [Research 44](docs/research/44-ads-cft-holography.md).
+See [Research 46](docs/research/46-ads-cft-holography.md).
 
 | ads_cft — AdS/CFT holography | the isometry flow |
 |---|---|

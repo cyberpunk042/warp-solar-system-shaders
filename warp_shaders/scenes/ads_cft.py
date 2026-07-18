@@ -24,7 +24,7 @@ of an infinite hyperbolic plane into a finite circle:
   ``z → (z − a)/(1 − ā z)``: an isometry of the bulk is a conformal transformation of the
   boundary, the entry-one of the AdS/CFT dictionary.
 
-See ``docs/research/44-ads-cft-holography.md``. --frames flows the isometry; iMouse rotates.
+See ``docs/research/46-ads-cft-holography.md``. --frames flows the isometry; iMouse rotates.
 """
 
 import math

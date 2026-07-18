@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (294 scenes).
+`python render.py --list` for the full, current list (308 scenes).
 
 ## Engine showcase
 
@@ -72,7 +72,7 @@ Diving through the throat — the far universe swelling from a coin to the whole
 
 ### AdS/CFT — holographic duality made visible
 
-`ads_cft` — the **holographic principle** as a picture ([Research 44](research/44-ads-cft-holography.md)).
+`ads_cft` — the **holographic principle** as a picture ([Research 46](research/46-ads-cft-holography.md)).
 A constant-time slice of AdS₃ is the **Poincaré disk**: a `{7,3}` hyperbolic tiling fills the
 bulk (every heptagon the *same* hyperbolic size — the crowding toward the rim is pure metric,
 Escher's *Circle Limit*), the glowing ring is the **conformal boundary** where the CFT lives,
@@ -89,6 +89,175 @@ The isometry flow — bulk cells streaming while the boundary intervals and thei
 geodesics drift:
 
 ![AdS/CFT Möbius flow](engine/ads_cft.gif)
+
+## Warp compression — three compressions of the card's visual information
+
+Virtual compression of the **actual card**: the real RTX 6000 Pro board (`gpu_board`) is compressed
+three different ways, each a **watchable process on the real board**, reversible and animated **in
+time** ([Research 45](research/45-simulation-and-compression.md), Part II). Each obeys reality: the
+only thing ever ignored is *self-collision*.
+
+**C1 — merge** (`warp_scan_merge`): a scan wave sweeps the board and **classifies** every element by its
+`warp_compress.mergecube` token colour (identical pieces share a colour). Then each repeated element's
+copies **merge in place — where the card is** — into a **digit-cube that grows right there on the
+board**, its size set by how many copies merged; the redundant copies fade to ghosts. Those atomic
+mini-cubes then **gather into one dense storage cube** on the board, and the animation runs the whole
+thing forward **and in reverse** — decompress back to the card — never a floating cube beside it.
+
+![warp_scan_merge — a scan classifies the card, duplicates merge, a location cube grows](engine/warp_scan_merge.png)
+
+![the scan reading the card, duplicates merging, the digit cube growing](engine/warp_scan_merge.gif)
+
+**C2 — fold** (`warp_fold_card`): the **real board** (chips, GDDR7, die, the mounting hole) is
+**folded** — creased in half **five times** (never cut; each far half swings about its crease and stays
+joined), stacking into a laminated block of its own card layers as collision is ignored — then
+**squished** just right into a compact cube. The compressed image is built **in the process**,
+layer by layer, Docker-style; the codec measures the surface at **~20× smaller** (22398 → 1102
+exposed faces).
+
+![warp_fold_card — the RTX board folded into a 20x cube](engine/warp_fold_card.png)
+
+![the card folding in half five times into a 20x cube and back](engine/warp_fold_card.gif)
+
+**C3 — genome, process 1 · tokenize** (`warp_tokenize`): the **real board** is turned into **tokens** —
+every occupied bit of the card becomes a token (45718 voxels × 8 = **365744 tokens**, coloured by
+merge-codec type so identical pieces of the card share a hue). Rendered with a Warp z-buffered splat
+(all ~366k at once). Over time the tokens lift and spread from their home voxels into a **cloud of
+tokens floating in the air** — the card that is no more a card. A **conserving transform**: the tokens
+are the card's own matter, nothing spawned, the count constant. (Engine library `warp_shaders/genome`.)
+
+![warp_tokenize — the RTX board turned into a floating cloud of tokens](engine/warp_tokenize.png)
+
+![the card lifting and fraying into a cloud of coloured tokens](engine/warp_tokenize.gif)
+
+**C3 — genome, process 2 · base pairs** (`warp_basepair`): a separate process takes the floating token
+cloud and binds the tokens **in twos** — 365744 tokens become **182872 base pairs** (A-T / G-C coloured
+rungs). Every token joins exactly one pair (nothing spawned); partners are chosen by spatial adjacency,
+and the pairs drift, continuously, into an ordered field of vertical rungs — an **unwound ladder**,
+order emerging from the token cloud.
+
+![warp_basepair — the tokens bound into a vast field of base pairs](engine/warp_basepair.png)
+
+![the floating tokens streaming into an ordered field of base-pair rungs](engine/warp_basepair.gif)
+
+**C3 — genome, process 3 · double helices** (`warp_helix`): this process **chains from Process 2's actual
+output** — it takes the ordered base-pair field (every pair's two tokens on a rung) and physically winds
+it. A double helix only holds **~100 base pairs**, so the 182872 pairs are grouped in sequence (110 each)
+into **1663 short helices** — not one giant one. Each group's rungs gather into their own straight
+**ladder**, then **twist** into a real-proportioned right-handed **double helix** (10.5 base pairs per
+turn, pitch ≈ 3.4× the radius), the two tokens of each rung tracing the two backbones. The helices stand
+on the same footprint the flat sheet occupied, so each strip winds up roughly **in place** — a gentle,
+physical gather; no point is created or teleports. The camera is fixed (only a slow dolly, no spin), so
+the **whole field** — all 182872 base pairs becoming a receding forest of double helices — is in frame
+the whole way and the entire winding is visible.
+
+![warp_helix — the base-pair field wound into a whole field of DNA double helices](engine/warp_helix.png)
+
+![the whole base-pair field gathering into ladders and twisting into a field of double helices](engine/warp_helix.gif)
+
+**C3 — genome, process 4 · nucleosomes** (`warp_nucleosome`): this process **chains from Process 3's actual
+wound helices** and wraps them into **"beads on a string."** A nucleosome is ~one double helix's worth of
+DNA (~150 base pairs) coiled ~1.75 turns around a **histone core** (drawn as the protein bead the DNA
+wraps), with **linker** DNA reaching to the next bead. The beads are threaded on a **serpentine** path so
+consecutive beads are always neighbours — the linker DNA stays short and local, and the cores sit farther
+apart than their own diameter, so the strand **never passes through itself** (measured, not assumed).
+Conserving: every base pair is reused — the middle of each helix wraps its bead, the two ends are the
+linker to its neighbours; nothing teleports. A fixed camera watches the forest of helices collapse into
+the string of beads — the whole field, the whole wrap, in frame.
+
+![warp_nucleosome — the double helices wrapped into a serpentine string of histone-cored beads](engine/warp_nucleosome.png)
+
+![the field of double helices wrapping down into beads on a string](engine/warp_nucleosome.gif)
+
+**C3 — genome, process 5 · the 30 nm fibre** (`warp_fibre`): this process **chains from Process 4's actual
+beads** and coils them tightly into **30 nm solenoid fibres** — ~6 nucleosomes per turn. A long run of
+beads makes one rope, so the 1663 beads **funnel into ~two dozen fibres** that stand up into a **forest of
+thick coiled ropes** (thin threads → flat beads → coiled ropes). Conserving: each bead is **rigid-moved**
+onto the solenoid, every base pair reused; the fibre radius, pitch and rope spacing are sized from the real
+biology so the ~6 beads fit around each turn and neighbouring ropes never touch — no interpenetration
+(measured). A fixed camera holds the whole rope forest in frame.
+
+![warp_fibre — the beads-on-a-string coiled into a forest of 30 nm solenoid fibres](engine/warp_fibre.png)
+
+![the bead carpet gathering and standing up into a forest of coiled 30 nm ropes](engine/warp_fibre.gif)
+
+**C3 — genome, process 6 · telomeres** (`warp_telomere`): this process **chains from Process 5's fibre**.
+A linear strand has exactly **two** ends, so exactly two telomeres: each terminal stretch of **bare DNA**
+leaves the fibre along a short outward stem (away from the packed forest, so it never threads the ropes)
+and lassoes a protective **t-loop** — the free 3′ tip tucking back into the duplex. Conserving: only the
+terminal base pairs are reshaped, nothing spawned; hanging the cap out into open space guarantees no
+interpenetration (measured). A close-up features the near end's green t-loop, the fibre forest trailing away.
+
+![warp_telomere — the bare-DNA strand end lassoing a protective t-loop cap](engine/warp_telomere.png)
+
+![the terminal DNA leaving the fibre and curling into its t-loop cap](engine/warp_telomere.gif)
+
+**C3 — genome, process 7 · the chromosome** (`warp_chromosome`): the payoff. This process **chains from
+Process 6's capped fibre** and **folds** it — the fibre's centreline winds onto a short coil with a pinched
+**centromere** and rounded **telomere-capped** tips, every base pair carried **rigidly** with its own
+conserved helix/nucleosome/fibre detail, packing **shoulder to shoulder** into a dense stained-**purple**
+metaphase chromosome. This is the final ~50× fold, so unlike the earlier stages the fibre packs solid — but
+the turns **touch and never pass through** each other (the honest meaning of "condensed", measured). The
+beautiful chromosome is reached **through** the real compaction, rendered as the actual folded base pairs —
+not sculpted from nothing. A fixed camera dollies in as the whole strand condenses.
+
+![warp_chromosome — the fibre folded into a dense banded purple metaphase chromosome](engine/warp_chromosome.png)
+
+![the capped fibre condensing into the banded chromosome with its centromere waist](engine/warp_chromosome.gif)
+
+## Simulation of reality — the card, by real physics
+
+The graphics card taken seriously: simulated by *respecting the physics of the world it is made of*,
+building bottom-up from the real substrate. The laws are **not facultative** — every layer carries a
+conservation test that proves the step is not lying ([Research 45](research/45-simulation-and-compression.md)).
+
+**`em_board`** (layer B1 — the electromagnetic substrate): a real **2-D FDTD solution of Maxwell's
+equations** runs on the board plane. A signal is launched from the **GPU die** and propagates across
+the board as a genuine EM wave, **reflecting off the copper** (the GDDR7 memory ring and the VRM), its
+electric field glowing on the card's own silicon. The solved field is verified in `tests/test_em.py`:
+energy is conserved in a lossless cavity (3.2% bounded, 0.74% drift / 3000 steps), a vacuum pulse
+travels at **0.984c**, and FR-4 slows it to **0.474c** (analytic 0.482c). This is the field, solved —
+not a cosmetic shimmer.
+
+![em_board — a real Maxwell wave radiating from the die across the RTX board](engine/em_board.png)
+
+![the EM wave propagating across the board and reflecting off the copper](engine/em_board.gif)
+
+**`trace_signal`** (layer B2 — signals as transmission lines): a voltage pulse launched from the
+**PCIe edge** rings down a copper trace toward the die, a live solution of the **telegrapher's
+equations** (`sim/tline.py`) — the 1-D reduction of the Maxwell field above. The mismatched (open)
+ends **reflect** the pulse, so it travels back and forth, ringing, the voltage V(z) glowing along the
+trace. Verified in `tests/test_tline.py`: the reflection at open / short / matched / resistive loads
+matches the analytic **Γ = (Z_L−Z₀)/(Z_L+Z₀)** exactly (open 1.999, short 0.000, matched 1.000, 3·Z₀
+→ 1.499), and the wave travels at **1/√(LC)**.
+
+![trace_signal — a real voltage pulse ringing down a trace on the RTX board](engine/trace_signal.png)
+
+![the pulse travelling down the trace and reflecting off the mismatched ends](engine/trace_signal.gif)
+
+**`vrm_power`** (layer B3 — the VRM): the board's **12-phase buck converter** (`sim/vrm.py`) solved
+to steady state, its real per-phase **inductor currents** pulsing the choke bank. Because the phases
+are **interleaved** (phase k fires at offset k/12), the current sweeps across the chokes as a running
+"chaser" and glows into the die as the ~1 V rail it drinks. Verified in `tests/test_vrm.py`: steady
+state converges to **V_out = D·Vin** exactly (3.000 / 6.001 / 9.001 V at D=0.25/0.5/0.75), the ripple
+matches **ΔI_L = (Vin−V_out)·D/(L·f_sw)**, the L–C tank conserves energy (symplectic), and 6
+interleaved phases cut output ripple **40×**.
+
+![vrm_power — the 12-phase VRM pulsing current into the die](engine/vrm_power.png)
+
+![the interleaved phase currents chasing across the VRM choke bank](engine/vrm_power.gif)
+
+**`heat_die`** (layer B5 — heat): almost all the power becomes heat at the die, so a real
+**heat-diffusion** simulation (`sim/heat.py`) runs on the board with the **die floorplan as its power
+source**. From cold, a **hotspot** forms over the compute die and the heat **spreads** into the PCB and
+memory before the cooler bounds it — then it cools on idle — glowing as a blackbody heat ramp. Verified
+in `tests/test_heat.py`: the steady state matches the analytic **linear** profile to 0.000 error, a
+Fourier mode decays at exactly **α·k²**, and the mean temperature rises at exactly **q/(ρc_p)** (the
+discrete first law).
+
+![heat_die — the RTX board's die heating up by the real heat equation](engine/heat_die.png)
+
+![the hotspot forming and spreading, then cooling on idle](engine/heat_die.gif)
 
 ## Alien skies — ground-level vistas
 

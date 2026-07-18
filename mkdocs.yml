@@ -97,7 +97,9 @@ nav:
       - Waves, resonance & interference: research/41-waves-and-resonance.md
       - Gravitational lensing (ray-traced black hole): research/42-gravitational-lensing.md
       - Relativity masterpieces (spinning, binary, wormhole): research/43-relativistic-masterpieces.md
-      - AdS/CFT holography (Poincaré disk, RT geodesics): research/44-ads-cft-holography.md
+      - Warp compression (fold + chromosome coil): research/44-warp-compression.md
+      - Simulation of reality + compression: research/45-simulation-and-compression.md
+      - AdS/CFT holography (Poincaré disk, RT geodesics): research/46-ads-cft-holography.md
 
 markdown_extensions:
   - admonition
