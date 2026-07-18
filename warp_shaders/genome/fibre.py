@@ -48,40 +48,70 @@ class Fibre:
 
 
 def coil_fibre(sub: int = 2, block: int = 5, beads_per_turn: float = 6.0,
-               fibre_radius: float = 0.72, axial_pitch: float = 0.30) -> Fibre:
-    """Coil Process 4's beads-on-a-string into 30 nm solenoid fibres — one row of beads per fibre, ~6
-    nucleosomes per turn, compacted along the fibre axis. Each bead is rigid-moved onto the solenoid."""
+               fibre_radius: float = 1.05, axial_pitch: float = 0.185,
+               fibre_spacing: float = 3.5, beads_per_fibre: int = 72) -> Fibre:
+    """Coil Process 4's beads-on-a-string into 30 nm solenoid fibres — ~6 nucleosomes per turn, tightly
+    coiled and compacted along the (vertical) fibre axis. Each bead is rigid-moved onto the solenoid; a
+    long run of the string makes one long rope, so the 1663 beads **funnel into a couple dozen 30 nm
+    fibres** — the first real drop in count and a strong compaction, the DNA beginning to look like a
+    chromosome arm. The result is a forest of thick coiled ropes, paralleling Process 3's forest of thin
+    helices: thin threads -> flat beads -> coiled ropes.
+
+    **Physically sized so nothing interpenetrates** (verified with ``genome.strand.min_separation``):
+    - the fibre radius makes the turn's circumference ``2*pi*R`` exceed ``beads_per_turn * bead_diameter``
+      (~0.94), so the ~6 nucleosomes sit around each turn with linker gaps instead of overlapping —
+      the real ~30 nm-fibre-to-11 nm-nucleosome ratio (~2.7×);
+    - the axial pitch is the real tight solenoid rise (~one bead diameter per turn), so consecutive turns
+      just clear each other (``beads_per_turn * axial_pitch`` >= a bead diameter) — a dense rope, not a
+      stretched spring;
+    - the fibres stand on a serpentine 2-D grid spaced ``fibre_spacing`` (> the fibre's outer diameter),
+      so neighbouring ropes never touch, and the continuous strand snakes rope-to-rope (each rope winds
+      the opposite way in height, so one rope's top meets the next rope's top — a short local link)."""
     nc = wrap_nucleosomes(sub=sub, block=block)
-    nx = int(nc.grid_nx)
     centers = nc.centers                                   # (H,3) bead centres from Process 4
     h = nc.n_beads
     g = nc.bp_per_nuc
+    k = int(beads_per_fibre)
 
     bead_id = np.arange(h)
-    f = bead_id // nx                                      # fibre index (one row of beads → one fibre)
-    col = bead_id % nx                                     # position of the bead along its fibre
+    f = bead_id // k                                       # fibre index (a long run of beads → one rope)
+    local = bead_id % k                                    # position of the bead along its fibre
     n_fibres = int(f.max()) + 1
-    cnt = np.bincount(f, minlength=n_fibres).astype(np.float32)
-    mz = np.bincount(f, weights=centers[:, 2], minlength=n_fibres) / np.maximum(cnt, 1)
 
-    # boustrophedon: even fibres run one way, odd fibres the other, so the end of one fibre meets the
-    # start of the next — the continuous 30 nm fibre snakes through the stack with short links.
-    even = (f % 2) == 0
-    j = np.where(even, col, cnt[f] - 1.0 - col)            # index along the fibre (serpentine)
-    j0 = j - (cnt[f] - 1.0) * 0.5                          # centre the coil on the fibre axis
-    axis_x = j0 * axial_pitch                              # all fibres share a centred x axis (a tidy band)
-    phi = j * (2.0 * math.pi / beads_per_turn)             # ~6 beads per turn
-    new_center = np.stack([axis_x,
-                           fibre_radius * np.cos(phi),
-                           mz[f] + fibre_radius * np.sin(phi)], 1).astype(np.float32)
+    # boustrophedon in HEIGHT: even ropes wind bottom→top, odd ropes top→bottom, so the end of one rope
+    # meets the start of the next at the same height (a short link), keeping one continuous strand.
+    up = (f % 2) == 0
+    jeff = np.where(up, local, k - 1.0 - local).astype(np.float32)
+    phi = jeff * (2.0 * math.pi / beads_per_turn)          # ~6 beads per turn
+    j0 = jeff - (k - 1.0) * 0.5                             # centre the coil on the vertical fibre axis
+
+    # stand the ropes in a forest: a serpentine 2-D grid so consecutive ropes are neighbours, each cell
+    # wider than a rope's outer diameter so ropes never touch.
+    fx = max(int(round(math.sqrt(n_fibres))), 1)
+    fi = np.arange(n_fibres)
+    frow = fi // fx
+    fcol = np.where(frow % 2 == 0, fi % fx, fx - 1 - (fi % fx))
+    fz = (n_fibres + fx - 1) // fx
+    gx = (fcol - (fx - 1) * 0.5) * fibre_spacing
+    gz = (frow - (fz - 1) * 0.5) * fibre_spacing
+    cx = gx[f] + fibre_radius * np.cos(phi)
+    cy = j0 * axial_pitch                                  # rise along the vertical fibre axis
+    cz = gz[f] + fibre_radius * np.sin(phi)
+    new_center = np.stack([cx, cy, cz], 1).astype(np.float32)
 
     # each bead's wrapped ring rigid-moves onto the solenoid; its linker DNA is re-routed to the bead's
     # NEW neighbours (so nothing stretches across the band) — both conserving, every base pair reused.
+    # the two free ends of the whole strand have no neighbour, so extrapolate one (a real short linker
+    # sticking out) instead of collapsing the linker onto the centre.
     i = np.arange(nc.n_pairs)
     bead = i // g
     s = (i % g).astype(np.float32) / float(g)
-    prev_c = new_center[np.clip(bead - 1, 0, h - 1)]
-    next_c = new_center[np.clip(bead + 1, 0, h - 1)]
+    prev_id = bead - 1
+    next_id = bead + 1
+    prev_c = new_center[np.clip(prev_id, 0, h - 1)]
+    next_c = new_center[np.clip(next_id, 0, h - 1)]
+    prev_c[prev_id < 0] = (2.0 * new_center[0] - new_center[1])          # extrapolate the leading free end
+    next_c[next_id > h - 1] = (2.0 * new_center[h - 1] - new_center[h - 2])   # trailing free end
     shift = (new_center - centers)[bead]
     fib_a = nc.nuc_a + shift
     fib_b = nc.nuc_b + shift
@@ -99,4 +129,4 @@ def coil_fibre(sub: int = 2, block: int = 5, beads_per_turn: float = 6.0,
     return Fibre(bead_a=nc.nuc_a, bead_b=nc.nuc_b, fib_a=fib_a.astype(np.float32),
                  fib_b=fib_b.astype(np.float32), a_col=nc.a_col, b_col=nc.b_col, centers=new_center,
                  beads_per_turn=beads_per_turn, fibre_radius=fibre_radius, n_fibres=n_fibres,
-                 beads_per_fibre=nx, bp_per_bead=g)
+                 beads_per_fibre=k, bp_per_bead=g)

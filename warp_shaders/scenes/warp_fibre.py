@@ -1,78 +1,205 @@
-"""Process 5 — the 30 nm fibre: the nucleosome beads-on-a-string COIL into the solenoid fibre.
+"""Process 5 scene — the beads-on-a-string coil into 30 nm solenoid fibres.
 
-Chains from Process 4's actual output. ``coil_fibre`` supplies both real end states of one fibre: the
-beads-on-a-string (``bead_a``, as Process 4 left them) and the coiled 30 nm solenoid (``fib_a``). This scene
-animates the real **transition** between them — every base pair moves continuously from its string position to
-its solenoid position (a straight interpolation of the two real lib states, the same motion the process makes)
-— and renders it SOLID, tubed and ray-traced by the engine on a dark specimen background. Not a spin of a
-finished object: the string visibly coils up into the fibre.
+Chains directly from Process 4: it starts from the exact nucleosome beads Process 4 produced and coils
+them. The "beads on a string" wind into a **~30 nm fibre** at ~6 nucleosomes per turn, tightly — and
+because a long run of beads makes one rope, the 1663 beads **funnel into ~two dozen fibres** (the first
+real drop in count), the flat bead carpet standing up into a forest of thick coiled ropes — thin threads
+(Process 3) → flat beads (Process 4) → coiled ropes.
+
+Conserving and physical: each nucleosome bead moves as a **rigid unit** — its wrapped ring of DNA is
+carried along onto the solenoid — so every base pair is reused, nothing spawned, nothing teleports; the
+ropes are sized and spaced so nothing interpenetrates (verified with genome.strand.min_separation). The
+camera holds a fixed course (a slow dolly, no spin) as the carpet of beads gathers and coils into the
+forest of fibres — the whole field, the whole coil, in frame.
 """
 
 from __future__ import annotations
 
 import numpy as np
+import warp as wp
 
+from ..engine import post
 from ..genome import coil_fibre
-from ..genome.render import render_strand
-from ..genome.tube import tube_mesh
 from ..scene import Scene
 
 _FB = coil_fibre(sub=2, block=5)
-_PER = _FB.beads_per_fibre * _FB.bp_per_bead
+_P = _FB.n_pairs
+_SAMPLES = 4
+_M = _P * _SAMPLES
+
+_ba = _bb = _fa = _fb = _a_col = _b_col = None
 
 
-def _smooth(x, w):
-    k = np.ones(w) / w
-    pad = np.pad(x, ((w, w), (0, 0)), mode="edge")
-    return np.stack([np.convolve(pad[:, d], k, mode="same")[w:-w] for d in range(3)], 1)
+def _ensure(device):
+    global _ba, _bb, _fa, _fb, _a_col, _b_col
+    if _ba is None:
+        _ba = wp.array(_FB.bead_a, dtype=wp.vec3, device=device)
+        _bb = wp.array(_FB.bead_b, dtype=wp.vec3, device=device)
+        _fa = wp.array(_FB.fib_a, dtype=wp.vec3, device=device)
+        _fb = wp.array(_FB.fib_b, dtype=wp.vec3, device=device)
+        _a_col = wp.array(_FB.a_col, dtype=wp.vec3, device=device)
+        _b_col = wp.array(_FB.b_col, dtype=wp.vec3, device=device)
 
 
-# one real fibre, both end states from Process 5 (same pairs, same frame — do NOT re-centre separately). Split
-# the coiled solenoid into its AXIS (heavy smooth) + the COIL offset, so the transition can wind the coil up
-# naturally instead of collapsing it in a straight line.
-_bead = (0.5 * (_FB.bead_a + _FB.bead_b))[:_PER]
-_fib = (0.5 * (_FB.fib_a + _FB.fib_b))[:_PER]
-_off = _fib.mean(axis=0)
-_S = 3
-_BEAD = _smooth(_bead - _off, 110)[::_S].astype(np.float64)      # beads-on-a-string (extended)
-_SOL = _smooth(_fib - _off, 90)[::_S].astype(np.float64)         # the coiled solenoid
-_AXIS = _smooth(_fib - _off, 900)[::_S].astype(np.float64)       # its central axis (coil smoothed away)
-_COILR = _SOL - _AXIS                                            # the radial coil offset (grows in as it winds)
-
-_t = (np.arange(_BEAD.shape[0]) / max(_BEAD.shape[0] - 1, 1))[:, None]
-_COL = (np.array([0.55, 0.44, 0.80], np.float32) * (1.0 - _t)
-        + np.array([0.82, 0.70, 0.95], np.float32) * _t).astype(np.float32)
-
-_DUR = 4.0                                                       # transition duration (seconds)
+_INIT = wp.constant(0x7FFFFFFF)
+_IDX_BITS = wp.constant(20)
+_IDX_MASK = wp.constant(0xFFFFF)
+_BACKBONE = wp.constant(wp.vec3(0.46, 0.53, 0.66))
 
 
-def _ss(u):
-    u = min(max(u, 0.0), 1.0)
+@wp.kernel
+def _coil_kernel(
+    ba: wp.array(dtype=wp.vec3),
+    bb: wp.array(dtype=wp.vec3),
+    fa: wp.array(dtype=wp.vec3),
+    fb: wp.array(dtype=wp.vec3),
+    a_col: wp.array(dtype=wp.vec3),
+    b_col: wp.array(dtype=wp.vec3),
+    zbuf: wp.array2d(dtype=wp.int32),
+    elemcol: wp.array(dtype=wp.vec3),
+    width: int,
+    height_px: int,
+    to_fibre: float,        # 0 = Process-4 beads on a string, 1 = coiled into 30 nm fibres
+    ro: wp.vec3,
+    uu: wp.vec3,
+    vv: wp.vec3,
+    ww: wp.vec3,
+    zoom: float,
+    dnear: float,
+    dfar: float,
+):
+    e = wp.tid()
+    pr = e / 4
+    s = e - pr * 4
+
+    pa = wp.lerp(ba[pr], fa[pr], to_fibre)
+    pb = wp.lerp(bb[pr], fb[pr], to_fibre)
+
+    if s == 0:
+        pos = pa
+        col = _BACKBONE
+    elif s == 1:
+        pos = pb
+        col = _BACKBONE
+    elif s == 2:
+        pos = wp.lerp(pa, pb, 0.36)
+        col = a_col[pr]
+    else:
+        pos = wp.lerp(pa, pb, 0.64)
+        col = b_col[pr]
+    elemcol[e] = col
+
+    rel = pos - ro
+    cz = wp.dot(rel, ww)
+    if cz < 0.05:
+        return
+    cx = wp.dot(rel, uu)
+    cy = wp.dot(rel, vv)
+    pfx = zoom * cx / cz * float(height_px) + 0.5 * float(width) - 0.5
+    pfy = 0.5 * float(height_px) - 0.5 - zoom * cy / cz * float(height_px)
+    px = int(wp.round(pfx))
+    py = int(wp.round(pfy))
+
+    base = 0.030
+    if s >= 2:
+        base = 0.016
+    rpx = zoom * base / cz * float(height_px)
+    rad = int(wp.clamp(rpx, 1.0, 6.0))
+
+    depthq = int(wp.clamp((cz - dnear) / (dfar - dnear) * 1022.0, 0.0, 1022.0))
+    key = (depthq << _IDX_BITS) | e
+
+    for dy in range(-rad, rad + 1):
+        for dx in range(-rad, rad + 1):
+            if float(dx * dx + dy * dy) <= float(rad * rad) + 0.5:
+                xx = px + dx
+                yy = py + dy
+                if xx >= 0 and xx < width and yy >= 0 and yy < height_px:
+                    wp.atomic_min(zbuf, yy, xx, key)
+
+
+@wp.kernel
+def _resolve_kernel(
+    zbuf: wp.array2d(dtype=wp.int32),
+    elemcol: wp.array(dtype=wp.vec3),
+    img: wp.array2d(dtype=wp.vec3),
+    width: int,
+    height_px: int,
+):
+    i, j = wp.tid()
+    yy = float(i) / float(height_px)
+    bg = wp.vec3(0.016, 0.020, 0.030) * (1.0 - 0.45 * yy)
+    key = zbuf[i, j]
+    if key == _INIT:
+        img[i, j] = bg
+        return
+    idx = key & _IDX_MASK
+    depthq = float((key >> _IDX_BITS) & 0x3FF) / 1022.0
+    shade = 1.28 - 1.12 * depthq
+    fog = wp.clamp((depthq - 0.20) * 2.3, 0.0, 0.94)
+    img[i, j] = wp.lerp(elemcol[idx] * shade, bg, fog)
+
+
+def _schedule(time: float):
+    u = min(max((time - 0.5) / 4.0, 0.0), 1.0)
     return u * u * (3.0 - 2.0 * u)
 
 
+def _camera(time: float):
+    # fixed course, no spin: the flat bead carpet gathers and stands up into a forest of thick 30 nm
+    # ropes; the camera dollies in on the forest at a gentle down-tilt so the coiled solenoids read.
+    u = min(max((time - 0.3) / 4.2, 0.0), 1.0)
+    u = u * u * (3.0 - 2.0 * u)
+    dist = 40.0 * (1.0 - u) + 26.0 * u
+    target = np.array([0.0, 0.0, 0.0], np.float32)
+    direction = np.array([0.20, 0.34, 1.0], np.float32)             # slight down-tilt onto the rope forest
+    direction = direction / np.linalg.norm(direction)
+    ro = target + dist * direction
+    ww = target - ro
+    ww = ww / np.linalg.norm(ww)
+    uu = np.cross(ww, np.array([0.0, 1.0, 0.0], np.float32))
+    uu = uu / np.linalg.norm(uu)
+    vv = np.cross(uu, ww)
+    return ro, uu, vv, ww, dist
+
+
 def _render(width, height, time, mouse, device):
-    t = float(time)
-    # the axis pulls in from the extended string to the compact fibre axis, THEN the coil winds up on it — a
-    # natural two-phase coiling (every frame a valid partially-coiled solenoid), not a straight-line morph.
-    wa = _ss((t - 0.3) / (_DUR * 0.55))                          # axis gather
-    wc = _ss((t - 0.3 - _DUR * 0.35) / (_DUR * 0.6))             # coil wind-up (lags the gather)
-    center = (1.0 - wa) * _BEAD + wa * _AXIS + wc * _COILR
-    mesh = tube_mesh(center, radius=0.36, color=_COL, sides=14)
-    eye = np.array([7.5, 3.4, 11.0], np.float32)                 # fixed 3/4 view; the coiling is the motion
-    tgt = np.array([0.0, 0.0, 0.0], np.float32)
-    img = render_strand(mesh, int(width), int(height), eye, tgt,
-                        sun_dir=(0.45, 0.72, 0.55), device=device, fov=42.0, exposure=1.12)
-    return np.clip(img, 0.0, 1.0)
+    _ensure(device)
+    W, H = int(width), int(height)
+    to_fibre = _schedule(float(time))
+    ro, uu, vv, ww, dist = _camera(float(time))
+    dnear = 1.5
+    dfar = float(dist) + 40.0
+
+    zbuf = wp.full((H, W), 0x7FFFFFFF, dtype=wp.int32, device=device)
+    elemcol = wp.zeros(_M, dtype=wp.vec3, device=device)
+    img = wp.zeros((H, W), dtype=wp.vec3, device=device)
+    cam = (wp.vec3(*[float(x) for x in ro]), wp.vec3(*[float(x) for x in uu]),
+           wp.vec3(*[float(x) for x in vv]), wp.vec3(*[float(x) for x in ww]))
+    wp.launch(
+        _coil_kernel,
+        dim=_M,
+        inputs=[_ba, _bb, _fa, _fb, _a_col, _b_col, zbuf, elemcol, W, H,
+                float(to_fibre), *cam, 1.7, dnear, dfar],
+        device=device,
+    )
+    wp.launch(_resolve_kernel, dim=(H, W), inputs=[zbuf, elemcol, img, W, H], device=device)
+    wp.synchronize_device(device)
+    hdr = img.numpy()
+
+    hdr = post.bloom(hdr, threshold=0.9, strength=0.35, radius=4, passes=2)
+    ldr = post.tonemap(hdr, mode="aces", exposure=1.0, preserve_hue=True)
+    ldr = post.vignette(ldr, amount=0.3)
+    return ldr
 
 
 SCENE = Scene(
     name="warp_fibre",
     description=(
-        "Process 5 — the 30 nm fibre. The nucleosome beads-on-a-string from Process 4 coil into the 30 nm "
-        "solenoid: this scene animates the real transition between coil_fibre's two end states (bead_a -> "
-        "fib_a), every base pair moving continuously from its string position to its solenoid position, "
-        "tubed and ray-traced solid on a dark specimen background — the string visibly coiling into the fibre."
+        "Process 5 — the 30 nm fibre. The nucleosome beads from Process 4 coil tightly into solenoid fibres "
+        "at ~6 beads per turn; a long run of beads per rope, so the 1663 beads funnel into ~two dozen fibres "
+        "that stand up into a forest of coiled ropes. Conserving: chained from Process 4's actual beads, each "
+        "bead rigid-moved onto the solenoid, nothing spawned, no interpenetration, fixed camera, whole field in frame."
     ),
     renderer=_render,
 )
