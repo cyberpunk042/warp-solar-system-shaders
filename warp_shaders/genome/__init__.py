@@ -4,7 +4,7 @@ Each process conserves matter — it uses what it transforms, it never spawns, a
 previous process's actual output. Process 1: tokenization. Process 2: base-pair bounding. Process 3: the
 double helices. Process 4: nucleosomes (beads on a string). Process 5: the 30nm fibre. Process 6:
 telomeres (the strand's two ends curl into t-loop caps). This molecular ladder condenses into the
-chromosome itself, which is rendered as a lit signed-distance solid (``scenes/warp_chromosome_solid``).
+chromosome itself as one continuous compression — the thread coiling ever tighter (``scenes/warp_genome``).
 """
 
 from .tokenize import tokenize_card, TokenCloud  # noqa: F401

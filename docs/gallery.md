@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (307 scenes).
+`python render.py --list` for the full, current list (306 scenes).
 
 ## Engine showcase
 
@@ -191,9 +191,6 @@ copied (a copy would be replication → the X, which we do not do), never flashe
 > tokens → 182 872 base pairs → 1663 double helices → 1663 nucleosome beads → the two telomere-capped ends →
 > the condensed chromatid). Stages 1-5 are shown individually above; `warp_genome` is the whole run as one
 > continuous coil.
-
-_(A separate stylized still, `warp_chromosome_solid`, renders a chromosome as a lit signed-distance solid —
-an illustration, not the conserved point set.)_
 
 ## Simulation of reality — the card, by real physics
 

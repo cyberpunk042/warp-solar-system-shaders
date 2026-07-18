@@ -635,8 +635,7 @@ never flashed into existence.
 > a time: **tokenization → base pairs → double helices → nucleosomes → telomeres → the chromosome** (365 744
 > tokens → 182 872 base pairs → 1663 double helices → 1663 nucleosome beads → the two telomere-capped ends →
 > the condensed chromatid). Stages 1-5 are shown individually above; `warp_genome` is the whole run as one
-> continuous coil. (`warp_chromosome_solid` is a separate stylized lit still — an illustration, not the
-> conserved point set.)
+> continuous coil.
 
 ## Electricity in motion
 

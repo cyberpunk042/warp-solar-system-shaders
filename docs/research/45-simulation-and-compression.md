@@ -301,8 +301,7 @@ tokens → 182 872 base pairs → 1663 double helices → 1663 nucleosome beads 
 the condensed chromatid; the 30 nm fibre is the intermediate the telomere layout is built from). Stages 1-5
 have their own scenes; `warp_genome` is the whole run as one continuous coil. Separately, the
 tokenize→chromosome **codec** (`warp_compress/tokenchromo.py`, lossless round-trip, 5.4×) remains a verified
-compression result in its own right. (`warp_chromosome_solid` is a separate stylized SDF portrait — an
-illustration, not the conserved point set.)
+compression result in its own right.
 
 **Open spec questions (for the operator to steer — flagged, not assumed):**
 - What is **"the item"** precisely — the card's 3-D geometry (voxels), its rendered visual output
