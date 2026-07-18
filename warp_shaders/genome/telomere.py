@@ -45,26 +45,38 @@ class Telomeres:
         return int(self.fib_a.shape[0])
 
 
-def _tloop(u, anchor, tang, side, loop_radius, loop_turns):
-    """A t-loop path: the strand leaves the anchor, arcs a lasso of radius ``loop_radius`` (``loop_turns``
-    around) that hangs to the SIDE of the strand — tangent to the strand at the anchor, so the strand never
-    passes through its own loop — and the free 3' tip tucks back beside the anchor. ``u`` in [0,1] runs
-    anchor → free tip."""
-    d1 = tang / max(np.linalg.norm(tang), 1e-6)          # outward, along the strand
-    d2 = np.cross(d1, np.array([0.0, 0.0, 1.0], np.float32))
-    if np.linalg.norm(d2) < 1e-4:                        # strand ~parallel to z → pick another perpendicular
-        d2 = np.cross(d1, np.array([0.0, 1.0, 0.0], np.float32))
-    d2 = d2 / max(np.linalg.norm(d2), 1e-6)
-    sd2 = side * d2
-    centre = anchor + sd2 * loop_radius                  # loop hangs to the side; its rim touches the anchor
-    theta = -0.5 * math.pi + u * loop_turns * 2.0 * math.pi   # start at the anchor (nearest rim point)
-    pull = (1.0 - 0.22 * u)[:, None]                     # the tip tucks slightly inward (the t-loop)
-    return centre + loop_radius * pull * (np.cos(theta)[:, None] * d1 + np.sin(theta)[:, None] * sd2)
+def _tloop(u, anchor, outdir, stem_len, loop_radius, loop_turns):
+    """A t-loop path in OPEN space beside the fibre. ``u`` in [0,1] runs anchor → free 3' tip. The terminal
+    DNA first leaves the fibre along a short **stem** (outward, away from the packed forest, so it never
+    threads the ropes), then arcs a **lasso** of radius ``loop_radius`` (``loop_turns`` around) in the
+    vertical plane containing ``outdir``, and the free tip **tucks back inward** — the protective t-loop.
+    Because the whole cap hangs outward into clear space, it can never pass through the fibre or itself
+    (bar the real tip-into-duplex tuck)."""
+    up = np.array([0.0, 1.0, 0.0], np.float32)
+    e1 = outdir / max(np.linalg.norm(outdir), 1e-6)      # horizontal, outward from the forest
+    e2 = up                                              # the lasso stands up in the (outward, vertical) plane
+
+    us = 0.34                                            # first third: the straight stem leaving the fibre
+    stem_end = anchor + e1 * stem_len                    # where the lasso begins
+    centre = stem_end + e1 * loop_radius                 # lasso centre, further out; its rim touches stem_end
+
+    t_stem = np.clip(u / us, 0.0, 1.0)[:, None]
+    stem = anchor * (1.0 - t_stem) + stem_end * t_stem
+
+    v = np.clip((u - us) / (1.0 - us), 0.0, 1.0)         # 0..1 around the lasso
+    theta = math.pi + v * loop_turns * 2.0 * math.pi     # start at pi so the rim meets the stem end
+    pull = (1.0 - 0.30 * v)[:, None]                     # the tip tucks inward (invades the duplex): the t-loop
+    loop = centre + loop_radius * pull * (np.cos(theta)[:, None] * e1 + np.sin(theta)[:, None] * e2)
+
+    return np.where((u < us)[:, None], stem, loop).astype(np.float32)
 
 
-def cap_telomeres(sub: int = 2, block: int = 5, tel_frac: float = 0.016,
-                  loop_radius: float = 1.9, loop_turns: float = 1.15) -> Telomeres:
-    """Curl Process 5's fibre-strand ends into two t-loop telomere caps."""
+def cap_telomeres(sub: int = 2, block: int = 5, tel_frac: float = 0.004,
+                  loop_radius: float = 2.1, loop_turns: float = 1.25,
+                  stem_len: float = 2.4) -> Telomeres:
+    """Curl Process 5's fibre-strand ends into two t-loop telomere caps. A linear strand has exactly two
+    ends (pair 0 and pair P-1); each terminal stretch (bare duplex past the last nucleosome) leaves the
+    fibre outward and lassoes a t-loop in open space."""
     fb = coil_fibre(sub=sub, block=block)
     p = fb.n_pairs
     tl = max(int(p * tel_frac), 32)                      # base pairs in each telomere
@@ -74,21 +86,26 @@ def cap_telomeres(sub: int = 2, block: int = 5, tel_frac: float = 0.016,
     is_tel = np.zeros(p, bool)
     off = (fb.fib_b - fb.fib_a)                           # keep the paired backbone offset through the loop
 
+    cxz = np.array([fb.centers[:, 0].mean(), 0.0, fb.centers[:, 2].mean()], np.float32)   # forest centre
+
+    def outward(anchor):
+        d = np.array([anchor[0] - cxz[0], 0.0, anchor[2] - cxz[2]], np.float32)
+        n = np.linalg.norm(d)
+        return d / n if n > 1e-3 else np.array([1.0, 0.0, 0.0], np.float32)
+
     ends = []
     # end 0: pairs [0, tl); the free 3' tip is pair 0, the anchor is pair tl
     a0 = fb.fib_a[tl]
-    tang0 = a0 - fb.fib_a[min(tl + 40, p - 1)]
     u0 = (tl - np.arange(tl)).astype(np.float32) / float(tl)      # pair tl-1 → u≈0 (anchor), pair 0 → u≈1 (tip)
-    tel_a[:tl] = _tloop(u0, a0, tang0, +1.0, loop_radius, loop_turns)
+    tel_a[:tl] = _tloop(u0, a0, outward(a0), stem_len, loop_radius, loop_turns)
     tel_b[:tl] = tel_a[:tl] + off[:tl]
     is_tel[:tl] = True
     ends.append(a0)
 
     # end 1: pairs [p-tl, p); the free 3' tip is pair p-1, the anchor is pair p-tl-1
     a1 = fb.fib_a[p - tl - 1]
-    tang1 = a1 - fb.fib_a[max(p - tl - 41, 0)]
     u1 = (np.arange(p - tl, p) - (p - tl - 1)).astype(np.float32) / float(tl)   # p-tl → u≈0, p-1 → u≈1
-    tel_a[p - tl:] = _tloop(u1, a1, tang1, -1.0, loop_radius, loop_turns)
+    tel_a[p - tl:] = _tloop(u1, a1, outward(a1), stem_len, loop_radius, loop_turns)
     tel_b[p - tl:] = tel_a[p - tl:] + off[p - tl:]
     is_tel[p - tl:] = True
     ends.append(a1)

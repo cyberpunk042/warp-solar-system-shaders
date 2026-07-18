@@ -23,7 +23,12 @@ _TL = cap_telomeres(sub=2, block=5)
 _P = _TL.n_pairs
 _SAMPLES = 4
 _M = _P * _SAMPLES
-_END = _TL.ends[1]                                        # feature the second end's t-loop
+_END = _TL.ends[0]                                        # feature the near end's t-loop
+_LOOPC = 0.5 * (_TL.tel_a[:_TL.tel_len] + _TL.tel_b[:_TL.tel_len]).mean(axis=0)   # its lasso centroid
+_OUT = np.array([_LOOPC[0], 0.0, _LOOPC[2]], np.float32)
+_OUT = _OUT / max(float(np.linalg.norm(_OUT)), 1e-3)     # horizontal outward from the forest centre
+_SIDE = np.cross(_OUT, np.array([0.0, 1.0, 0.0], np.float32))
+_SIDE = _SIDE / max(float(np.linalg.norm(_SIDE)), 1e-3)  # horizontal, perpendicular to the loop plane
 
 _fa = _fb = _ta = _tb = _a_col = _b_col = None
 
@@ -152,12 +157,15 @@ def _schedule(time: float):
 
 
 def _camera(time: float):
-    # fixed course, no spin: dolly in toward the near end's t-loop as the ends curl, the fibre trailing away
+    # fixed course, no spin: a close-up on the near end's t-loop, hanging out of the corner of the fibre
+    # forest, dollying in as the terminal DNA curls into its cap; the fibre trails away behind it.
     u = min(max((time - 0.3) / 4.2, 0.0), 1.0)
     u = u * u * (3.0 - 2.0 * u)
-    dist = 26.0 * (1.0 - u) + 15.0 * u
-    target = np.array([_END[0], _END[1] + 0.4, _END[2] - 3.0], np.float32)
-    direction = np.array([0.22, 0.34, 1.0], np.float32)
+    dist = 20.0 * (1.0 - u) + 13.0 * u
+    target = np.array([_LOOPC[0], _LOOPC[1], _LOOPC[2]], np.float32)
+    # view the lasso FACE-ON: sit off to the side of the loop plane (a little above and a little outward),
+    # so the t-loop reads as a loop and the fibre forest sits behind it
+    direction = (_SIDE + 0.30 * _OUT + np.array([0.0, 0.32, 0.0], np.float32)).astype(np.float32)
     direction = direction / np.linalg.norm(direction)
     ro = target + dist * direction
     ww = target - ro
