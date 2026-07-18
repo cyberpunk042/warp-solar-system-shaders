@@ -146,7 +146,7 @@ def _weave_kernel(
     py = int(wp.round(pfy))
 
     # thin bright thread while streaming, fat solid splat once woven into the chromosome body
-    base = 0.028 + 0.135 * gs
+    base = 0.028 + 0.27 * gs
     rpx = zoom * base / cz * float(height_px)
     rad = int(wp.clamp(rpx, 1.0, 12.0))
 

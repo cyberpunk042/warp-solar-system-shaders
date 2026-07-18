@@ -72,9 +72,9 @@ def _clamp_norm(v: np.ndarray, cap: float) -> np.ndarray:
     return v * scale
 
 
-def fold_chromatid(sub: int = 2, block: int = 5, turns: float = 34.0, arm_radius: float = 1.55,
-                   height: float = 9.8, waist: float = 0.26, waist_width: float = 0.05,
-                   local_cap: float = 0.20, shape: str = "single", cross: float = 0.42) -> Chromatid:
+def fold_chromatid(sub: int = 2, block: int = 5, turns: float = 17.0, arm_radius: float = 1.15,
+                   height: float = 6.4, waist: float = 0.26, waist_width: float = 0.06,
+                   local_cap: float = 0.05, shape: str = "single", cross: float = 0.42) -> Chromatid:
     """Fold Process 6's telomere-capped fibre into a real, condensed **chromosome silhouette**. The fibre's
     smooth centreline is wound as a tight helix **up the chromosome's arms** — the thread follows the arm
     line one turn after another (radius ``arm_radius``), plump in the arms and pinched to a **centromere**
@@ -99,8 +99,19 @@ def fold_chromatid(sub: int = 2, block: int = 5, turns: float = 34.0, arm_radius
     local_a = _clamp_norm(tl.tel_a.astype(np.float64) - centre, local_cap)   # conserved fine detail
     local_b = _clamp_norm(tl.tel_b.astype(np.float64) - centre, local_cap)
 
-    # --- one chromatid: a helix winding up a two-armed, centromere-pinched, round-tipped rod ---
-    u = np.arange(p, dtype=np.float64) / (p - 1.0)
+    # --- SCAN-AND-MERGE: identical elements collapse onto one puzzle piece ---
+    # the card's tokens already carry a merge-codec type id (identical board pieces share it). Every base
+    # pair inherits its element id; all pairs of the SAME element are laid on the SAME slot of the
+    # chromosome, so the P pairs of the thread build a body of only K unique pieces — much, much smaller
+    # (the ultimate compression, exactly like the scan-and-merge codec: dedup + a place-index).
+    from .tokenize import tokenize_card
+    eid = tokenize_card(sub=sub, block=block).ids[0:2 * p:2][:p]   # element id per pair (its first token)
+    uniq_id, first = np.unique(eid, return_index=True)
+    rank_of = np.empty(int(uniq_id.max()) + 1, np.int64)
+    rank_of[uniq_id[np.argsort(first)]] = np.arange(uniq_id.size)  # slot order = order of first appearance
+    slot = rank_of[eid]                                            # 0..K-1 puzzle piece for each pair
+    k = int(uniq_id.size)
+    u = slot.astype(np.float64) / max(k - 1, 1)                    # SAME element -> SAME u -> merged slot
     waist_env = 1.0 - (1.0 - waist) * np.exp(-((u - 0.5) / waist_width) ** 2)   # centromere constriction
     arms = np.sqrt(np.clip(1.0 - (2.0 * u - 1.0) ** 4, 0.0, 1.0))               # plump arms, rounded tips
     r = arm_radius * waist_env * (0.28 + 0.72 * arms)
