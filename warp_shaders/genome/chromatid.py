@@ -72,9 +72,9 @@ def _clamp_norm(v: np.ndarray, cap: float) -> np.ndarray:
     return v * scale
 
 
-def fold_chromatid(sub: int = 2, block: int = 5, turns: float = 26.0, arm_radius: float = 1.5,
-                   height: float = 9.6, waist: float = 0.30, waist_width: float = 0.055,
-                   local_cap: float = 0.22, shape: str = "single", cross: float = 0.42) -> Chromatid:
+def fold_chromatid(sub: int = 2, block: int = 5, turns: float = 34.0, arm_radius: float = 1.55,
+                   height: float = 9.8, waist: float = 0.26, waist_width: float = 0.05,
+                   local_cap: float = 0.20, shape: str = "single", cross: float = 0.42) -> Chromatid:
     """Fold Process 6's telomere-capped fibre into a real, condensed **chromosome silhouette**. The fibre's
     smooth centreline is wound as a tight helix **up the chromosome's arms** — the thread follows the arm
     line one turn after another (radius ``arm_radius``), plump in the arms and pinched to a **centromere**
