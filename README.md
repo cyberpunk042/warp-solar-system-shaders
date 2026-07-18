@@ -593,6 +593,17 @@ through the mouth.
 |---|---|---|
 | ![kerr](docs/engine/kerr.png) | ![binary black holes](docs/engine/binary_bh.gif) | ![wormhole dive](docs/engine/wormhole_dive.gif) |
 
+And beyond the solutions, the *idea about* gravity itself: `ads_cft` draws the **holographic
+duality** on a Poincaré-disk slice of AdS₃ — a `{7,3}` hyperbolic tiling bulk crowding toward the
+glowing **conformal boundary**, the same tiling mirrored outside through `z → z/|z|²` (the
+hologram, literally), and **Ryu–Takayanagi entanglement geodesics** hanging from boundary
+intervals, all flowing under a Möbius isometry = a boundary conformal transformation.
+See [Research 44](docs/research/44-ads-cft-holography.md).
+
+| ads_cft — AdS/CFT holography | the isometry flow |
+|---|---|
+| ![ads_cft](docs/engine/ads_cft.png) | ![ads_cft flow](docs/engine/ads_cft.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted

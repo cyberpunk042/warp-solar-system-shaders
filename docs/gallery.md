@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (293 scenes).
+`python render.py --list` for the full, current list (294 scenes).
 
 ## Engine showcase
 
@@ -69,6 +69,26 @@ swap.
 Diving through the throat — the far universe swelling from a coin to the whole sky:
 
 ![wormhole fly-through](engine/wormhole_dive.gif)
+
+### AdS/CFT — holographic duality made visible
+
+`ads_cft` — the **holographic principle** as a picture ([Research 44](research/44-ads-cft-holography.md)).
+A constant-time slice of AdS₃ is the **Poincaré disk**: a `{7,3}` hyperbolic tiling fills the
+bulk (every heptagon the *same* hyperbolic size — the crowding toward the rim is pure metric,
+Escher's *Circle Limit*), the glowing ring is the **conformal boundary** where the CFT lives,
+and outside the disk the *same* tiling reappears through the inversion `z → z/|z|²` — the
+hologram, drawn literally. Bright arcs orthogonal to the rim are **Ryu–Takayanagi geodesics**:
+the entanglement entropy of each boundary interval is the length of the geodesic hanging from
+its endpoints (`S = L/4G`). The tiling geometry is derived, not tuned
+(`cosh m = cos(π/q)/sin(π/p)`), and the whole bulk flows under a **Möbius isometry** — which
+acts on the boundary as a conformal transformation, the first entry of the duality dictionary.
+
+![ads_cft — AdS/CFT on the Poincaré disk](engine/ads_cft.png)
+
+The isometry flow — bulk cells streaming while the boundary intervals and their entanglement
+geodesics drift:
+
+![AdS/CFT Möbius flow](engine/ads_cft.gif)
 
 ## Alien skies — ground-level vistas
 
