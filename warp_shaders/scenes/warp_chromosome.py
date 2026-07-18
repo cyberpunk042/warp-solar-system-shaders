@@ -148,7 +148,7 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), width: int, height_px: int,
 
 
 def _camera(time: float):
-    ang = 0.4 + 0.12 * float(time)                       # slow 3/4 orbit, no fast spin
+    ang = 0.4 + 0.52 * float(time)                       # slow orbit (a turn over the gif)
     dist = 14.5
     target = np.array([0.0, 0.0, 0.0], np.float32)
     direction = np.array([0.5 * np.cos(ang), 0.14, 0.5 * np.sin(ang) + 0.75], np.float32)

@@ -47,14 +47,19 @@ class Telomeres:
 
 def _tloop(u, anchor, tang, side, loop_radius, loop_turns):
     """A t-loop path: the strand leaves the anchor, arcs a lasso of radius ``loop_radius`` (``loop_turns``
-    around), and the free 3' tip tucks back beside the anchor. ``u`` in [0,1] runs anchor → free tip."""
+    around) that hangs to the SIDE of the strand — tangent to the strand at the anchor, so the strand never
+    passes through its own loop — and the free 3' tip tucks back beside the anchor. ``u`` in [0,1] runs
+    anchor → free tip."""
     d1 = tang / max(np.linalg.norm(tang), 1e-6)          # outward, along the strand
     d2 = np.cross(d1, np.array([0.0, 0.0, 1.0], np.float32))
+    if np.linalg.norm(d2) < 1e-4:                        # strand ~parallel to z → pick another perpendicular
+        d2 = np.cross(d1, np.array([0.0, 1.0, 0.0], np.float32))
     d2 = d2 / max(np.linalg.norm(d2), 1e-6)
-    centre = anchor + d1 * loop_radius
-    theta = math.pi + u * loop_turns * 2.0 * math.pi      # start at the anchor side of the loop
-    pull = (1.0 - 0.25 * u)[:, None]                      # the tip tucks slightly inward (the t-loop)
-    return centre + loop_radius * pull * (np.cos(theta)[:, None] * d1 + np.sin(theta)[:, None] * (side * d2))
+    sd2 = side * d2
+    centre = anchor + sd2 * loop_radius                  # loop hangs to the side; its rim touches the anchor
+    theta = -0.5 * math.pi + u * loop_turns * 2.0 * math.pi   # start at the anchor (nearest rim point)
+    pull = (1.0 - 0.22 * u)[:, None]                     # the tip tucks slightly inward (the t-loop)
+    return centre + loop_radius * pull * (np.cos(theta)[:, None] * d1 + np.sin(theta)[:, None] * sd2)
 
 
 def cap_telomeres(sub: int = 2, block: int = 5, tel_frac: float = 0.016,

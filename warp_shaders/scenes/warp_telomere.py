@@ -33,7 +33,7 @@ _N = _L + 4200
 _seg = (0.5 * (_TL.tel_a + _TL.tel_b))[:_N]
 _seg = _seg - _seg[:_L].mean(axis=0)                              # centre on the t-loop
 _S = 3
-_center = _smooth(_seg, 14)[::_S].astype(np.float64)
+_center = _smooth(_seg, 150)[::_S].astype(np.float64)            # clean tube (nucleosome bumps removed)
 
 _istel = np.zeros(_N, bool)
 _istel[:_L] = True
@@ -45,7 +45,7 @@ _MESH = tube_mesh(_center, radius=0.34, color=_COL, sides=16)
 
 
 def _camera(time: float):
-    ang = 0.7 + 0.12 * float(time)                                # slow 3/4 orbit on the cap
+    ang = 0.7 + 0.52 * float(time)                                # slow orbit (a turn over the gif)
     r = 11.5
     tgt = np.array([0.0, 0.0, 0.0], np.float32)
     eye = tgt + np.array([r * np.sin(ang), 3.2, r * np.cos(ang)], np.float32)

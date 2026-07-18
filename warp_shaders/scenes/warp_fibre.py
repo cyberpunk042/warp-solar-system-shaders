@@ -33,7 +33,7 @@ def _smooth(x, w):
 _PER = _FB.beads_per_fibre * _FB.bp_per_bead
 _seg = (0.5 * (_FB.fib_a + _FB.fib_b))[: _PER]
 _seg = _seg - _seg.mean(axis=0)
-_center = _smooth(_seg, 55)[::3].astype(np.float64)              # clean solenoid centreline
+_center = _smooth(_seg, 110)[::3].astype(np.float64)             # clean solenoid centreline (bead bumps removed)
 
 _t = (np.arange(_center.shape[0]) / max(_center.shape[0] - 1, 1))[:, None]
 _COL = (np.array([0.55, 0.44, 0.80], np.float32) * (1.0 - _t)
@@ -42,7 +42,7 @@ _MESH = tube_mesh(_center, radius=0.36, color=_COL.astype(np.float32), sides=16)
 
 
 def _camera(time: float):
-    ang = 0.55 + 0.12 * float(time)                              # slow 3/4 orbit
+    ang = 0.55 + 0.52 * float(time)                              # slow orbit (a turn over the gif)
     r = 12.0
     tgt = np.array([0.0, 0.0, 0.0], np.float32)
     eye = tgt + np.array([r * np.sin(ang), 3.4, r * np.cos(ang)], np.float32)
