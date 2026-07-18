@@ -99,6 +99,14 @@ exposed faces).
 
 ![the card folding in half five times into a 20x cube and back](engine/warp_fold_card.gif)
 
+**C3 — genome, the whole process in one take.** All seven stages of the biological compression chained
+end to end — the RTX board → tokens → base pairs → a field of double helices → nucleosome beads-on-a-string
+→ the 30 nm rope forest → the telomere t-loop cap → the thread feeding through the tip and **merging**
+(identical elements collapse onto one puzzle piece, scan-and-merge style) into the small, banded metaphase
+chromosome. Each stage begins from the previous stage's real output; the same matter, only reshaped.
+
+![the whole genome compression from the RTX board down to the chromosome, in one long take](engine/genome_chain.gif)
+
 **C3 — genome, process 1 · tokenize** (`warp_tokenize`): the **real board** is turned into **tokens** —
 every occupied bit of the card becomes a token (45718 voxels × 8 = **365744 tokens**, coloured by
 merge-codec type so identical pieces of the card share a hue). Rendered with a Warp z-buffered splat
