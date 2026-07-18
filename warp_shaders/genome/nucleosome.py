@@ -54,23 +54,50 @@ class Nucleosomes:
 
 
 def wrap_nucleosomes(sub: int = 2, block: int = 5, wrap_turns: float = 1.75,
-                     core_radius: float = 0.42, bead_thick: float = 0.24,
-                     dna_r: float = 0.055, link_frac: float = 0.16) -> Nucleosomes:
+                     core_radius: float = 0.42, bead_thick: float = 0.34,
+                     dna_r: float = 0.05, link_frac: float = 0.16,
+                     jitter: float = 0.06) -> Nucleosomes:
     """Wrap Process 3's wound double helices into nucleosome beads on a string. Each helix (its base pairs)
     becomes one bead: the middle stretch wraps ``wrap_turns`` around the core, the two ends are linker DNA
-    reaching to the neighbouring beads."""
+    reaching to the neighbouring beads.
+
+    **The string is a single continuous local path.** The base pairs run 0..P in sequence, so consecutive
+    beads must sit next to each other in space or the linker DNA between them would have to leap across the
+    whole field (and cross every other bead — an interpenetration). The beads are therefore laid on a
+    **serpentine (boustrophedon)** thread through the grid: each row runs opposite to the last, so bead
+    ``k`` and bead ``k+1`` are always spatial neighbours and every linker is short and local. The bead cores
+    are spaced well over their own diameter apart (~1.3 vs ~0.9), exactly as real "beads on a string" sit —
+    separated by linker DNA — so the strand never passes through itself. Verified with
+    ``genome.strand.min_separation``: the only sub-diameter approach left is a real one — the linker leaving
+    a core brushing that core's own wrapped gyres, which touches in life too."""
     hx = wind_helix(sub=sub, block=block)
     helix_a, helix_b = wound_positions(hx)            # Process 3's actual end state — the chain input
     p = hx.n_pairs
     g = hx.bp_per_helix
-    centers = hx.centers
     n = hx.n_helix
+    nx = int(hx.grid_nx)
+
+    # rebuild the grid footprint Process 3 used, then thread it as a serpentine so consecutive beads are
+    # spatial neighbours (the "string" never jumps). Small deterministic jitter for an organic bead field,
+    # bounded so cores keep clear of each other.
+    c0 = hx.centers
+    x0, x1 = float(c0[:, 0].min()), float(c0[:, 0].max())
+    z0, z1 = float(c0[:, 2].min()), float(c0[:, 2].max())
+    sx = (x1 - x0) / max(nx - 1, 1)
+    sz = (z1 - z0) / max((n + nx - 1) // nx - 1, 1)
+    bid = np.arange(n)
+    row = bid // nx
+    col = np.where(row % 2 == 0, bid % nx, nx - 1 - (bid % nx))   # boustrophedon: rows alternate direction
+    frac = lambda v: v - np.floor(v)
+    jx = (frac(np.sin(bid * 12.9898) * 43758.5453) - 0.5) * jitter * sx
+    jz = (frac(np.sin(bid * 78.2330 + 2.0) * 43758.5453) - 0.5) * jitter * sz
+    centers = np.stack([x0 + col * sx + jx, np.zeros(n), z0 + row * sz + jz], 1).astype(np.float32)
 
     i = np.arange(p)
     gi = i // g
     s = (i % g).astype(np.float32) / float(g)         # 0..1 along this bead's base pairs
     c = centers[gi]
-    c_prev = centers[np.clip(gi - 1, 0, n - 1)]
+    c_prev = centers[np.clip(gi - 1, 0, n - 1)]        # serpentine neighbours — spatially adjacent
     c_next = centers[np.clip(gi + 1, 0, n - 1)]
 
     lo, hi = link_frac, 1.0 - link_frac               # [lo,hi] wraps; [0,lo) and (hi,1] are linker
