@@ -72,42 +72,57 @@ def _clamp_norm(v: np.ndarray, cap: float) -> np.ndarray:
     return v * scale
 
 
-def fold_chromatid(sub: int = 2, block: int = 5, turns: float = 13.0, arm_radius: float = 2.15,
-                   height: float = 7.4, waist: float = 0.28, waist_width: float = 0.085,
-                   local_cap: float = 0.46) -> Chromatid:
-    """Fold Process 6's telomere-capped fibre into the condensed chromatid. The fibre's smooth centreline is
-    wound into a short helical coil (``turns`` turns, radius ``arm_radius``, height ``height``) with a pinched
-    centromere ``waist``; each pair's conserved fine detail rides that centreline rigidly (its length capped
-    at ``local_cap`` so the t-loop caps stay at the tips).
+def fold_chromatid(sub: int = 2, block: int = 5, turns: float = 26.0, arm_radius: float = 1.5,
+                   height: float = 9.6, waist: float = 0.30, waist_width: float = 0.055,
+                   local_cap: float = 0.22, shape: str = "single", cross: float = 0.42) -> Chromatid:
+    """Fold Process 6's telomere-capped fibre into a real, condensed **chromosome silhouette**. The fibre's
+    smooth centreline is wound as a tight helix **up the chromosome's arms** — the thread follows the arm
+    line one turn after another (radius ``arm_radius``), plump in the arms and pinched to a **centromere**
+    waist, with rounded telomere-capped tips — while each pair's conserved fine detail rides that centreline
+    rigidly (capped at ``local_cap``).
 
-    This is the final ~50x fold, so unlike the earlier stages the fibre here packs **shoulder to shoulder** —
-    a condensed chromosome IS a dense mass, not separated pieces. The coil's pitch (``height/turns``) is kept
-    at or just above the packed-band thickness (``2*local_cap``) so consecutive turns **touch but never pass
-    through** each other (verified with ``genome.strand.min_separation`` staying positive): honest dense
-    packing, the definition of condensation, not interpenetration."""
+    ``shape``:
+      - ``"single"`` — one chromatid: a slender rod with two arms meeting at the centromere (the two strand
+        ends are the two telomere tips).
+      - ``"x"`` — the metaphase **X**: the same chromatid tilted, plus its replicated **sister** mirrored
+        across the centromere, the two crossing at the pinch — four banded arms, four rounded tips.
+
+    This is the final ~50x fold, so the fibre packs **shoulder to shoulder** — a condensed chromosome IS a
+    dense mass — but the helix pitch (``height/turns``) stays at/above the packed-band thickness so
+    consecutive turns **touch and never pass through** each other (honest condensation, not interpenetration)."""
     tl = cap_telomeres(sub=sub, block=block)
     p = tl.n_pairs
 
     # split each pair into smooth fibre centreline + conserved fine detail (the real Process-6 structure).
-    # sigma ~ one solenoid turn of the 30 nm fibre (beads_per_turn * bp_per_bead) so the wound detail stays
-    # in the local offset and only the band's macro path is smoothed away.
     sigma = 6.0 * 110.0
     centre = _smooth(tl.fib_a, sigma)                     # (P,3) macro centreline of the fibre band
     local_a = _clamp_norm(tl.tel_a.astype(np.float64) - centre, local_cap)   # conserved fine detail
     local_b = _clamp_norm(tl.tel_b.astype(np.float64) - centre, local_cap)
 
-    # wind the centreline onto a short chromatid coil, arc position u along the whole strand
+    # --- one chromatid: a helix winding up a two-armed, centromere-pinched, round-tipped rod ---
     u = np.arange(p, dtype=np.float64) / (p - 1.0)
     waist_env = 1.0 - (1.0 - waist) * np.exp(-((u - 0.5) / waist_width) ** 2)   # centromere constriction
-    arms = 0.55 + 0.45 * np.sqrt(np.clip(1.0 - (2.0 * u - 1.0) ** 6, 0.0, 1.0))  # rounded arm ends
-    r = arm_radius * waist_env * arms
+    arms = np.sqrt(np.clip(1.0 - (2.0 * u - 1.0) ** 4, 0.0, 1.0))               # plump arms, rounded tips
+    r = arm_radius * waist_env * (0.28 + 0.72 * arms)
     phi = 2.0 * math.pi * turns * u
-    coil = np.stack([r * np.cos(phi), (u - 0.5) * height, r * np.sin(phi)], 1)
-
-    # the fine detail is packed tightest at the centromere too, so the waist reads as a real constriction
+    ax = r * np.cos(phi)
+    ay = (u - 0.5) * height
+    az = r * np.sin(phi)
+    coil = np.stack([ax, ay, az], 1)
     det = (0.5 + 0.5 * waist_env)[:, None]
-    chr_a = (coil + local_a * det).astype(np.float32)
-    chr_b = (coil + local_b * det).astype(np.float32)
+
+    def place(base):
+        c = coil + base * det
+        if shape == "x":
+            # tilt this chromatid and lay its mirrored sister across the centromere → the metaphase X
+            t = cross
+            xr = c[:, 0] * math.cos(t) - c[:, 1] * math.sin(t)
+            yr = c[:, 0] * math.sin(t) + c[:, 1] * math.cos(t)
+            return np.stack([xr, yr, c[:, 2]], 1)
+        return c
+
+    chr_a = place(local_a).astype(np.float32)
+    chr_b = place(local_b).astype(np.float32)
 
     tips = np.array([coil[0], coil[-1]], np.float32)
     return Chromatid(tel_a=tl.tel_a, tel_b=tl.tel_b, chr_a=chr_a, chr_b=chr_b,
