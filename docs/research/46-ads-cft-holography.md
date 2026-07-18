@@ -81,6 +81,62 @@ Ryu–Takayanagi "minimal surface" of the interval (in 2+1 bulk dimensions a min
 geodesic). Three intervals drift and breathe along the boundary; their faint mirrored arcs
 continue into the exterior hologram at reduced weight.
 
+## Part II — the engine-level bulk: `ads_bulk` and `engine/adscft.py`
+
+The disk scene is the *map*; `ads_bulk` is the *territory*. The camera floats **inside**
+global AdS with a Schwarzschild-AdS black hole at the centre, and every camera ray is a photon
+integrated through the curved bulk — the same honesty standard as gargantua/kerr (research
+42–43), extended with what only AdS has: a boundary you can reach.
+
+### Null geodesics: Λ drops out of the path shape
+
+The Schwarzschild-AdS metric has blackening factor `f(r) = 1 + r²/L² − 2M/r`. For a null
+geodesic with impact parameters folded into `u(φ) = 1/r(φ)`, the orbital equation is
+
+```
+d²u/dφ² + u = 3Mu²
+```
+
+— *identical* to pure Schwarzschild: the cosmological-constant term contributes a constant to
+the effective potential and **drops out of the photon path shape** (Islam 1983, *"The
+cosmological constant and classical tests of general relativity"*). So `ads_bulk` reuses the
+proven null-geodesic pull `a = −(3/2)h²x/r⁵` from `engine/blackhole.py` verbatim — shadow,
+photon ring and disk lensing are all real, and all shared with the relativity set.
+
+### What Λ does change: the AdS box
+
+In AdS the conformal boundary is **timelike** and sits at finite optical distance — an
+outgoing light ray reaches it (in finite coordinate time) and, with the standard reflecting
+boundary conditions of AdS, **comes back in**. The renderer implements exactly that: when a
+ray crosses the cutoff sphere `r = R_bdy` it deposits the boundary's CFT emission, mirrors its
+velocity about the radial normal (angular momentum `h = |x × v|` is preserved by the mirror,
+as the tangential component is untouched), and continues. The number of bounces scales with
+`--quality` (low 1 → ultra 4), so higher tiers show the hole and its disk **re-imaged in the
+boundary mirror** — AdS as a resonant box, the geometric reason bulk physics is recorded on
+the boundary.
+
+### The CFT on the boundary, thermal at the Hawking temperature
+
+Every boundary hit is textured by `engine.adscft.boundary_cft`: the hit direction is
+stereographically projected (a conformal map, so the pattern is a genuine conformal field on
+the sphere) into the **same `{7,3}` reflection-group fold** the disk scene uses —
+`poincare_fold` is one shared `@wp.func`, one fold serving both duals. On top of the lattice
+rides a thermal wash proportional to the hole's **Hawking temperature**
+
+```
+T = f'(r_h) / 4π ,      f(r_h) = 0
+```
+
+computed host-side by bisection (`hawking_temperature`). This is the Hawking–Page dictionary
+entry drawn literally: *a black hole in the bulk is a thermal state of the boundary theory*,
+and large AdS holes get hotter with size (positive specific heat) — the thermodynamic stability
+behind the deconfinement interpretation.
+
+Emission divergences at the true boundary (`f → ∞`) are avoided by defining the CFT glow in
+boundary-frame units at the finite cutoff `R_bdy` — which is precisely the regularization
+scheme of **holographic renormalization**. Bulk disk emission additionally carries the AdS
+redshift ratio `√(f(r_em)/f(r_cam))` between emission point and camera.
+
 ## Sources
 
 - J. Maldacena, *The Large N Limit of Superconformal Field Theories and Supergravity*,
@@ -98,3 +154,10 @@ continue into the exterior hologram at reduced weight.
   tilings; M. C. Escher, *Circle Limit I–IV* (1958–60) — the visual precedent
 - J. W. Anderson, *Hyperbolic Geometry* (Springer) — Poincaré-disk model, geodesics as circles
   orthogonal to the boundary, hyperbolic right-triangle relations
+- S. W. Hawking, D. N. Page, *Thermodynamics of Black Holes in Anti-de Sitter Space*,
+  Commun. Math. Phys. 87 (1983) 577 — Hawking temperature of AdS holes, phase transition
+- J. N. Islam, *The cosmological constant and classical tests of general relativity*,
+  Phys. Lett. A 97 (1983) 239 — Λ drops out of the null-geodesic orbital equation
+- O. Aharony, S. Gubser, J. Maldacena, H. Ooguri, Y. Oz, *Large N Field Theories, String
+  Theory and Gravity* (the MAGOO review), [hep-th/9905111](https://arxiv.org/abs/hep-th/9905111)
+  — reflecting boundary conditions, AdS-as-a-box, the duality dictionary

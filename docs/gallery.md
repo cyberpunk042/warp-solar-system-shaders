@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (308 scenes).
+`python render.py --list` for the full, current list (309 scenes).
 
 ## Engine showcase
 
@@ -89,6 +89,22 @@ The isometry flow — bulk cells streaming while the boundary intervals and thei
 geodesics drift:
 
 ![AdS/CFT Möbius flow](engine/ads_cft.gif)
+
+`ads_bulk` — the disk is the map; this is the territory ([Research 46, Part II](research/46-ads-cft-holography.md)).
+The camera floats **inside** the AdS box with a Schwarzschild-AdS black hole at the centre, every
+ray a photon on a real null geodesic (in Schwarzschild-AdS the orbital equation is still
+`d²u/dφ² + u = 3Mu²` — Λ drops out of the path shape, so the proven `engine/blackhole.py` pull is
+exact here too). What Λ *does* add: the **timelike conformal boundary at finite optical distance
+reflects light back in**, so rays bounce (count scales with `--quality`) and the hole re-appears
+boundary-mirrored; every boundary hit paints the **CFT lattice** (the same shared `{7,3}` fold,
+stereographically = conformally projected) with a thermal wash set by the hole's **Hawking
+temperature** `T = f'(r_h)/4π` — the thermal state dual to the black hole.
+
+![ads_bulk — inside the AdS box](engine/ads_bulk.png)
+
+Orbiting inside the box — the lensed CFT lattice streaming around the shadow:
+
+![inside the AdS box](engine/ads_bulk.gif)
 
 ## Warp compression — three compressions of the card's visual information
 

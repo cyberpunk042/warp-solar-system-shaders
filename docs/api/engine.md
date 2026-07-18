@@ -221,6 +221,21 @@ it hits the disk or escapes. Units are geometric with `r_s = 1`. See
 | `disk_emission` | `(cp, pdir, time, r_in, r_out, temp0, bright) -> vec3` — thin equatorial accretion disk: Shakura–Sunyaev `T ∝ r^-3/4` blackbody, relativistic Doppler beaming (`∝ D³`), gravitational redshift, Keplerian banding; black outside `[r_in, r_out]` |
 | `cosmic_background` | `(rd, mw) -> vec3` — lensed starfield read in the ray's bent direction, plus an optional Milky-Way band (`mw` intensity; 0 = plain starfield) |
 
+## AdS/CFT holography — `engine.adscft`
+
+Shared core for the holography set (`ads_cft`, `ads_bulk`): the `{7,3}` hyperbolic
+reflection-group fold (mirror geometry derived from `cosh m = cos(π/q)/sin(π/p)`), the
+Schwarzschild-AdS blackening factor, the CFT boundary texture, and the Hawking temperature.
+See [Research 46](../research/46-ads-cft-holography.md).
+
+| Function | Signature |
+|---|---|
+| `poincare_fold` | `(z: vec2) -> vec4` — fold into the `{7,3}` fundamental domain; returns `(z'.x, z'.y, depth, scale)` — folded point, reflection count (orbit trap), accumulated conformal magnification |
+| `tile_edge` | `(folded: vec4, px: float) -> float` — anti-aliased tile-edge weight at constant screen width from a `poincare_fold` result |
+| `ads_blackening` | `(r, l_ads, m) -> float` — Schwarzschild-AdS `f(r) = 1 + r²/L² − 2M/r` |
+| `boundary_cft` | `(rd: vec3, time, t_hawk) -> vec3` — the CFT on the conformal boundary: stereographic (conformal) projection of the shared lattice + thermal wash at the Hawking temperature |
+| `hawking_temperature` | *(host)* `(m, l_ads) -> float` — `T = f'(r_h)/4π` with `r_h` from bisection of `f(r_h) = 0` |
+
 ## Post — `engine.post`
 
 Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with

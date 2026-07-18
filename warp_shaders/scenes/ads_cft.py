@@ -27,30 +27,14 @@ of an infinite hyperbolic plane into a finite circle:
 See ``docs/research/46-ads-cft-holography.md``. --frames flows the isometry; iMouse rotates.
 """
 
-import math
-
 import warp as wp
 
 from ..engine import post
+from ..engine.adscft import poincare_fold, tile_edge
 from ..scene import Scene
 
-# ---- {p,q} = {7,3} tiling constants (derived, not tuned) ----------------------------------
-# Right hyperbolic triangle O-M-V (polygon centre, edge midpoint, vertex) with angles
-# pi/p at O and pi/q at V:  cosh(OM) = cos(pi/q) / sin(pi/p).
-_P = 7.0
-_Q = 3.0
-_A = math.pi / _P                              # half-wedge angle at the origin
-_COSH_M = math.cos(math.pi / _Q) / math.sin(math.pi / _P)
-_M = math.acosh(_COSH_M)
-_X0 = math.tanh(0.5 * _M)                      # Euclidean distance to the edge midpoint
-_DC = (1.0 + _X0 * _X0) / (2.0 * _X0)          # mirror-circle centre (orthogonal: dc^2 = 1 + rr^2)
-_RC = _DC - _X0                                # mirror-circle radius
-
-_WEDGE = wp.constant(_A)
-_WEDGE2 = wp.constant(2.0 * _A)
-_MIR_D = wp.constant(_DC)
-_MIR_R2 = wp.constant(_RC * _RC)
-_FOLDS = 48                                    # reflection-group folding depth
+# The {7,3} tiling constants + reflection-group fold live in the shared engine core
+# (engine/adscft.py) — the same fold paints the conformal boundary of `ads_bulk`.
 _DISK_R = wp.constant(0.43)                    # screen radius of the conformal boundary (uv half-height is 0.5)
 _N_GEO = 3                                     # Ryu-Takayanagi geodesics
 
@@ -133,35 +117,13 @@ def _render_kernel(
     foot = foot * _mobius_jac(z, a)
     z = _mobius(z, a)
 
-    # ---- {7,3} reflection-group fold ----
-    depth = int(0)
-    for _f in range(_FOLDS):
-        ang = wp.atan2(z[1], z[0])
-        k = wp.floor((ang + _WEDGE) / _WEDGE2)
-        if k != 0.0:
-            ca = wp.cos(-k * _WEDGE2)
-            sa = wp.sin(-k * _WEDGE2)
-            z = wp.vec2(ca * z[0] - sa * z[1], sa * z[0] + ca * z[1])
-        if z[1] < 0.0:
-            z = wp.vec2(z[0], -z[1])
-        w = wp.vec2(z[0] - _MIR_D, z[1])
-        r2 = wp.dot(w, w)
-        if r2 < _MIR_R2:
-            kinv = _MIR_R2 / r2
-            z = wp.vec2(_MIR_D + w[0] * kinv, w[1] * kinv)
-            foot = foot * kinv
-            depth += 1
-        else:
-            break
+    # ---- {7,3} reflection-group fold (shared engine core) ----
+    folded = poincare_fold(z)
+    edge = tile_edge(folded, foot)
+    depth = folded[2]
 
-    # distance to the mirror geodesic (the tile edge), converted back to screen pixels
-    w = wp.vec2(z[0] - _MIR_D, z[1])
-    e = wp.abs(wp.length(w) - wp.sqrt(_MIR_R2))
-    npix = e / wp.max(foot, 1.0e-12)
-    edge = wp.exp(-0.5 * (npix / 1.5) * (npix / 1.5))
-
-    parity = float(depth % 2)                   # chequer parity of the reflection count
-    t_depth = wp.min(float(depth) / 14.0, 1.0)
+    parity = depth - 2.0 * wp.floor(0.5 * depth)   # chequer parity of the reflection count
+    t_depth = wp.min(depth / 14.0, 1.0)
     crowd = t_depth * t_depth                   # cells crowd (UV-diverge) toward the boundary
 
     # ---- palettes: cool geometric bulk, warm field-theory hologram ----
