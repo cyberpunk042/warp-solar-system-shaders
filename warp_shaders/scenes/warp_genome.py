@@ -1,20 +1,19 @@
-"""The whole genome process — one long, continuous animation from base pairs to the chromosome.
+"""The genome molecular process — one continuous animation from base pairs to the telomere-capped strand.
 
-This is the master sequence. It does not re-simulate anything: it takes the **actual output arrays** of
-every genome process (all the same 182 872 base pairs, in the same order, because each process chains from
-the last) and morphs continuously through them, so you watch the DNA condense the whole way down:
+This is the flythrough. It does not re-simulate anything: it takes the **actual output arrays** of every
+genome process (all the same 182 872 base pairs, in the same order, because each process chains from the
+last) and morphs continuously through them, so you watch the DNA fold the whole way down:
 
-    Process 2  base pairs          — the raw paired field
-      → Process 3  double helices  — the pairs wind into 1663 helices
-      → Process 4  nucleosomes     — helices wrap into beads on a string
-      → Process 5  30 nm fibre     — beads coil into 47 chromatin fibres
-      → Process 6  telomeres       — the strand's two ends curl into t-loop caps
-      → Process 7  the chromosome  — the fibre coils into one condensed chromatid
+    1  tokenization           — every occupied voxel becomes tokens: the raw field
+      → 2  base pairs          — tokens bind in twos
+      → 3  double helices      — the pairs wind into 1663 helices
+      → 4  nucleosomes         — helices wrap into beads on a string
+      → 5  telomeres           — the strand (coiled into its 30 nm fibre) has its two ends curl into t-loops
 
 Every base pair is conserved and simply *moved* from one process's position to the next (a smooth lerp with
-ease), nothing is spawned or destroyed. The camera pulls back and re-frames each stage automatically (the
-base-pair field is huge, the chromosome tiny), holding a fixed 3/4 course — a slow reveal, no gratuitous
-spin — and settles on the finished, pretty coiled chromosome.
+ease), nothing spawned. The camera flies IN to the fine scales (helices, nucleosome beads) then pulls back,
+a slow 3/4 course, no spin. Stage **6, the condensed chromosome**, is the payoff render — the lit signed-
+distance solid in ``warp_chromosome_solid`` — which this molecular flythrough hands off to.
 """
 
 from __future__ import annotations
@@ -24,8 +23,6 @@ import warp as wp
 
 from ..engine import post
 from ..genome.basepair import bind_pairs
-from ..genome.chromosome import fold_chromosome
-from ..genome.fibre import coil_fibre
 from ..genome.helix import wind_helix, wound_positions
 from ..genome.nucleosome import wrap_nucleosomes
 from ..genome.telomere import cap_telomeres
@@ -34,22 +31,25 @@ from ..scene import Scene
 _SUB, _BLOCK = 2, 5
 
 # --- assemble the real keyframes: every process's actual output, same pairs, same order ----------------
+# The molecular process, tokenization → telomeres (the 30 nm fibre coil is the intermediate the telomere
+# layout is built from). The condensed chromosome itself — stage six — is the lit SDF solid
+# (warp_chromosome_solid), which this flythrough hands off to.
 _bp = bind_pairs(sub=_SUB, block=_BLOCK)
 _hx = wind_helix(sub=_SUB, block=_BLOCK)
 _h_a, _h_b = wound_positions(_hx)
 _nu = wrap_nucleosomes(sub=_SUB, block=_BLOCK)
-_fb = coil_fibre(sub=_SUB, block=_BLOCK)
 _tl = cap_telomeres(sub=_SUB, block=_BLOCK)
-_cr = fold_chromosome(sub=_SUB, block=_BLOCK)
 
-_KA = np.stack([_bp.a_pos, _h_a, _nu.nuc_a, _fb.bead_a, _tl.tel_a, _cr.chr_a]).astype(np.float32)  # (6,P,3)
-_KB = np.stack([_bp.b_pos, _h_b, _nu.nuc_b, _fb.bead_b, _tl.tel_b, _cr.chr_b]).astype(np.float32)
+# stage 1 tokenization (the raw field sites, two tokens per pair) → 2 base pairs → 3 double helices →
+# 4 nucleosomes → 5 telomeres. Six is the chromosome (the SDF solid).
+_KA = np.stack([_bp.field_a, _bp.a_pos, _h_a, _nu.nuc_a, _tl.tel_a]).astype(np.float32)  # (5,P,3)
+_KB = np.stack([_bp.field_b, _bp.b_pos, _h_b, _nu.nuc_b, _tl.tel_b]).astype(np.float32)
 _STAGES = _KA.shape[0]
 _P = _KA.shape[1]
 _SAMPLES = 4
 _M = _P * _SAMPLES
-_COLA = _cr.a_col.astype(np.float32)                     # telomere-tinted base colours, consistent through-line
-_COLB = _cr.b_col.astype(np.float32)
+_COLA = _tl.a_col.astype(np.float32)                     # telomere-tinted base colours, consistent through-line
+_COLB = _tl.b_col.astype(np.float32)
 
 # per-stage centroid + full extent so the camera can auto-fit each stage
 _CENT = np.zeros((_STAGES, 3), np.float32)
@@ -62,12 +62,12 @@ for _k in range(_STAGES):
 
 # per-stage CAMERA: for the fine scales (helices, nucleosomes) we fly IN to a small window so the actual
 # structure is visible up close; for the big scales we frame the whole thing. Direction reveals each layout.
-#          base pairs      helices        nucleosomes    30 nm fibre    telomeres      chromosome
+#          tokenization    base pairs     double helices  nucleosomes    telomeres
 _STAGE_DIR = np.array([
-    [0.28, 0.52, 1.0], [0.44, 0.30, 1.0], [0.44, 0.28, 1.0],
-    [0.30, 0.34, 1.0], [0.32, 0.20, 1.0], [0.42, 0.16, 1.0],
+    [0.26, 0.78, 1.0], [0.30, 0.50, 1.0], [0.44, 0.30, 1.0],
+    [0.44, 0.28, 1.0], [0.32, 0.20, 1.0],
 ], np.float32)
-_STAGE_FRAME = np.array([7.0, 3.4, 3.6, 11.0, _RAD[4], _RAD[5]], np.float32)  # fly IN for the fine scales
+_STAGE_FRAME = np.array([float(_RAD[0]), 6.0, 3.4, 3.6, _RAD[4]], np.float32)  # wide field → fly IN for the fine scales
 
 _KAf = _KA.reshape(_STAGES * _P, 3)                      # flat: stage k, pair pr → k*P + pr
 _KBf = _KB.reshape(_STAGES * _P, 3)
@@ -266,11 +266,11 @@ def _render(width, height, time, mouse, device):
 SCENE = Scene(
     name="warp_genome",
     description=(
-        "The whole genome process in one long, continuous animation. The real output of every process — base "
-        "pairs → double helices → nucleosomes → 30 nm fibre → telomeres → the condensed chromosome — morphs "
-        "smoothly one into the next (the same 182 872 base pairs, conserved and only moved, each stage chained "
-        "from the last), the camera re-framing each scale, settling on the finished coiled chromatid. No spin, "
-        "nothing spawned — the DNA condensing the whole way down."
+        "The genome molecular process in one continuous animation. The real output of every process — "
+        "tokenization → base pairs → double helices → nucleosomes → telomeres — morphs smoothly one into the "
+        "next (the same 182 872 base pairs, conserved and only moved, each stage chained from the last), the "
+        "camera flying in to the helices and nucleosome beads then pulling back. No spin, nothing spawned. "
+        "Stage six, the chromosome, is the lit SDF solid in warp_chromosome_solid, which this hands off to."
     ),
     renderer=_render,
 )

@@ -263,8 +263,9 @@ one before it.
   spin) watches the tall forest of helices collapse into the flat carpet of beads-on-a-string, whole field
   in frame. *Stops at beads on a string.*
 
-- **Process 5 — the 30 nm fibre** (`warp_shaders/genome/fibre.py`, scene `warp_fibre`). **Chains from
-  Process 4's actual output** (the nucleosome beads). It coils the "beads on a string" into **~30 nm
+- **Intermediate — the 30 nm fibre** (`warp_shaders/genome/fibre.py`, scene `warp_fibre`). **Chains from
+  Process 4's actual output** (the nucleosome beads). Not a headline stage of the six-stage ladder, but the
+  real intermediate the telomere layout is built from. It coils the "beads on a string" into **~30 nm
   solenoid fibres** at ~6 nucleosomes per turn. This is where the packing finally **funnels**: a whole
   row of ~36 beads coils into one fibre, so the **1663 beads become ~47 fibres** (the first real drop in
   count) and compact ~6× along the fibre axis. Conserving: each nucleosome bead moves as a **rigid unit**
@@ -274,37 +275,34 @@ one before it.
   spin) watches the wide bead carpet gather and coil into a tidy band of fibres, whole field in frame.
   *Stops at the field of 30 nm fibres.*
 
-- **Process 6 — telomeres** (`warp_shaders/genome/telomere.py`, scene `warp_telomere`). **Chains from
-  Process 5's actual output** (the 30 nm fibre). A **telomere** is the DNA end-cap — TTAGGG-type tandem
+- **Process 5 — telomeres** (`warp_shaders/genome/telomere.py`, scene `warp_telomere`). **Chains from the
+  30 nm fibre's actual output.** A **telomere** is the DNA end-cap — TTAGGG-type tandem
   repeats whose single-stranded 3' overhang loops back and invades the duplex, forming a **t-loop** lasso
   that protects the end. A linear strand has exactly **two** ends, so exactly **two** telomeres: the
   terminal stretch at each end (telomere-green) leaves the fibre and curls into a t-loop. Conserving: only
   the terminal base pairs are reshaped — the strand curls back on itself; nothing spawned. *Stops at the
   capped strand.*
 
-- **Process 7 — the chromosome, single chromatid** (`warp_shaders/genome/chromosome.py`, scene
-  `warp_chromosome`). **Chains from Process 6's telomere-capped strand.** It condenses the whole strand into
-  **one chromatid** — a rounded rod with a **centromere** constriction at the middle and the two real
-  **telomere** t-loops capping its two ends. One continuous strand, **nothing copied** — fully conserving;
-  every base pair folded (not regenerated) onto the rod, the caps carried intact to the tips. *Stops at the
-  single chromatid.*
+- **Process 6 — the chromosome (a lit SDF solid)** (scene `warp_chromosome_solid`). The condensed chromosome
+  is the payoff, and it is rendered not as points but as a **signed-distance solid** — sphere-traced with a
+  key light, soft self-shadows, ambient occlusion and PBR (built on the engine's raymarch template) — so it
+  reads like a stained metaphase chromosome under a scope: the iconic **X**, two sister chromatids joined at
+  a pinched **centromere**, four **G-banded** arms with rounded **telomere** tips. It animates the whole
+  condensation: a thin wavy chromatin thread coils and thickens into one chromatid, then the sister separates
+  into the X. This is a *rendering* of the condensed state (an SDF, not the conserved point set), so it is
+  the one stage not built by moving the base-pair cloud — the molecular flythrough (`warp_genome`, stages
+  1-5) hands off to it.
 
-- **Process 8 — replication → the metaphase X** (`warp_shaders/genome/replication.py`, scene
-  `warp_chromosome_x`). **Chains from Process 7's chromatid.** To make the classic **X**, biology first
-  **replicates** the DNA (S-phase) — the one place a copy is legitimately made — into two **identical sister
-  chromatids**; the sisters begin coincident, then separate and tilt into the X, joined at the
-  **centromere**, each keeping its two telomere caps (**four telomeres** in all). The copy is *shown, not
-  hidden*; everything else is conserving. *Stops at the metaphase X.*
+At every molecular step (1-5) matter is conserved — transform, never spawn; physics and logic are not broken,
+the motion is continuous, and each process consumes the previous one's real output.
 
-At every step matter is conserved (transform, never spawn) — the sole, deliberate, shown exception being the
-DNA replication that the X requires — physics and logic are not broken, the motion is continuous, and each
-process consumes the previous one's real output.
-
-**The ladder is complete.** The card's own matter is carried, one conserving process at a time, all the way
-from tokens to a chromosome: **365744 tokens → 182872 base pairs → 1663 double helices → 1663 nucleosome
-beads → 47 fibres → 2 telomere-capped ends → 1 chromatid → (replicate) → the metaphase X**. Separately, the
-tokenize→chromosome **codec** (`warp_compress/tokenchromo.py`, lossless round-trip, 5.4×) remains a
-verified compression result in its own right.
+**The ladder — six stages, token to chromosome.** The card's own matter is carried, one conserving process at
+a time: **tokenization → base pairs → double helices → nucleosomes → telomeres → the chromosome** (365 744
+tokens → 182 872 base pairs → 1663 double helices → 1663 nucleosome beads → the two telomere-capped ends →
+the condensed chromosome; the 30 nm fibre is the intermediate the telomere layout is built from). The whole
+run is one long animation (`warp_genome` → `warp_chromosome_solid`). Separately, the tokenize→chromosome
+**codec** (`warp_compress/tokenchromo.py`, lossless round-trip, 5.4×) remains a verified compression result
+in its own right.
 
 **Open spec questions (for the operator to steer — flagged, not assumed):**
 - What is **"the item"** precisely — the card's 3-D geometry (voxels), its rendered visual output

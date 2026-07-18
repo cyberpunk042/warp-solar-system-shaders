@@ -17,31 +17,32 @@ import numpy as np
 def main():
     from warp_shaders.scenes import warp_genome as G
 
-    # 1. the chain invariant — 6 stages, same pair count, all finite, same order
-    assert G._STAGES == 6, f"expected 6 stages, got {G._STAGES}"
-    assert G._KA.shape == G._KB.shape == (6, G._P, 3), f"bad keyframe shape {G._KA.shape}"
+    # 1. the chain invariant — 5 molecular stages (tokenization..telomeres; the 6th, the chromosome, is the
+    #    SDF solid), same pair count, all finite, same order
+    assert G._STAGES == 5, f"expected 5 molecular stages, got {G._STAGES}"
+    assert G._KA.shape == G._KB.shape == (5, G._P, 3), f"bad keyframe shape {G._KA.shape}"
     assert np.all(np.isfinite(G._KA)) and np.all(np.isfinite(G._KB)), "non-finite keyframe positions"
     assert G._P == 182872, f"unexpected pair count {G._P}"
-    print(f"  chain invariant: OK  (6 stages x {G._P} pairs, same order, finite)")
+    print(f"  chain invariant: OK  (5 molecular stages x {G._P} pairs, same order, finite)")
 
-    # 2. the timeline runs monotonically stage 0 -> last, and settles (holds) on the chromosome
+    # 2. the timeline runs monotonically stage 0 -> last, and settles (holds) on the telomeres
     prev = -1.0
-    for t in np.linspace(0.0, 27.0, 40):
+    for t in np.linspace(0.0, 22.0, 40):
         g = G._progress(float(t))
         assert g >= prev - 1e-6, f"progress went backwards at t={t}"
         prev = g
-    assert G._progress(0.0) == 0.0, "should start on the base pairs"
-    assert G._progress(100.0) == float(G._STAGES - 1), "should settle on the chromosome"
-    print("  timeline: OK  (monotonic base pairs -> chromosome, then holds)")
+    assert G._progress(0.0) == 0.0, "should start on the tokenization"
+    assert G._progress(100.0) == float(G._STAGES - 1), "should settle on the telomeres"
+    print("  timeline: OK  (monotonic tokenization -> telomeres, then holds)")
 
     # 3. the scene renders and animates the whole way down
     import warp as wp
     import warp_shaders as ws
     wp.init()
-    start = np.asarray(ws.render("warp_genome", width=140, height=150, time=0.3), np.float32)   # base pairs
-    end = np.asarray(ws.render("warp_genome", width=140, height=150, time=26.0), np.float32)    # chromosome
+    start = np.asarray(ws.render("warp_genome", width=140, height=150, time=0.3), np.float32)   # tokenization
+    end = np.asarray(ws.render("warp_genome", width=140, height=150, time=19.0), np.float32)    # telomeres
     assert np.all(np.isfinite(start)) and end.max() > 0.1 and end.std() > 0.01, "bad frame"
-    assert np.abs(start - end).mean() > 1e-3, "warp_genome: base pairs -> chromosome did not animate"
+    assert np.abs(start - end).mean() > 1e-3, "warp_genome: tokenization -> telomeres did not animate"
     print("  scene warp_genome: OK")
 
     print("ALL PASSED")

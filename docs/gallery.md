@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (308 scenes).
+`python render.py --list` for the full, current list (307 scenes).
 
 ## Engine showcase
 
@@ -149,7 +149,7 @@ the whole field, the whole wrap, in frame.
 
 ![the field of double helices wrapping down into beads on a string](engine/warp_nucleosome.gif)
 
-**C3 — genome, process 5 · 30 nm fibre** (`warp_fibre`): this process **chains from Process 4's actual
+**C3 — genome · intermediate · 30 nm fibre** (`warp_fibre`): between nucleosomes and telomeres, this process **chains from Process 4's actual
 beads** and coils them into **30 nm solenoid fibres**. The "beads on a string" wind at **~6 nucleosomes
 per turn**, and because a whole row of ~36 beads coils into one fibre, the **1663 beads funnel into ~47
 fibres** — the first real drop in *count* — while compacting ~6× along the fibre axis. Conserving: each
@@ -162,7 +162,7 @@ into a tidy band of fibres — the whole field, the whole coil, in frame.
 
 ![the bead carpet coiling and compacting into a band of 30 nm fibres](engine/warp_fibre.gif)
 
-**C3 — genome, process 6 · telomeres** (`warp_telomere`): this process **chains from Process 5's actual
+**C3 — genome, process 5 · telomeres** (`warp_telomere`): this process **chains from the 30 nm fibre's actual
 fibre** and caps its ends. A **telomere** is the DNA end-cap — tandem TTAGGG-type repeats whose 3' overhang
 loops back and invades the duplex, forming a **t-loop** lasso that protects the end. A linear strand has
 exactly **two** ends, so there are exactly **two** telomeres: the terminal stretch at each end (telomere-
@@ -174,44 +174,30 @@ trailing away, the far end's cap down the strand.
 
 ![the strand's two ends curling into telomere t-loops](engine/warp_telomere.gif)
 
-**C3 — genome, process 7 · the chromosome (single chromatid)** (`warp_chromosome`): this process **chains
-from Process 6's telomere-capped strand** and condenses it into **one chromatid** — a rounded rod with a
-**centromere** constriction at the middle and the two real **telomere** t-loops (green) capping its ends.
-One continuous strand, **nothing copied** — fully conserving. Every base pair is folded (not regenerated)
-onto the rod; the telomere caps are carried intact to the tips. A fixed 3/4 camera (slow dolly, no spin)
-watches the capped strand fold into the chromatid.
+**C3 — genome, stage 6 · the chromosome (solid)** (`warp_chromosome_solid`): the payoff. The condensed
+chromosome is rendered not as points but as a **lit signed-distance solid** — sphere-traced with a key
+light, soft self-shadows, ambient occlusion and PBR, so it reads like a stained metaphase chromosome under
+a scope: the iconic **X**, two sister chromatids joined at a pinched **centromere**, four G-banded arms with
+rounded **telomere** tips. It animates the whole condensation: a thin wavy chromatin thread coils and
+thickens into one chromatid, then the sister separates into the X. A slow 3/4 course, no spin.
 
-![warp_chromosome — the telomere-capped strand folded into a single chromatid](engine/warp_chromosome.png)
+![warp_chromosome_solid — the metaphase chromosome as a lit SDF solid](engine/warp_chromosome_solid.png)
 
-![the capped strand folding into a single chromatid with a centromere and telomere caps](engine/warp_chromosome.gif)
+![the chromatin thread condensing into the solid metaphase X](engine/warp_chromosome_solid.gif)
 
-**C3 — genome, process 8 · replication → the metaphase X** (`warp_chromosome_x`): this process **chains from
-Process 7's chromatid** and makes the classic **X**. Biology first **replicates** the DNA (S-phase) — the
-one place a copy is legitimately made — into two **identical sister chromatids**; the sisters begin
-coincident, then separate and tilt into the X, joined at the **centromere**, each keeping its two telomere
-caps (**four telomeres** in all). The copy is *shown, not hidden*; everything else is conserving. A fixed
-3/4 camera (no spin) watches one chromatid become two and the X form.
+> **The ladder — six stages, token to chromosome.** The card's own matter carried, one conserving process at
+> a time: **tokenization → base pairs → double helices → nucleosomes → telomeres → the chromosome** (365 744
+> tokens → 182 872 base pairs → 1663 double helices → 1663 nucleosome beads → the two telomere-capped ends →
+> the condensed chromosome). Each step chains from the previous one's real output, transforms and never
+> spawns, and is shown whole.
 
-![warp_chromosome_x — replication into the metaphase chromosome X](engine/warp_chromosome_x.png)
+**C3 — genome · the whole thing, one long animation** (`warp_genome` → `warp_chromosome_solid`): the master
+film brings all six stages together in one take. The molecular flythrough (`warp_genome`) morphs the real
+output of every process continuously — tokenization → base pairs → double helices → nucleosomes → telomeres,
+the same 182 872 base pairs conserved and only moved, the camera flying in to the helices and nucleosome
+beads — then hands off to the **solid chromosome** for stage six.
 
-![the chromatid replicating and tilting into the metaphase X](engine/warp_chromosome_x.gif)
-
-> **The ladder is complete** — the card's own matter carried, one conserving process at a time, all the way
-> from tokens to a chromosome: **365744 tokens → 182872 base pairs → 1663 double helices → 1663 nucleosome
-> beads → 47 fibres → 2 telomere-capped ends → 1 chromatid → (replicate) → the metaphase X**. Each step
-> chains from the previous one's real output, transforms and never spawns — the sole, deliberate, shown
-> exception being the DNA replication that the X requires — and each is shown whole.
-
-**C3 — genome · the whole process, one long animation** (`warp_genome`): the master sequence. It takes the
-**actual output arrays** of every process — the same 182 872 base pairs, in the same order, because each
-process chains from the last — and **morphs continuously through all of them**, so you watch the DNA condense
-the whole way down in one take: base pairs → double helices → nucleosomes (beads on a string) → 30 nm fibre →
-telomeres → the coiled chromosome. Every base pair is conserved and only *moved* from one process's real
-position to the next; nothing is spawned. The camera **flies in** to the fine scales (the helices, the
-nucleosome rings) so you see the structure up close, then pulls **out** for the condensation, settling on the
-finished, pretty coiled chromatid — a fixed 3/4 course, a slow reveal, no spin.
-
-![warp_genome — the whole genome process, base pairs condensing all the way down to the chromosome](engine/warp_genome.gif)
+![the whole genome process — tokenization all the way to the solid chromosome](engine/genome_to_chromosome.gif)
 
 ## Simulation of reality — the card, by real physics
 
