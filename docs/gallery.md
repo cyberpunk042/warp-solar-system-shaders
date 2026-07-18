@@ -174,30 +174,26 @@ trailing away, the far end's cap down the strand.
 
 ![the strand's two ends curling into telomere t-loops](engine/warp_telomere.gif)
 
-**C3 — genome, stage 6 · the chromosome (solid)** (`warp_chromosome_solid`): the payoff. The condensed
-chromosome is rendered not as points but as a **lit signed-distance solid** — sphere-traced with a key
-light, soft self-shadows, ambient occlusion and PBR, so it reads like a stained metaphase chromosome under
-a scope: the iconic **X**, two sister chromatids joined at a pinched **centromere**, four G-banded arms with
-rounded **telomere** tips. It animates the whole condensation: a thin wavy chromatin thread coils and
-thickens into one chromatid, then the sister separates into the X. A slow 3/4 course, no spin.
+**C3 — genome · the whole thing, one continuous compression** (`warp_genome`): the payoff, and the honest
+one. This is not a morph and not a cut — it is the real **hierarchical coiling** that compacts DNA ~10 000×.
+A single continuous thread of the card's **182 872 base pairs** is shaped as a **nested supercoil** (double
+helix → nucleosome coil → fibre coil → chromatid), and a single **condensation** parameter drives the whole
+run: as it rises, the outer axis **shortens** (that shortening *is* the compression) while each level of
+coil **engages** in turn (fine → coarse), so the thread weaves ever tighter — **every frame a real,
+partially-coiled state** — from the extended strand down to a dense chromatid with a centromere waist and its
+two telomere ends. The matter is conserved throughout: the same thread, only ever coiled tighter, never
+copied (a copy would be replication → the X, which we do not do), never flashed into existence.
 
-![warp_chromosome_solid — the metaphase chromosome as a lit SDF solid](engine/warp_chromosome_solid.png)
-
-![the chromatin thread condensing into the solid metaphase X](engine/warp_chromosome_solid.gif)
+![warp_genome — one thread coiling continuously into the condensed chromatid](engine/genome_to_chromosome.gif)
 
 > **The ladder — six stages, token to chromosome.** The card's own matter carried, one conserving process at
 > a time: **tokenization → base pairs → double helices → nucleosomes → telomeres → the chromosome** (365 744
 > tokens → 182 872 base pairs → 1663 double helices → 1663 nucleosome beads → the two telomere-capped ends →
-> the condensed chromosome). Each step chains from the previous one's real output, transforms and never
-> spawns, and is shown whole.
+> the condensed chromatid). Stages 1-5 are shown individually above; `warp_genome` is the whole run as one
+> continuous coil.
 
-**C3 — genome · the whole thing, one long animation** (`warp_genome` → `warp_chromosome_solid`): the master
-film brings all six stages together in one take. The molecular flythrough (`warp_genome`) morphs the real
-output of every process continuously — tokenization → base pairs → double helices → nucleosomes → telomeres,
-the same 182 872 base pairs conserved and only moved, the camera flying in to the helices and nucleosome
-beads — then hands off to the **solid chromosome** for stage six.
-
-![the whole genome process — tokenization all the way to the solid chromosome](engine/genome_to_chromosome.gif)
+_(A separate stylized still, `warp_chromosome_solid`, renders a chromosome as a lit signed-distance solid —
+an illustration, not the conserved point set.)_
 
 ## Simulation of reality — the card, by real physics
 

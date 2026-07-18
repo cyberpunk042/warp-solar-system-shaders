@@ -1,12 +1,13 @@
-"""Tests for the whole-process master animation (warp_shaders.scenes.warp_genome).
+"""Tests for the continuous-compression master animation (warp_shaders.scenes.warp_genome).
 
-The master scene stacks the ACTUAL output of every genome process and morphs continuously through them.
-The load-bearing invariant is that every process exposes the same base pairs in the same order (so the morph
-is a pure per-pair move, conserving — nothing spawned):
+The scene is ONE thread of the real base pairs whose shape is a nested supercoil driven by a single
+condensation parameter c. It is a genuine continuous coil — not a lerp between poses — so the invariants are
+about the physics of the coil, not keyframes:
 
-  1. every stage has the same pair count and finite positions (the chain invariant);
-  2. the timeline progresses monotonically from stage 0 (base pairs) to the last (chromosome);
-  3. the warp_genome scene renders and the whole thing animates (base pairs -> chromosome).
+  1. the thread is the real conserved base pairs (count), finite everywhere, at every c;
+  2. it is a real COMPRESSION — the thread's extent SHRINKS monotonically as c rises (the axis shortens as it
+     coils), and it never grows;
+  3. the warp_genome scene renders and animates (extended thread -> packed chromatid).
 
     python -m tests.test_genome
 """
@@ -17,32 +18,30 @@ import numpy as np
 def main():
     from warp_shaders.scenes import warp_genome as G
 
-    # 1. the chain invariant — 5 molecular stages (tokenization..telomeres; the 6th, the chromosome, is the
-    #    SDF solid), same pair count, all finite, same order
-    assert G._STAGES == 5, f"expected 5 molecular stages, got {G._STAGES}"
-    assert G._KA.shape == G._KB.shape == (5, G._P, 3), f"bad keyframe shape {G._KA.shape}"
-    assert np.all(np.isfinite(G._KA)) and np.all(np.isfinite(G._KB)), "non-finite keyframe positions"
-    assert G._P == 182872, f"unexpected pair count {G._P}"
-    print(f"  chain invariant: OK  (5 molecular stages x {G._P} pairs, same order, finite)")
+    # 1. the conserved thread — real base-pair count, two strands, finite at every c
+    assert G._N == 182872, f"unexpected base-pair count {G._N}"
+    heights = []
+    for c in np.linspace(0.0, 1.0, 9):
+        a, b, half = G._positions(float(c))
+        assert a.shape == b.shape == (G._N, 3), f"bad strand shape {a.shape} at c={c}"
+        assert np.all(np.isfinite(a)) and np.all(np.isfinite(b)), f"non-finite positions at c={c}"
+        heights.append(half)
+    print(f"  conserved thread: OK  ({G._N} base pairs x 2 strands, finite at every c)")
 
-    # 2. the timeline runs monotonically stage 0 -> last, and settles (holds) on the telomeres
-    prev = -1.0
-    for t in np.linspace(0.0, 22.0, 40):
-        g = G._progress(float(t))
-        assert g >= prev - 1e-6, f"progress went backwards at t={t}"
-        prev = g
-    assert G._progress(0.0) == 0.0, "should start on the tokenization"
-    assert G._progress(100.0) == float(G._STAGES - 1), "should settle on the telomeres"
-    print("  timeline: OK  (monotonic tokenization -> telomeres, then holds)")
+    # 2. real compression — the thread only ever gets SHORTER as it condenses (never grows)
+    h = np.array(heights)
+    assert np.all(np.diff(h) <= 1e-4), f"thread grew during condensation (not compression): {h}"
+    assert h[0] > 3.0 * h[-1], f"not enough compression: extended {h[0]:.1f} vs condensed {h[-1]:.1f}"
+    print(f"  compression: OK  (thread shrinks {h[0]:.0f} -> {h[-1]:.1f}, monotonic)")
 
-    # 3. the scene renders and animates the whole way down
+    # 3. the scene renders and animates the whole coil
     import warp as wp
     import warp_shaders as ws
     wp.init()
-    start = np.asarray(ws.render("warp_genome", width=140, height=150, time=0.3), np.float32)   # tokenization
-    end = np.asarray(ws.render("warp_genome", width=140, height=150, time=19.0), np.float32)    # telomeres
+    start = np.asarray(ws.render("warp_genome", width=140, height=160, time=0.8), np.float32)   # extended
+    end = np.asarray(ws.render("warp_genome", width=140, height=160, time=10.5), np.float32)    # chromatid
     assert np.all(np.isfinite(start)) and end.max() > 0.1 and end.std() > 0.01, "bad frame"
-    assert np.abs(start - end).mean() > 1e-3, "warp_genome: tokenization -> telomeres did not animate"
+    assert np.abs(start - end).mean() > 1e-3, "warp_genome: the coil did not animate"
     print("  scene warp_genome: OK")
 
     print("ALL PASSED")

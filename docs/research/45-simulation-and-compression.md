@@ -283,26 +283,26 @@ one before it.
   the terminal base pairs are reshaped — the strand curls back on itself; nothing spawned. *Stops at the
   capped strand.*
 
-- **Process 6 — the chromosome (a lit SDF solid)** (scene `warp_chromosome_solid`). The condensed chromosome
-  is the payoff, and it is rendered not as points but as a **signed-distance solid** — sphere-traced with a
-  key light, soft self-shadows, ambient occlusion and PBR (built on the engine's raymarch template) — so it
-  reads like a stained metaphase chromosome under a scope: the iconic **X**, two sister chromatids joined at
-  a pinched **centromere**, four **G-banded** arms with rounded **telomere** tips. It animates the whole
-  condensation: a thin wavy chromatin thread coils and thickens into one chromatid, then the sister separates
-  into the X. This is a *rendering* of the condensed state (an SDF, not the conserved point set), so it is
-  the one stage not built by moving the base-pair cloud — the molecular flythrough (`warp_genome`, stages
-  1-5) hands off to it.
+- **Process 6 — the chromosome (continuous compression)** (scene `warp_genome`). The whole run is one
+  continuous animation of **hierarchical coiling** — the process that compacts DNA ~10 000×. A single
+  continuous thread of the 182 872 base pairs is shaped as a **nested supercoil** (double helix → nucleosome
+  coil → fibre coil → chromatid axis); one **condensation** parameter shortens the axis (that shortening *is*
+  the compression) while each level of coil engages in turn (fine → coarse), so the thread weaves ever
+  tighter — **every frame a real partially-coiled state**, no lerp between poses, nothing flashed into
+  existence — from the extended strand down to a dense chromatid with a centromere waist and its two telomere
+  ends. A **single chromatid**, not the X: an X needs replication (a copy), and a copy would be a cheat.
 
-At every molecular step (1-5) matter is conserved — transform, never spawn; physics and logic are not broken,
-the motion is continuous, and each process consumes the previous one's real output.
+At every step matter is conserved — the same thread, only ever coiled tighter, never copied, never spawned;
+physics and logic are respected the whole way, the motion is continuous.
 
 **The ladder — six stages, token to chromosome.** The card's own matter is carried, one conserving process at
 a time: **tokenization → base pairs → double helices → nucleosomes → telomeres → the chromosome** (365 744
 tokens → 182 872 base pairs → 1663 double helices → 1663 nucleosome beads → the two telomere-capped ends →
-the condensed chromosome; the 30 nm fibre is the intermediate the telomere layout is built from). The whole
-run is one long animation (`warp_genome` → `warp_chromosome_solid`). Separately, the tokenize→chromosome
-**codec** (`warp_compress/tokenchromo.py`, lossless round-trip, 5.4×) remains a verified compression result
-in its own right.
+the condensed chromatid; the 30 nm fibre is the intermediate the telomere layout is built from). Stages 1-5
+have their own scenes; `warp_genome` is the whole run as one continuous coil. Separately, the
+tokenize→chromosome **codec** (`warp_compress/tokenchromo.py`, lossless round-trip, 5.4×) remains a verified
+compression result in its own right. (`warp_chromosome_solid` is a separate stylized SDF portrait — an
+illustration, not the conserved point set.)
 
 **Open spec questions (for the operator to steer — flagged, not assumed):**
 - What is **"the item"** precisely — the card's 3-D geometry (voxels), its rendered visual output

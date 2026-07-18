@@ -1,19 +1,15 @@
-"""The genome molecular process — one continuous animation from base pairs to the telomere-capped strand.
+"""The genome as one continuous **compression** — the DNA thread coils tighter and tighter, weaving into each
+denser form, from the extended strand all the way down to the packed chromatid. ONE animation, ONE thread.
 
-This is the flythrough. It does not re-simulate anything: it takes the **actual output arrays** of every
-genome process (all the same 182 872 base pairs, in the same order, because each process chains from the
-last) and morphs continuously through them, so you watch the DNA fold the whole way down:
-
-    1  tokenization           — every occupied voxel becomes tokens: the raw field
-      → 2  base pairs          — tokens bind in twos
-      → 3  double helices      — the pairs wind into 1663 helices
-      → 4  nucleosomes         — helices wrap into beads on a string
-      → 5  telomeres           — the strand (coiled into its 30 nm fibre) has its two ends curl into t-loops
-
-Every base pair is conserved and simply *moved* from one process's position to the next (a smooth lerp with
-ease), nothing spawned. The camera flies IN to the fine scales (helices, nucleosome beads) then pulls back,
-a slow 3/4 course, no spin. Stage **6, the condensed chromosome**, is the payoff render — the lit signed-
-distance solid in ``warp_chromosome_solid`` — which this molecular flythrough hands off to.
+This is not a morph (no lerping between poses, nothing flashing into existence). It is the real hierarchical
+**coiling** that compacts DNA ~10 000×: a single continuous thread of the card's 182 872 base pairs, whose
+shape is a **nested supercoil** — the double helix wound around a nucleosome-scale coil, wound around a
+fibre-scale coil, wound around the chromatid axis. A single **condensation** parameter drives the whole
+thing: as it rises, the outer axis **shortens** (that shortening *is* the compression) while each level of
+coil **engages** in turn (fine → coarse), so the thread weaves ever tighter — every frame a valid,
+partially-coiled physical state — until it is a dense, opaque chromatid with a centromere waist and its two
+telomere ends. The matter is conserved throughout: the same thread, only ever coiled tighter, never copied
+(a copy would be replication → the X, which we do not do), never spawned.
 """
 
 from __future__ import annotations
@@ -23,87 +19,98 @@ import warp as wp
 
 from ..engine import post
 from ..genome.basepair import bind_pairs
-from ..genome.helix import wind_helix, wound_positions
-from ..genome.nucleosome import wrap_nucleosomes
 from ..genome.telomere import cap_telomeres
 from ..scene import Scene
 
-_SUB, _BLOCK = 2, 5
+_bp = bind_pairs(sub=2, block=5)
+_N = int(_bp.n_pairs)
+_tl = cap_telomeres(sub=2, block=5)
 
-# --- assemble the real keyframes: every process's actual output, same pairs, same order ----------------
-# The molecular process, tokenization → telomeres (the 30 nm fibre coil is the intermediate the telomere
-# layout is built from). The condensed chromosome itself — stage six — is the lit SDF solid
-# (warp_chromosome_solid), which this flythrough hands off to.
-_bp = bind_pairs(sub=_SUB, block=_BLOCK)
-_hx = wind_helix(sub=_SUB, block=_BLOCK)
-_h_a, _h_b = wound_positions(_hx)
-_nu = wrap_nucleosomes(sub=_SUB, block=_BLOCK)
-_tl = cap_telomeres(sub=_SUB, block=_BLOCK)
+_A_COL = _bp.a_col.astype(np.float32).copy()
+_B_COL = _bp.b_col.astype(np.float32).copy()
+_GREEN = np.array([0.45, 1.0, 0.60], np.float32)
+_A_COL[_tl.is_tel] = _GREEN                              # the telomere ends, tinted, carried all the way through
+_B_COL[_tl.is_tel] = _GREEN
+_U = (np.arange(_N) / (_N - 1.0)).astype(np.float64)     # arc position along the one continuous thread
 
-# stage 1 tokenization (the raw field sites, two tokens per pair) → 2 base pairs → 3 double helices →
-# 4 nucleosomes → 5 telomeres. Six is the chromosome (the SDF solid).
-_KA = np.stack([_bp.field_a, _bp.a_pos, _h_a, _nu.nuc_a, _tl.tel_a]).astype(np.float32)  # (5,P,3)
-_KB = np.stack([_bp.field_b, _bp.b_pos, _h_b, _nu.nuc_b, _tl.tel_b]).astype(np.float32)
-_STAGES = _KA.shape[0]
-_P = _KA.shape[1]
-_SAMPLES = 4
-_M = _P * _SAMPLES
-_COLA = _tl.a_col.astype(np.float32)                     # telomere-tinted base colours, consistent through-line
-_COLB = _tl.b_col.astype(np.float32)
-
-# per-stage centroid + full extent so the camera can auto-fit each stage
-_CENT = np.zeros((_STAGES, 3), np.float32)
-_RAD = np.zeros(_STAGES, np.float32)
-for _k in range(_STAGES):
-    _pts = np.concatenate([_KA[_k], _KB[_k]], 0)
-    _c = _pts.mean(0)
-    _CENT[_k] = _c
-    _RAD[_k] = float(np.percentile(np.linalg.norm(_pts - _c, axis=1), 96.0))
-
-# per-stage CAMERA: for the fine scales (helices, nucleosomes) we fly IN to a small window so the actual
-# structure is visible up close; for the big scales we frame the whole thing. Direction reveals each layout.
-#          tokenization    base pairs     double helices  nucleosomes    telomeres
-_STAGE_DIR = np.array([
-    [0.26, 0.78, 1.0], [0.30, 0.50, 1.0], [0.44, 0.30, 1.0],
-    [0.44, 0.28, 1.0], [0.32, 0.20, 1.0],
-], np.float32)
-_STAGE_FRAME = np.array([float(_RAD[0]), 6.0, 3.4, 3.6, _RAD[4]], np.float32)  # wide field → fly IN for the fine scales
-
-_KAf = _KA.reshape(_STAGES * _P, 3)                      # flat: stage k, pair pr → k*P + pr
-_KBf = _KB.reshape(_STAGES * _P, 3)
-
-_ka = _kb = _cola = _colb = None
+_M = 2 * _N                                              # two backbone strands
 
 
-def _ensure(device):
-    global _ka, _kb, _cola, _colb
-    if _ka is None:
-        _ka = wp.array(_KAf, dtype=wp.vec3, device=device)
-        _kb = wp.array(_KBf, dtype=wp.vec3, device=device)
-        _cola = wp.array(_COLA, dtype=wp.vec3, device=device)
-        _colb = wp.array(_COLB, dtype=wp.vec3, device=device)
+def _smooth(x):
+    x = np.clip(x, 0.0, 1.0)
+    return x * x * (3.0 - 2.0 * x)
+
+
+def _eng(c, a, b):
+    return _smooth((c - a) / (b - a))
+
+
+def _positions(c):
+    """The nested supercoil at condensation ``c`` in [0,1]. Returns the two backbone strands (2N,3) and the
+    thread's current half-height (for framing). At c=0 the thread is long and barely coiled; at c=1 it is a
+    short, tightly super-coiled, dense rod."""
+    u = _U
+    L = (1.0 - c) * 62.0 + c * 6.4                       # axis length: long → short  (this shortening = compression)
+    waist = 1.0 - 0.42 * c * np.exp(-((u - 0.5) / 0.07) ** 2)          # centromere constriction grows in with c
+    arms = 0.35 + 0.65 * np.sqrt(np.clip(1.0 - (2.0 * u - 1.0) ** 8, 0.0, 1.0))  # rounded chromatid arms at high c
+    env = (1.0 - c) + c * (arms * waist)                 # radius envelope: uniform when loose, chromatid when dense
+
+    e_fib = _eng(c, 0.30, 0.64)                          # coarse fibre supercoil engages last
+    e_nuc = _eng(c, 0.12, 0.42)                          # nucleosome coil engages in the middle
+    e_dna = 0.40 + 0.60 * _eng(c, 0.02, 0.16)            # the double helix — mostly always on
+
+    axis = np.zeros((_N, 3))
+    axis[:, 1] = (u - 0.5) * L
+
+    # level 1 — the fibre supercoil around the y axis (with an analytic Frenet frame so finer coils nest on it)
+    R1 = 1.18 * e_fib * env
+    t1 = 46.0
+    ph1 = 2.0 * np.pi * t1 * u
+    c1, s1 = np.cos(ph1), np.sin(ph1)
+    er1 = np.stack([c1, np.zeros_like(c1), s1], 1)
+    ep1 = np.stack([-s1, np.zeros_like(s1), c1], 1)
+    P1 = axis + R1[:, None] * er1
+    dP1 = np.zeros((_N, 3))
+    dP1[:, 1] = L
+    dP1 += (R1 * 2.0 * np.pi * t1)[:, None] * ep1
+    T1 = dP1 / np.linalg.norm(dP1, axis=1, keepdims=True)
+    N1 = -er1
+    B1 = np.cross(T1, N1)
+    B1 /= np.linalg.norm(B1, axis=1, keepdims=True)
+
+    # level 2 — the nucleosome coil wound around the fibre thread (in its N1,B1 frame)
+    R2 = 0.42 * e_nuc * env
+    t2 = 190.0
+    ph2 = 2.0 * np.pi * t2 * u
+    P2 = P1 + R2[:, None] * (np.cos(ph2)[:, None] * N1 + np.sin(ph2)[:, None] * B1)
+
+    # level 3 — the DNA double helix wound around the nucleosome thread (two strands, π apart)
+    R3 = 0.11 * e_dna * (0.5 + 0.5 * env)
+    t3 = 820.0
+    ph3 = 2.0 * np.pi * t3 * u
+    off_a = R3[:, None] * (np.cos(ph3)[:, None] * N1 + np.sin(ph3)[:, None] * B1)
+    off_b = R3[:, None] * (np.cos(ph3 + np.pi)[:, None] * N1 + np.sin(ph3 + np.pi)[:, None] * B1)
+    a = (P2 + off_a).astype(np.float32)
+    b = (P2 + off_b).astype(np.float32)
+    return a, b, float(0.5 * L + 1.3)
 
 
 _INIT = wp.constant(0x7FFFFFFF)
 _IDX_BITS = wp.constant(20)
 _IDX_MASK = wp.constant(0xFFFFF)
-_BACKBONE = wp.constant(wp.vec3(0.60, 0.66, 0.80))
 
 
 @wp.kernel
-def _morph_kernel(
-    ka: wp.array(dtype=wp.vec3),
-    kb: wp.array(dtype=wp.vec3),
+def _splat(
+    pa: wp.array(dtype=wp.vec3),
+    pb: wp.array(dtype=wp.vec3),
     cola: wp.array(dtype=wp.vec3),
     colb: wp.array(dtype=wp.vec3),
     zbuf: wp.array2d(dtype=wp.int32),
     elemcol: wp.array(dtype=wp.vec3),
     width: int,
     height_px: int,
-    n_pairs: int,
-    seg: int,
-    f: float,
-    base_pt: float,
+    n: int,
     ro: wp.vec3,
     uu: wp.vec3,
     vv: wp.vec3,
@@ -111,36 +118,15 @@ def _morph_kernel(
     zoom: float,
     dnear: float,
     dfar: float,
+    base_pt: float,
 ):
     e = wp.tid()
-    pr = e / 4
-    s = e - pr * 4
-
-    ia = seg * n_pairs + pr
-    ib = (seg + 1) * n_pairs + pr
-    pa = wp.lerp(ka[ia], ka[ib], f)
-    pb = wp.lerp(kb[ia], kb[ib], f)
-
-    ac = cola[pr]
-    bc = colb[pr]
-    tel = ac[1] > 0.9
-
-    if s == 0:
-        pos = pa
-        col = _BACKBONE
-        if tel:
-            col = ac
-    elif s == 1:
-        pos = pb
-        col = _BACKBONE
-        if tel:
-            col = bc
-    elif s == 2:
-        pos = wp.lerp(pa, pb, 0.36)
-        col = ac
+    if e < n:
+        pos = pa[e]
+        col = cola[e]
     else:
-        pos = wp.lerp(pa, pb, 0.64)
-        col = bc
+        pos = pb[e - n]
+        col = colb[e - n]
     elemcol[e] = col
 
     rel = pos - ro
@@ -153,13 +139,10 @@ def _morph_kernel(
     pfy = 0.5 * float(height_px) - 0.5 - zoom * cy / cz * float(height_px)
     px = int(wp.round(pfx))
     py = int(wp.round(pfy))
-
     rpx = zoom * base_pt / cz * float(height_px)
-    rad = int(wp.clamp(rpx, 1.0, 11.0))
-
+    rad = int(wp.clamp(rpx, 1.0, 9.0))
     depthq = int(wp.clamp((cz - dnear) / (dfar - dnear) * 1022.0, 0.0, 1022.0))
     key = (depthq << _IDX_BITS) | e
-
     for dy in range(-rad, rad + 1):
         for dx in range(-rad, rad + 1):
             if float(dx * dx + dy * dy) <= float(rad * rad) + 0.5:
@@ -170,13 +153,8 @@ def _morph_kernel(
 
 
 @wp.kernel
-def _resolve_kernel(
-    zbuf: wp.array2d(dtype=wp.int32),
-    elemcol: wp.array(dtype=wp.vec3),
-    img: wp.array2d(dtype=wp.vec3),
-    width: int,
-    height_px: int,
-):
+def _resolve(zbuf: wp.array2d(dtype=wp.int32), elemcol: wp.array(dtype=wp.vec3),
+             img: wp.array2d(dtype=wp.vec3), width: int, height_px: int):
     i, j = wp.tid()
     yy = float(i) / float(height_px)
     bg = wp.vec3(0.015, 0.019, 0.029) * (1.0 - 0.45 * yy)
@@ -186,79 +164,58 @@ def _resolve_kernel(
         return
     idx = key & _IDX_MASK
     depthq = float((key >> _IDX_BITS) & 0x3FF) / 1022.0
-    shade = 1.32 - 1.04 * depthq
+    shade = 1.34 - 1.04 * depthq
     fog = wp.clamp((depthq - 0.34) * 1.6, 0.0, 0.85)
     img[i, j] = wp.lerp(elemcol[idx] * shade, bg, fog)
 
 
-# --- timeline: a long hold on base pairs, then each transition eases over TRANS with a hold after -------
-_STAGE_DUR = 5.0                                         # seconds each process occupies
-_TRANS = 3.4                                             # of which this many are the moving transition
+_cola = _colb = None
 
 
-def _progress(time: float):
-    """Global progress in [0, STAGES-1]: integer part = stage, fractional = eased transition to the next."""
-    t = max(float(time), 0.0)
-    seg = int(t / _STAGE_DUR)
-    if seg > _STAGES - 2:
-        return float(_STAGES - 1)
-    f = (t - seg * _STAGE_DUR) / _TRANS
-    f = min(max(f, 0.0), 1.0)
-    f = f * f * (3.0 - 2.0 * f)
-    return seg + f
+def _condensation(time: float) -> float:
+    return _smooth((float(time) - 0.4) / 9.2)            # slow: the whole compression over ~9.5 s of animation
 
 
-def _lerp(a, b, t):
-    return a * (1.0 - t) + b * t
+def _render(width, height, time, mouse, device):
+    global _cola, _colb
+    W, H = int(width), int(height)
+    c = _condensation(float(time))
+    pa_np, pb_np, half = _positions(c)
 
+    if _cola is None:
+        _cola = wp.array(_A_COL, dtype=wp.vec3, device=device)
+        _colb = wp.array(_B_COL, dtype=wp.vec3, device=device)
+    pa = wp.array(pa_np, dtype=wp.vec3, device=device)
+    pb = wp.array(pb_np, dtype=wp.vec3, device=device)
 
-def _camera(time: float, g: float):
-    seg = min(int(g), _STAGES - 2)
-    f = g - seg
-    cent = _lerp(_CENT[seg], _CENT[seg + 1], f)
-    frame = float(_lerp(_STAGE_FRAME[seg], _STAGE_FRAME[seg + 1], f))     # framed radius (zoom in on fine stages)
-    dist = 2.6 * frame + 5.0                              # fit the framed window, a little breathing room
-    direction = _lerp(_STAGE_DIR[seg], _STAGE_DIR[seg + 1], f)
+    # frame the thread: pull in as it compresses (half-height shrinks 32 → ~4.5)
+    dist = 2.7 * half + 6.0
+    target = np.array([0.0, 0.0, 0.0], np.float32)
+    direction = np.array([0.42, 0.16, 1.0], np.float32)
     direction = direction / np.linalg.norm(direction)
-    target = cent.astype(np.float32)
     ro = target + dist * direction
     ww = target - ro
     ww = ww / np.linalg.norm(ww)
     uu = np.cross(ww, np.array([0.0, 1.0, 0.0], np.float32))
     uu = uu / np.linalg.norm(uu)
     vv = np.cross(uu, ww)
-    return ro, uu, vv, ww, dist, frame
-
-
-def _render(width, height, time, mouse, device):
-    _ensure(device)
-    W, H = int(width), int(height)
-    g = _progress(float(time))
-    seg = min(int(g), _STAGES - 2)
-    f = float(g - seg)
-    ro, uu, vv, ww, dist, rad = _camera(float(time), g)
-    dnear = float(dist) - float(rad) * 1.25
-    dfar = float(dist) + float(rad) * 1.25
-    base_pt = 0.006 * rad + 0.010                         # splat scales with the framed size → opaque at every stage
+    dnear = float(dist) - float(half) * 1.1
+    dfar = float(dist) + float(half) * 1.1
+    base_pt = 0.004 * half + 0.020                        # scales with framed size; dense fill → opaque when packed
 
     zbuf = wp.full((H, W), 0x7FFFFFFF, dtype=wp.int32, device=device)
     elemcol = wp.zeros(_M, dtype=wp.vec3, device=device)
     img = wp.zeros((H, W), dtype=wp.vec3, device=device)
     cam = (wp.vec3(*[float(x) for x in ro]), wp.vec3(*[float(x) for x in uu]),
            wp.vec3(*[float(x) for x in vv]), wp.vec3(*[float(x) for x in ww]))
-    wp.launch(
-        _morph_kernel,
-        dim=_M,
-        inputs=[_ka, _kb, _cola, _colb, zbuf, elemcol, W, H, _P, int(seg), f, float(base_pt),
-                *cam, 1.7, dnear, dfar],
-        device=device,
-    )
-    wp.launch(_resolve_kernel, dim=(H, W), inputs=[zbuf, elemcol, img, W, H], device=device)
+    wp.launch(_splat, dim=_M, inputs=[pa, pb, _cola, _colb, zbuf, elemcol, W, H, _N, *cam, 1.7,
+                                      dnear, dfar, float(base_pt)], device=device)
+    wp.launch(_resolve, dim=(H, W), inputs=[zbuf, elemcol, img, W, H], device=device)
     wp.synchronize_device(device)
     hdr = img.numpy()
 
-    hdr = post.bloom(hdr, threshold=0.9, strength=0.4, radius=4, passes=2)
-    ldr = post.tonemap(hdr, mode="aces", exposure=1.0, preserve_hue=True)
+    hdr = post.bloom(hdr, threshold=0.9, strength=0.35, radius=4, passes=2)
+    ldr = post.tonemap(hdr, mode="aces", exposure=1.05, preserve_hue=True)
     ldr = post.vignette(ldr, amount=0.3)
     return ldr
 
@@ -266,11 +223,13 @@ def _render(width, height, time, mouse, device):
 SCENE = Scene(
     name="warp_genome",
     description=(
-        "The genome molecular process in one continuous animation. The real output of every process — "
-        "tokenization → base pairs → double helices → nucleosomes → telomeres — morphs smoothly one into the "
-        "next (the same 182 872 base pairs, conserved and only moved, each stage chained from the last), the "
-        "camera flying in to the helices and nucleosome beads then pulling back. No spin, nothing spawned. "
-        "Stage six, the chromosome, is the lit SDF solid in warp_chromosome_solid, which this hands off to."
+        "The genome as one continuous compression — the DNA thread coils tighter and tighter, weaving into "
+        "each denser form, from the extended strand down to the packed chromatid. One thread of the card's "
+        "182 872 base pairs, shaped as a nested supercoil (double helix → nucleosome coil → fibre coil → "
+        "chromatid); a single condensation parameter shortens the axis (that shortening IS the compression) "
+        "while each level of coil engages in turn, so the thread weaves ever tighter — every frame a real "
+        "partially-coiled state — into a dense, opaque chromatid. Matter conserved, never copied, never "
+        "flashed into existence: the same thread, only ever coiled tighter."
     ),
     renderer=_render,
 )
