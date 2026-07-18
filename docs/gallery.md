@@ -137,17 +137,53 @@ the whole way and the entire winding is visible.
 
 **C3 — genome, process 4 · nucleosomes** (`warp_nucleosome`): this process **chains from Process 3's actual
 wound helices** and wraps them into **"beads on a string."** A nucleosome is ~one double helix's worth of
-DNA (~150 base pairs) coiled ~1.75 turns around a histone core, with **linker** DNA reaching to the next
-bead — so the 1663 helices become **1663 beads on a string** (the count barely changes; the win is
-**spatial**: a tall helix wraps down into a compact bead, ~6× smaller). Conserving: every base pair is
-reused — the middle of each helix wraps its bead, the two ends are the linker to its neighbours; nothing
-spawned (the histone core is the empty centre the DNA wraps around), nothing teleports. A fixed camera
-(slow tilt down, no spin) watches the tall forest of helices collapse into the flat carpet of beads —
-the whole field, the whole wrap, in frame.
+DNA (~150 base pairs) coiled ~1.75 turns around a **histone core** (drawn as the protein bead the DNA
+wraps), with **linker** DNA reaching to the next bead. The beads are threaded on a **serpentine** path so
+consecutive beads are always neighbours — the linker DNA stays short and local, and the cores sit farther
+apart than their own diameter, so the strand **never passes through itself** (measured, not assumed).
+Conserving: every base pair is reused — the middle of each helix wraps its bead, the two ends are the
+linker to its neighbours; nothing teleports. A fixed camera watches the forest of helices collapse into
+the string of beads — the whole field, the whole wrap, in frame.
 
-![warp_nucleosome — the double helices wrapped into a carpet of nucleosome beads on a string](engine/warp_nucleosome.png)
+![warp_nucleosome — the double helices wrapped into a serpentine string of histone-cored beads](engine/warp_nucleosome.png)
 
 ![the field of double helices wrapping down into beads on a string](engine/warp_nucleosome.gif)
+
+**C3 — genome, process 5 · the 30 nm fibre** (`warp_fibre`): this process **chains from Process 4's actual
+beads** and coils them tightly into **30 nm solenoid fibres** — ~6 nucleosomes per turn. A long run of
+beads makes one rope, so the 1663 beads **funnel into ~two dozen fibres** that stand up into a **forest of
+thick coiled ropes** (thin threads → flat beads → coiled ropes). Conserving: each bead is **rigid-moved**
+onto the solenoid, every base pair reused; the fibre radius, pitch and rope spacing are sized from the real
+biology so the ~6 beads fit around each turn and neighbouring ropes never touch — no interpenetration
+(measured). A fixed camera holds the whole rope forest in frame.
+
+![warp_fibre — the beads-on-a-string coiled into a forest of 30 nm solenoid fibres](engine/warp_fibre.png)
+
+![the bead carpet gathering and standing up into a forest of coiled 30 nm ropes](engine/warp_fibre.gif)
+
+**C3 — genome, process 6 · telomeres** (`warp_telomere`): this process **chains from Process 5's fibre**.
+A linear strand has exactly **two** ends, so exactly two telomeres: each terminal stretch of **bare DNA**
+leaves the fibre along a short outward stem (away from the packed forest, so it never threads the ropes)
+and lassoes a protective **t-loop** — the free 3′ tip tucking back into the duplex. Conserving: only the
+terminal base pairs are reshaped, nothing spawned; hanging the cap out into open space guarantees no
+interpenetration (measured). A close-up features the near end's green t-loop, the fibre forest trailing away.
+
+![warp_telomere — the bare-DNA strand end lassoing a protective t-loop cap](engine/warp_telomere.png)
+
+![the terminal DNA leaving the fibre and curling into its t-loop cap](engine/warp_telomere.gif)
+
+**C3 — genome, process 7 · the chromosome** (`warp_chromosome`): the payoff. This process **chains from
+Process 6's capped fibre** and **folds** it — the fibre's centreline winds onto a short coil with a pinched
+**centromere** and rounded **telomere-capped** tips, every base pair carried **rigidly** with its own
+conserved helix/nucleosome/fibre detail, packing **shoulder to shoulder** into a dense stained-**purple**
+metaphase chromosome. This is the final ~50× fold, so unlike the earlier stages the fibre packs solid — but
+the turns **touch and never pass through** each other (the honest meaning of "condensed", measured). The
+beautiful chromosome is reached **through** the real compaction, rendered as the actual folded base pairs —
+not sculpted from nothing. A fixed camera dollies in as the whole strand condenses.
+
+![warp_chromosome — the fibre folded into a dense banded purple metaphase chromosome](engine/warp_chromosome.png)
+
+![the capped fibre condensing into the banded chromosome with its centromere waist](engine/warp_chromosome.gif)
 
 ## Simulation of reality — the card, by real physics
 
