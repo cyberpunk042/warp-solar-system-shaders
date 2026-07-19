@@ -23,29 +23,52 @@ _N = _TH.n
 
 # We perfect ONE stage at a time. `_END_STAGE` is the stage the take stops at (held, then loops) so the
 # later stages don't clutter the view while we work. Set it to the stage we're refining.
-_END_STAGE = "chromo"              # <-- the whole chain incl. the telomere feed + metaphase X finale
-_T_BOARD = 1.2                     # seconds of the real ray-marched board at the start
-_PARTS = 11.0                      # seconds for the particle compression up to _END_STAGE
-_T_REPL = 3.0                      # replication -> the X (only used when _END_STAGE == "chromo")
+# ---- V3 TIMELINE. Each row: (label, engine-progress at the END of this beat, seconds to MOVE there,
+# seconds to HOLD, camera azimuth, camera elevation). The camera angle eases from the previous beat's angle
+# to this one over the move; the distance always auto-fits the thread's current size, so it dollies in with
+# the compression. Holds sit on the money shots (the board, the base-pair forest, the feed, the X). ----
+_TL = [
+    # label        prog   move  hold   az     el
+    ("gpu_board",   0.00,  0.0,  1.8,   0.62,  0.34),   # the real GPU, held
+    ("scan",        0.14,  4.2,  0.3,   0.60,  0.27),   # granulation sweep (slow — key)
+    ("bind",        0.26,  1.9,  0.4,   0.66,  0.24),   # tokens bind in twos
+    ("pair",        0.40,  2.3,  1.2,   0.72,  0.17),   # base-pair forest (grazing), hold
+    ("helix",       0.52,  2.5,  0.9,   0.50,  0.16),   # helix forest (low)
+    ("nucleo",      0.66,  2.5,  0.9,   0.60,  0.30),   # nucleosome beads
+    ("fibre",       0.82,  2.5,  0.9,   0.56,  0.34),   # fibre coil
+    ("chromo",      1.00,  6.0,  2.6,   0.05,  0.50),   # feed through the tips into BOTH X strands (front-on)
+]
 
-_STOP = dict(TH._STAGES)[_END_STAGE]        # global progress at which the take stops
-_FULL = _END_STAGE == "chromo"              # the whole thing incl. the replication/X finale
-TOTAL = _T_BOARD + _PARTS + (_T_REPL if _FULL else 0.0)
 
-# Stage segments for the viewer's progress bar (name, start_time), up to _END_STAGE. The particle stages
-# map progress 0.._STOP onto the [_T_BOARD, _T_BOARD+_PARTS] window.
-_SEG = [("gpu_board",)]
-_START = [0.0]
-_prev = 0.0
-for _nm, _hi in TH._STAGES:
-    _SEG.append((_nm,))
-    _START.append(_T_BOARD + (_prev / _STOP) * _PARTS)
-    _prev = _hi
-    if _nm == _END_STAGE:
-        break
-if _FULL:
-    _SEG.append(("replicate_X",))
-    _START.append(_T_BOARD + _PARTS)
+def _build_timeline():
+    segs = []
+    t, ps, paz, pel = 0.0, 0.0, _TL[0][4], _TL[0][5]
+    for label, pe, mv, hd, az, el in _TL:
+        segs.append(dict(label=label, t=t, mv=mv, hd=hd, ps=ps, pe=pe, az0=paz, el0=pel, az=az, el=el))
+        t += mv + hd
+        ps, paz, pel = pe, az, el
+    return segs, t
+
+
+_SEGS_TL, TOTAL = _build_timeline()
+_SEG = [(s["label"],) for s in _SEGS_TL]                 # progress-bar segments for the viewer
+_START = [s["t"] for s in _SEGS_TL]
+
+
+def _timeline(time):
+    """Map global time -> (label, engine-progress, camera az, el, replication-fraction)."""
+    tt = float(time) % TOTAL if TOTAL > 0 else 0.0
+    seg = _SEGS_TL[0]
+    for s in _SEGS_TL:
+        if tt >= s["t"]:
+            seg = s
+    local = tt - seg["t"]
+    f = _ss(local / seg["mv"]) if seg["mv"] > 1e-6 and local < seg["mv"] else 1.0
+    prog = seg["ps"] + (seg["pe"] - seg["ps"]) * f
+    az = seg["az0"] + (seg["az"] - seg["az0"]) * f
+    el = seg["el0"] + (seg["el"] - seg["el0"]) * f
+    rr = f if seg["label"] == "replicate_X" else 0.0
+    return seg["label"], prog, az, el, rr
 
 
 def _ss(x):
@@ -155,17 +178,17 @@ def _ensure_cardcol(device):
     _cardcol_done = True
 
 
-def _cam(pos, mx: float, my: float, zoomf: float):
-    # AUTO-FRAME: aim at the thread's centre and set the distance from its current extent, so as the thread
-    # compresses the camera eases inward and every stage stays readable at the same on-screen size. One
-    # continuous, motivated dolly (no jerky per-stage jumps). User orbit (mx,my) + wheel zoom ride on top.
+def _cam(pos, az, el, mx: float, my: float, zoomf: float):
+    # AUTO-FRAME at the timeline's per-stage angle: aim at the thread's centre, distance from its current
+    # extent (so the camera eases inward with the compression), az/el from the timeline (each stage from its
+    # best angle). User orbit (mx,my) + wheel zoom ride on top. One continuous motivated move.
     c = pos.mean(0).astype(np.float32)
     r = float(np.percentile(np.linalg.norm(pos - c, axis=1), 94)) + 1e-3
     dist = max(r * 2.2, 0.5) / max(zoomf, 0.15)
-    az = 0.62 + float(mx) * 0.010
-    el = min(max(0.36 + float(my) * 0.006, 0.05), 1.45)
-    ro = c + dist * np.array([math.cos(el) * math.sin(az), math.sin(el),
-                              math.cos(el) * math.cos(az)], np.float32)
+    azf = float(az) + float(mx) * 0.010
+    elf = min(max(float(el) + float(my) * 0.006, 0.05), 1.45)
+    ro = c + dist * np.array([math.cos(elf) * math.sin(azf), math.sin(elf),
+                              math.cos(elf) * math.cos(azf)], np.float32)
     ww = c - ro; ww /= np.linalg.norm(ww)
     uu = np.cross(ww, np.array([0.0, 1.0, 0.0], np.float32)); uu /= np.linalg.norm(uu)
     vv = np.cross(uu, ww)
@@ -201,40 +224,29 @@ def _board(W, H, time, cam, device, cut_x=-1.0e9):
 
 def _core(W, H, time, mx, my, zoomf, device):
     _ensure_cardcol(device)
-    t = float(time) % TOTAL
-    if t < _T_BOARD:                                              # the real GPU, held; frame the whole card
+    label, prog, az, el, _rr = _timeline(time)
+    if label == "gpu_board":                                     # the real GPU, held; frame the whole card
         pos0, _ = TH.frame(_TH, 0.0)
-        return _board(W, H, t, _cam(pos0, mx, my, zoomf), device)
-    pt = t - _T_BOARD
-    if not _FULL or pt <= _PARTS:                                 # the compression, up to _END_STAGE
-        progress = _STOP * min(pt / _PARTS, 1.0)                  # 0 .. _STOP, then held at the end stage
-        pos, col = TH.frame(_TH, progress)
-        cam = _cam(pos, mx, my, zoomf)                            # auto-frame the thread's current size
-        if progress <= TH.scan_end():
-            # GRANULATION SCAN: the board is eroded behind the wavefront and its matter releases as token
-            # particles. Composite the (eroded) real board ahead of the front with the particles behind it.
-            front = TH.scan_front(_TH, progress)
-            board = _board(W, H, _T_BOARD, cam, device, cut_x=front)
-            pos2 = pos.copy()
-            pos2[pos2[:, 0] > front] = cam[0]                     # hide still-solid-board particles (cull)
-            part, cover = _particles_masked(W, H, pos2, col, cam, device)
-            return np.where(cover[..., None], part, board)
-        posr, colr = _with_rungs(pos, col)                       # draw the base-pair rungs
-        return _particles(W, H, posr, colr, cam, device)
-    # REPLICATION -> the metaphase X. The chromatid is COPIED: the sister is an identical duplicate lying
-    # coincident with it (r=0), then the two SPLIT — tilting apart about the centromere into the X. So the
-    # second leg emerges FROM the first (it was already there, replicated), never out of nowhere.
-    r = _ss((pt - _PARTS) / _T_REPL)
-    pos, col = TH.frame(_TH, 1.0)                                  # the one chromatid (purple)
-    pos, col = _with_rungs(pos, col)
-    c = np.array([0.0, -0.55, 0.0], np.float32)                   # the centromere (chromatid centre)
-    tilt = 0.40 * r
-    a = _rotz(pos, +tilt, c)                                       # one sister leans one way
-    b = _rotz(pos, -tilt, c)                                       # its replicated sister leans the other —
-    #                                                               coincident at r=0, then splits off
-    posX = np.concatenate([a, b], 0)
-    colX = np.concatenate([col, col], 0)
-    return _particles(W, H, posX, colX, _cam(posX, mx, my, zoomf), device)
+        return _board(W, H, 0.0, _cam(pos0, az, el, mx, my, zoomf), device)
+    pos, col = TH.frame(_TH, prog)
+    cam = _cam(pos, az, el, mx, my, zoomf)                        # auto-frame at the timeline angle
+    if prog <= TH.scan_end():
+        # GRANULATION SCAN: the board erodes behind the wavefront, its matter releasing as token particles.
+        front = TH.scan_front(_TH, prog)
+        board = _board(W, H, 0.0, cam, device, cut_x=front)
+        pos2 = pos.copy()
+        pos2[pos2[:, 0] > front] = cam[0]                         # hide still-solid-board particles (cull)
+        part, cover = _particles_masked(W, H, pos2, col, cam, device)
+        return np.where(cover[..., None], part, board)
+    posr, colr = _with_rungs(pos, col)                           # draw the base-pair rungs
+    if label == "chromo":
+        # feed directly into BOTH final strands of the metaphase X: this chromatid + its mirror sister (the
+        # replicated pair). Same feed g -> both build together as the strand reels through the tips.
+        posB = posr.copy(); posB[:, 0] = -posB[:, 0]
+        posr = np.concatenate([posr, posB], 0)
+        colr = np.concatenate([colr, colr], 0)
+        cam = _cam(posr, az, el, mx, my, zoomf)                   # reframe for the whole X
+    return _particles(W, H, posr, colr, cam, device)
 
 
 def render_view(width, height, time, mx, my, zoomf, device):

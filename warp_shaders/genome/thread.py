@@ -201,11 +201,17 @@ def build(sub: int = 1, block: int = 5) -> Thread:
     # --- stage 6/7 frame: fold the ONE fibre into ONE compact CHROMATID — the chromosome. The fibre's bead
     # axis coils into a short fat rod, pinched at the centromere (narrow middle, fatter arms). Ultimate
     # compaction: the whole card, now one tight body. Chains from the fibre exactly. ---
-    yb = (np.arange(nb) / max(nb - 1, 1) - 0.5) * 2.0     # -1..1 along the thread
+    # ONE chromatid of the metaphase X: a banded rod pinched at the centromere (origin), TILTED so that this
+    # arm-pair is one diagonal of the X; its mirror (rendered by the scene) is the sister -> the four-arm X.
+    yb = (np.arange(nb) / max(nb - 1, 1) - 0.5) * 2.0     # -1..1 along the chromatid
     pinch = 0.30 + 0.70 * np.abs(yb)                      # centromere pinch in the middle
     angc = np.arange(nb) * (2.0 * np.pi / 6.0)            # the fibre coils up the chromatid axis
-    chromo_bead = np.stack([0.16 * pinch * np.cos(angc), -0.55 + yb * 0.85,
-                            0.16 * pinch * np.sin(angc)], 1).astype(np.float32)   # sits BELOW the tip
+    _angx = 0.34
+    _cax, _sax = np.cos(_angx), np.sin(_angx)
+    _xl = 0.16 * pinch * np.cos(angc)
+    _yl = yb * 0.95
+    chromo_bead = np.stack([_xl * _cax - _yl * _sax, _xl * _sax + _yl * _cax,
+                            0.16 * pinch * np.sin(angc)], 1).astype(np.float32)
     chromo_c = chromo_bead[bead] + wrap
     chromo = np.empty_like(card)
     chromo[a_tok] = chromo_c + small
@@ -292,7 +298,7 @@ def frame(th: Thread, progress: float):
                 # front passes it (never a straight morph — the whole strand threads through the one tip).
                 src = frames[k - 1]                       # the fibre (the source being reeled in)
                 dst = frames[k]                           # its slot on the chromatid
-                tip = np.array([0.35, 0.75, 0.0], np.float32)     # the telomere 3' tip — the conduit
+                tip = np.array([0.30, 1.05, 0.0], np.float32)     # the telomere 3' tip — the conduit
                 pfrac = ((th.read // 2) / max(th.n // 2, 1)).astype(np.float32)
                 g = np.clip((t * 1.18 - pfrac) / 0.12 + 0.5, 0.0, 1.0)[:, None]   # 0=fibre .5=tip 1=chromatid
                 to_tip = np.clip(g * 2.0, 0.0, 1.0)
