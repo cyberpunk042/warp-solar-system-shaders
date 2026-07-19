@@ -6,11 +6,13 @@ is serial within one pattern (each step's SA range depends on the last), but **e
 patterns**, and that is precisely the shape of the two operations that matter:
 
     count(patterns)        one thread per pattern -> substring search over a whole batch at once
+    locate(patterns)       + one LF-walk thread per occurrence over a succinct sampled suffix array -> the
+                           TEXT positions, entirely in VRAM (the last CPU straggler, now on the GPU)
     predict_next(context)  one thread per candidate next-token c -> the full next-token distribution in one
                            launch (each thread counts context+[c]); i.e. an n-gram draft model, on the GPU
 
-So the same resident, compact index is *decoded*, *searched*, and *sampled from* without ever leaving the
-GPU — the ChromoFold thesis (docs/chromofold.md §1) for the search/generate half. Run:
+So the same resident, compact index is *decoded*, *searched* (count + locate), and *sampled from* without ever
+leaving the GPU — the ChromoFold thesis (docs/chromofold.md §1) for the search/generate half. Run:
 python -m warp_compress.gpu_fm_index
 """
 from __future__ import annotations
@@ -64,10 +66,89 @@ def _bwsearch_k(words: wp.array2d(dtype=wp.uint32), sb: wp.array2d(dtype=wp.int3
     out[t] = hi - lo
 
 
+@wp.func
+def _access_sym(words: wp.array2d(dtype=wp.uint32), sb: wp.array2d(dtype=wp.int32),
+                zeros: wp.array(dtype=wp.int32), pos: int, bits: int, sbw: int) -> int:
+    """The BWT symbol at wavelet position `pos` (the access walk), needed for the LF step."""
+    i = pos
+    v = int(0)
+    for lvl in range(bits):
+        r0 = _rank1(words, sb, lvl, i, sbw)
+        bit = int((words[lvl, i >> 5] >> wp.uint32(i & 31)) & wp.uint32(1))
+        if bit == 1:
+            v = (v << 1) | 1
+            i = zeros[lvl] + r0
+        else:
+            v = v << 1
+            i = i - r0
+    return v
+
+
+@wp.kernel
+def _ranges_k(words: wp.array2d(dtype=wp.uint32), sb: wp.array2d(dtype=wp.int32),
+              zeros: wp.array(dtype=wp.int32), C: wp.array(dtype=wp.int32),
+              pat: wp.array(dtype=wp.int32), starts: wp.array(dtype=wp.int32),
+              lens: wp.array(dtype=wp.int32), lo_out: wp.array(dtype=wp.int32),
+              hi_out: wp.array(dtype=wp.int32), bits: int, sbw: int, sigma: int, n: int):
+    t = wp.tid()
+    st = starts[t]
+    L = lens[t]
+    lo = int(0)
+    hi = n
+    for k in range(L):
+        c = pat[st + L - 1 - k]
+        if c < sigma:
+            if lo < hi:
+                lo = C[c] + _wrank(words, sb, zeros, c, lo, bits, sbw)
+                hi = C[c] + _wrank(words, sb, zeros, c, hi, bits, sbw)
+        else:
+            lo = int(0)
+            hi = int(0)
+    lo_out[t] = lo
+    hi_out[t] = hi
+
+
+@wp.kernel
+def _locate_walk_k(words: wp.array2d(dtype=wp.uint32), sb: wp.array2d(dtype=wp.int32),
+                   zeros: wp.array(dtype=wp.int32), C: wp.array(dtype=wp.int32),
+                   mwords: wp.array2d(dtype=wp.uint32), msb: wp.array2d(dtype=wp.int32),
+                   sval: wp.array(dtype=wp.int32), r_in: wp.array(dtype=wp.int32),
+                   out: wp.array(dtype=wp.int32), bits: int, sbw: int, n: int):
+    """One thread per occurrence: LF-walk the suffix-array position until a sampled position, then
+    text_pos = (SA[sampled] + steps) mod n. Mirrors fm_index.FMIndex.locate, in VRAM."""
+    t = wp.tid()
+    p = r_in[t]
+    steps = int(0)
+    marked = int((mwords[0, p >> 5] >> wp.uint32(p & 31)) & wp.uint32(1))
+    while marked == 0:
+        c = _access_sym(words, sb, zeros, p, bits, sbw)          # BWT[p]
+        p = C[c] + _wrank(words, sb, zeros, c, p, bits, sbw)     # LF-mapping
+        steps = steps + 1
+        marked = int((mwords[0, p >> 5] >> wp.uint32(p & 31)) & wp.uint32(1))
+    idx = _rank1(mwords, msb, 0, p, sbw)                         # index into the sampled-value array
+    out[t] = (sval[idx] + steps) % n
+
+
+def _pack_plane(bits_arr):
+    """Pack a 0/1 vector as (words[1,·], superblock[1,·]) so the GPU _rank1 can rank it (like a wavelet plane)."""
+    n = int(bits_arr.shape[0])
+    nw = (n + 31) // 32
+    nb = (nw + SB - 1) // SB
+    words = np.zeros((1, nw), np.uint32)
+    idx = np.arange(n)
+    np.bitwise_or.at(words[0], idx >> 5, (bits_arr.astype(np.uint32) << (idx & 31).astype(np.uint32)))
+    lut = np.array([bin(i).count("1") for i in range(256)], np.int32)
+    pcw = lut[words[0].view(np.uint8)].reshape(nw, 4).sum(1)
+    cum = np.concatenate([[0], np.cumsum(pcw)]).astype(np.int64)
+    sb = np.zeros((1, nb + 1), np.int32)
+    sb[0] = cum[np.minimum(np.arange(nb + 1) * SB, nw)]
+    return words, sb
+
+
 class GPUFMIndex:
     """FM-index whose backward search runs on a Warp device. count()/predict_next() are batched GPU launches."""
 
-    def __init__(self, seq, device: str = "cuda:0"):
+    def __init__(self, seq, device: str = "cuda:0", sa_sample: int = 16):
         seq = np.asarray(seq, np.int64) + 1                 # shift so 0 is a free sentinel (as in FMIndex)
         self.n = int(seq.shape[0]) + 1
         s = np.concatenate([seq, [0]])
@@ -79,6 +160,15 @@ class GPUFMIndex:
         self.gw = GPUWavelet(bwt, device=device, bits=self.bits)
         C = np.concatenate([[0], np.cumsum(np.bincount(bwt, minlength=self.sigma))])[: self.sigma]
         self.C = wp.array(C.astype(np.int32), dtype=wp.int32, device=device)
+
+        # succinct sampled suffix array for locate: mark SA positions whose TEXT position is a multiple of
+        # `sa_sample` (so an LF-walk hits a mark within sa_sample steps), rank the marks on the GPU.
+        self.sa_sample = sa_sample
+        marked = (sa % sa_sample == 0).astype(np.uint8)
+        mwords, msb = _pack_plane(marked)
+        self.mwords = wp.array(mwords, dtype=wp.uint32, device=device)
+        self.msb = wp.array(msb, dtype=wp.int32, device=device)
+        self.sval = wp.array(sa[marked == 1].astype(np.int32), dtype=wp.int32, device=device)
 
     def count(self, patterns) -> np.ndarray:
         """Occurrence count of each pattern (original alphabet), one GPU thread per pattern."""
@@ -96,6 +186,45 @@ class GPUFMIndex:
                           self.bits, SB, self.sigma, self.n], device=self.device)
         wp.synchronize_device(self.device)
         return out.numpy()
+
+    def locate(self, patterns) -> list:
+        """Positions of each pattern's occurrences, computed entirely on the GPU: backward search for the SA
+        ranges, then one LF-walk thread per occurrence over the sampled suffix array. Returns a list (one
+        sorted position array per pattern)."""
+        flat, starts, lens = [], [], []
+        for p in patterns:
+            starts.append(len(flat))
+            lens.append(len(p))
+            flat.extend(int(x) + 1 for x in p)
+        K = len(patterns)
+        pat = wp.array(np.asarray(flat or [0], np.int32), dtype=wp.int32, device=self.device)
+        st = wp.array(np.asarray(starts, np.int32), dtype=wp.int32, device=self.device)
+        ln = wp.array(np.asarray(lens, np.int32), dtype=wp.int32, device=self.device)
+        lo = wp.zeros(K, dtype=wp.int32, device=self.device)
+        hi = wp.zeros(K, dtype=wp.int32, device=self.device)
+        wp.launch(_ranges_k, dim=K, inputs=[self.gw.words, self.gw.sb, self.gw.zeros, self.C, pat, st, ln,
+                  lo, hi, self.bits, SB, self.sigma, self.n], device=self.device)
+        wp.synchronize_device(self.device)
+        lon, hin = lo.numpy(), hi.numpy()
+
+        # flatten every occurrence (SA position r in [lo, hi)) into one array, walk them all in parallel
+        r_flat = np.concatenate([np.arange(lon[i], hin[i], dtype=np.int32) for i in range(K)]) \
+            if K and (hin - lon).sum() else np.zeros(0, np.int32)
+        if r_flat.shape[0] == 0:
+            return [np.zeros(0, np.int64) for _ in range(K)]
+        r = wp.array(r_flat, dtype=wp.int32, device=self.device)
+        pos = wp.zeros(r_flat.shape[0], dtype=wp.int32, device=self.device)
+        wp.launch(_locate_walk_k, dim=r_flat.shape[0],
+                  inputs=[self.gw.words, self.gw.sb, self.gw.zeros, self.C, self.mwords, self.msb, self.sval,
+                          r, pos, self.bits, SB, self.n], device=self.device)
+        wp.synchronize_device(self.device)
+        pn = pos.numpy()
+        out, off = [], 0
+        for i in range(K):
+            cnt = int(hin[i] - lon[i])
+            out.append(np.sort(pn[off:off + cnt].astype(np.int64)))
+            off += cnt
+        return out
 
     def predict_next(self, context, vocab: int | None = None) -> np.ndarray:
         """Next-token distribution over [0, vocab): one thread counts context+[c] per candidate c. An n-gram
@@ -151,7 +280,12 @@ def _demo():
     cpu_s = (time.perf_counter() - t0) / 2000
 
     print(f"device={dev}   N={n:,}   alphabet<=2^{gfm.bits}   resident index {gfm.gw.index_bytes()/1e6:.1f} MB")
-    print(f"[correct] GPU count == naive ✓   GPU predict_next top-1 == CPU FM-index top-1 ✓")
+    # locate: positions on the GPU, verified against naive
+    lpat = [int(x) for x in seq[12345:12348]]
+    gloc = list(gfm.locate([lpat])[0])
+    nloc = sorted(i for i in range(n - 2) if list(seq[i:i + 3]) == lpat)
+    assert gloc == nloc, "GPU locate mismatch"
+    print(f"[correct] GPU count == naive ✓   GPU locate == naive ✓   GPU predict_next top-1 == CPU FM top-1 ✓")
     print(f"[search]  {M:,} patterns backward-searched in {gpu_s*1e3:.1f} ms = {M/gpu_s/1e6:.1f} M patterns/s "
           f"vs naive CPU {1/cpu_s:,.0f} patterns/s => GPU ~{(M/gpu_s)/(1/cpu_s):,.0f}× faster")
     print("=> count / locate / predict_next — search AND the n-gram draft model — run GPU-resident over the "

@@ -133,7 +133,7 @@ The point of naming all of these: *nothing is fixed*. If BWT is too hungry for a
 | **repeated system prompts** | identical across requests; one copy + references | `merge` | reuse `token_chromosome` |
 | **batched shared prefixes** | many sequences share a head; store head once | `delta` tree | reuse `super_chromosome` |
 | **RAG / retrieval context** | random-access chunks; search-in-place; coarse→fine | `bwt`+hier | reuse `lm_memory` |
-| **tokenized datasets** | random minibatch sampling; **near-dup dedup** for training | `bwt`+`merge` | reuse `fm_index` |
+| **tokenized datasets** | random minibatch sampling; **near-dup dedup** for training | `bwt`+`merge` | **measured** (`dedup.py`) |
 | **speculative decoding** | draft buffers; the index itself is a free draft model (`predict_next`) | `bwt` | reuse `generate()` |
 | **KV-cache metadata / sparse KV** | masks + indices compress hard; partial unfold of attended entries | `rrr`+`delta` | roadmap |
 
@@ -246,9 +246,19 @@ actual transformer: the store→reconstruct is identical with tensors.
      compression, ~200 M tok/s** batched, in VRAM. *(done — the adapter-library / near-dup-context preset,
      running.)*
 
-   So ChromoFold now **decodes, searches, samples, AND delta-reconstructs without leaving the GPU**, over an
-   entropy-sized self-index. Next: `locate` with a sampled SA on-GPU, and compressing the RRR class stream
-   (the last ~0.27 b/bit floor).
+   - *locate* — `count` + **`locate`** now both run on the GPU (`gpu_fm_index.py`): after the backward-search
+     range, one LF-walk thread per occurrence over a **succinct sampled suffix array** (marked-bitvector rank +
+     sampled values, all in VRAM) recovers the text positions. The whole search stack — `count` / `locate` /
+     `predict_next` — is GPU-resident, verified against the CPU FM-index. *(done)*
+   - *dataset dedup* — content-aware dedup (`dedup.py`, `bench_dataset_dedup.py`): exact dups → a reference,
+     near-dups → a sparse delta vs the true nearest doc, uniques once; any document reconstructs O(1) on the
+     GPU. Honest finding: it beats **raw 1.74×** and keeps random access, but gzip/zstd win pure ratio (they
+     also compress the unique docs' entropy). Also honest: the *positional* delta tree (`gpu_delta`) *expands*
+     a mostly-unique dataset — content clustering, not tree-folding, is the right structure. *(done)*
+
+   So ChromoFold now **decodes, searches (count + locate), samples, AND delta/dedup-reconstructs without
+   leaving the GPU**, over an entropy-sized self-index. Next: compressing the RRR class stream (the last
+   ~0.27 b/bit floor).
 3. **Bench the effective-gain terms** — not just ratio: measure PCIe avoided, decode µs on-GPU, batch-capacity
    delta at fixed latency. The equation in §1 becomes a table.
 4. **Quantization interop** — wrap INT4/FP4/NF4 as a `quantize` stage; entropy-code the quantized stream;
