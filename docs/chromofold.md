@@ -108,7 +108,7 @@ The point of naming all of these: *nothing is fixed*. If BWT is too hungry for a
 
 | workload | why ChromoFold fits | key knobs | status |
 |---|---|---|---|
-| **prompt caches** | huge shared/system prefixes; dedup + random resume | `merge`+`bwt` | reuse `fm_index` |
+| **prompt caches** | huge shared/system prefixes; dedup + random resume | `merge`+`bwt` | **measured** (`prompt_cache.py`) |
 | **conversation history** | append-only, near-duplicate turns; delta across turns | `delta`+`rans` | reuse `super_chromosome` |
 | **repeated system prompts** | identical across requests; one copy + references | `merge` | reuse `token_chromosome` |
 | **batched shared prefixes** | many sequences share a head; store head once | `delta` tree | reuse `super_chromosome` |
