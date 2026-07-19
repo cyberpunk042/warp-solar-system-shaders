@@ -136,6 +136,54 @@ class FMIndex:
             p = higher + lam * p
         return p
 
+    def _cont_probs(self) -> np.ndarray:
+        """Cached KN continuation base P_cont(c) = N1+(·c)/N1+(··) for all tokens."""
+        if not hasattr(self, "_cp"):
+            v = self.sigma - 1
+            n1 = np.array([self.distinct_preceding(c) for c in range(v)], np.float64)
+            self._cp = (n1 + 1e-9) / max(n1.sum(), 1.0)
+        return self._cp
+
+    def next_dist_kn(self, context, max_order: int = 6, d: float = 0.75) -> np.ndarray:
+        """Full next-token KN distribution over all tokens — O(max_order · V) (the interpolation mass and
+        continuation base are per-context / cached, not per-candidate)."""
+        v = self.sigma - 1
+        p = self._cont_probs().copy()
+        for L in range(1, min(max_order, len(context)) + 1):
+            ctx = list(context[-L:])
+            n_ctx = self.count(ctx)
+            if n_ctx == 0:
+                continue
+            cnt = np.array([self.count(ctx + [c]) for c in range(v)], np.float64)   # O(V) searches
+            lam = d * float((cnt > 0).sum()) / n_ctx                                 # N1+(ctx·)/n_ctx
+            p = np.maximum(cnt - d, 0.0) / n_ctx + lam * p
+        s = p.sum()
+        return p / s if s > 0 else p
+
+    def generate(self, prompt, length: int, max_order: int = 6, temperature: float = 0.8,
+                 top_k: int = 0, seed: int = 0, d: float = 0.75, repeat_penalty: float = 1.0):
+        """The index WRITES: sample `length` tokens, each from its own KN next-distribution. Training-free
+        generation straight from the compressed self-index — the 'navigate it token by token' loop, closed.
+        `repeat_penalty` > 1 down-weights the just-emitted token (tames char-n-gram whitespace/indent runs)."""
+        rng = np.random.default_rng(seed)
+        out = list(prompt)
+        v = self.sigma - 1
+        for _ in range(length):
+            p = self.next_dist_kn(out, max_order, d)
+            if temperature != 1.0:
+                p = np.power(p, 1.0 / max(temperature, 1e-3))
+            if repeat_penalty != 1.0 and out:
+                p[out[-1] % v] /= repeat_penalty
+            if top_k and top_k < v:
+                cut = np.argpartition(p, -top_k)[:-top_k]
+                p[cut] = 0.0
+            s = p.sum()
+            if s <= 0:
+                out.append(int(rng.integers(v)))
+                continue
+            out.append(int(rng.choice(v, p=p / s)))
+        return out
+
     def locate(self, pattern):
         """Text positions where `pattern` occurs (via LF-walk to the nearest sampled SA entry)."""
         lo, hi = self._bw_range(pattern)
@@ -176,6 +224,18 @@ def _demo():
     print(f"backward search touched {len(pat)} ranks (O(|pattern|)), not the {len(seq)} tokens.")
     print("=> substring SEARCH inside the compressed token stream. FM-index = BWT + wavelet rank; this is "
           "the genomic read aligner, now over token sequences. The DNA compression loop is closed.")
+
+    # the index WRITES: sample tokens straight from its own KN next-distribution — no model, no training.
+    import glob
+    txt = "".join(open(f).read() for f in sorted(glob.glob("warp_compress/*.py")))[:120000]
+    cseq = np.frombuffer(txt.encode("utf-8", "ignore"), np.uint8).astype(np.int64)
+    cfm = FMIndex(cseq, sa_sample=64)
+    gen = cfm.generate([int(b) for b in b"def "], 180, max_order=7,
+                       temperature=0.55, top_k=10, seed=1, repeat_penalty=1.4)
+    print(f"\ngenerate() over {len(cseq)} chars of repo source, seeded 'def ':")
+    print("  " + bytes(min(c, 255) for c in gen).decode("utf-8", "replace").replace("\n", "\n  "))
+    print("=> the compressed self-index composes text token by token. Same object that is compressed, "
+          "addressable, and searchable is ALSO a generative LM. The 'navigate it token by token' loop is closed.")
 
 
 if __name__ == "__main__":

@@ -127,3 +127,20 @@ def test_fm_kn_is_a_valid_distribution_and_beats_unigram():
     assert 0.5 < tot < 1.5                                  # roughly normalised
     kn = -math.log2(max(fm.prob_kn(ctx, int(seq[17003]), max_order=2), 1e-9))
     assert kn < math.log2(V)                                # better than uniform on a real continuation
+
+
+def test_fm_generate_stays_in_alphabet_and_is_seed_deterministic():
+    rng = np.random.default_rng(6)
+    V = 10
+    trans = rng.dirichlet(np.ones(V) * 0.3, size=(V, V))
+    seq = np.empty(12000, np.int64)
+    seq[:2] = [0, 1]
+    for i in range(2, len(seq)):
+        seq[i] = rng.choice(V, p=trans[seq[i - 2], seq[i - 1]])
+    fm = FMIndex(seq)
+    a = fm.generate([0, 1], 60, max_order=3, temperature=0.7, top_k=5, seed=11)
+    b = fm.generate([0, 1], 60, max_order=3, temperature=0.7, top_k=5, seed=11)
+    assert a == b                                           # same seed -> same stream (resumable/reproducible)
+    assert a[:2] == [0, 1] and len(a) == 62                 # prompt preserved, exact length
+    assert all(0 <= t < V for t in a)                       # every sampled token is a real vocab id
+    assert fm.generate([0, 1], 60, max_order=3, top_k=5, seed=99) != a   # a different seed diverges
