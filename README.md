@@ -654,6 +654,21 @@ through the mouth.
 |---|---|---|
 | ![kerr](docs/engine/kerr.png) | ![binary black holes](docs/engine/binary_bh.gif) | ![wormhole dive](docs/engine/wormhole_dive.gif) |
 
+And beyond the solutions, the *idea about* gravity itself — **AdS/CFT holography**
+([Research 46](docs/research/46-ads-cft-holography.md)): `ads_cft` draws the duality on a
+Poincaré-disk slice of AdS₃ — a `{7,3}` hyperbolic tiling bulk crowding toward the glowing
+**conformal boundary**, the same tiling mirrored outside through `z → z/|z|²` (the hologram,
+literally), and **Ryu–Takayanagi entanglement geodesics** hanging from boundary intervals, all
+flowing under a Möbius isometry = a boundary conformal transformation. `ads_bulk` then ray-traces
+the real thing: a camera **inside** the AdS box, real null geodesics around a Schwarzschild-AdS
+hole (Λ drops out of the photon path shape, so the shared geodesic core is exact), the timelike
+conformal boundary **reflecting light back in** (bounces scale with `--quality`), and every
+boundary hit painting the CFT lattice with a thermal wash at the hole's **Hawking temperature**.
+
+| ads_cft — the holographic map | ads_bulk — inside the AdS box | the isometry flow |
+|---|---|---|
+| ![ads_cft](docs/engine/ads_cft.png) | ![ads_bulk](docs/engine/ads_bulk.png) | ![ads_cft flow](docs/engine/ads_cft.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
