@@ -98,56 +98,60 @@ def _rank1_k(classes: wp.array(dtype=wp.uint32), offsets: wp.array(dtype=wp.uint
     out[t] = r
 
 
+def rrr_encode(bits) -> dict:
+    """Encode a 0/1 vector into RRR components (host arrays): packed class stream (4 bits/block), variable-
+    width enumerative offset stream, and superblock rank/offset samples. Shared by GPURRR and the RRR wavelet.
+    ``nblocks``/``nsb``/``cwords`` depend only on n, so every wavelet level has identical class/superblock
+    shapes — only the offset stream length varies."""
+    bits = (np.asarray(bits) != 0).astype(np.uint8)
+    n = int(bits.shape[0])
+    nblocks = (n + T - 1) // T
+    pad = np.zeros(nblocks * T, np.uint8)
+    pad[:n] = bits
+    b2 = pad.reshape(nblocks, T)                                      # (nblocks, T) block bit matrix
+
+    classes = b2.sum(1).astype(np.int64)                             # popcount per block
+    cols = np.arange(T)[None, :]
+    i_incl = np.cumsum(b2, axis=1)                                    # inclusive one-count up to each column
+    offsets = (_BINOM[cols, i_incl] * b2).sum(1).astype(np.uint64)   # enumerative rank Σ C(p, i)
+
+    cwords = (nblocks * 4 + 31) // 32 + 1                             # classes: 4 bits each
+    cpk = np.zeros(cwords, np.uint32)
+    bp = np.arange(nblocks) * 4
+    np.bitwise_or.at(cpk, bp >> 5, (classes.astype(np.uint32) & 15) << (bp & 31).astype(np.uint32))
+
+    wblk = _WIDTH[classes]                                            # offsets: variable width, bit-concatenated
+    ostart = np.concatenate([[0], np.cumsum(wblk)]).astype(np.int64)
+    total = int(ostart[-1])
+    owords = (total + 31) // 32 + 2
+    opk = np.zeros(owords, np.uint32)
+    lw = ostart[:-1] >> 5
+    lb = (ostart[:-1] & 31).astype(np.uint64)
+    np.bitwise_or.at(opk, lw, ((offsets << lb) & 0xFFFFFFFF).astype(np.uint32))
+    spill = (lb + wblk) > 32
+    if spill.any():
+        np.bitwise_or.at(opk, lw[spill] + 1, (offsets[spill] >> (32 - lb[spill])).astype(np.uint32))
+
+    nsb = (nblocks + S - 1) // S                                      # superblock samples
+    cum_class = np.concatenate([[0], np.cumsum(classes)]).astype(np.int64)
+    sidx = np.minimum(np.arange(nsb + 1) * S, nblocks)
+    return dict(cpk=cpk, opk=opk, sbrank=cum_class[sidx].astype(np.int32), sboff=ostart[sidx].astype(np.int32),
+                nblocks=nblocks, nsb=nsb, cwords=cwords, class_bits=nblocks * 4, offset_bits=total)
+
+
 class GPURRR:
     """RRR succinct bitvector resident on a Warp device; batched rank1 runs entirely on the GPU."""
 
     def __init__(self, bits, device: str = "cuda:0"):
-        bits = (np.asarray(bits) != 0).astype(np.uint8)
-        self.n = int(bits.shape[0])
+        self.n = int(np.asarray(bits).shape[0])
         self.device = device
-        nblocks = (self.n + T - 1) // T
-        pad = np.zeros(nblocks * T, np.uint8)
-        pad[: self.n] = bits
-        b2 = pad.reshape(nblocks, T)                                  # (nblocks, T) block bit matrix
-
-        classes = b2.sum(1).astype(np.int64)                          # popcount per block
-        cols = np.arange(T)[None, :]
-        i_incl = np.cumsum(b2, axis=1)                                # inclusive one-count up to each column
-        offsets = (_BINOM[cols, i_incl] * b2).sum(1).astype(np.uint64)  # enumerative rank Σ C(p, i)
-
-        # pack classes: 4 bits each
-        cwords = (nblocks * 4 + 31) // 32 + 1
-        cpk = np.zeros(cwords, np.uint32)
-        bp = np.arange(nblocks) * 4
-        np.bitwise_or.at(cpk, bp >> 5, (classes.astype(np.uint32) & 15) << (bp & 31).astype(np.uint32))
-
-        # pack offsets: variable width per block, bit-concatenated (may span two words)
-        wblk = _WIDTH[classes]
-        ostart = np.concatenate([[0], np.cumsum(wblk)]).astype(np.int64)
-        total = int(ostart[-1])
-        owords = (total + 31) // 32 + 2
-        opk = np.zeros(owords, np.uint32)
-        lw = (ostart[:-1] >> 5)
-        lb = (ostart[:-1] & 31).astype(np.uint64)
-        val = offsets
-        np.bitwise_or.at(opk, lw, ((val << lb) & 0xFFFFFFFF).astype(np.uint32))
-        spill = (lb + wblk) > 32
-        if spill.any():
-            np.bitwise_or.at(opk, lw[spill] + 1, (val[spill] >> (32 - lb[spill])).astype(np.uint32))
-
-        # superblock samples (cumulative rank + cumulative offset bits)
-        nsb = (nblocks + S - 1) // S
-        cum_class = np.concatenate([[0], np.cumsum(classes)]).astype(np.int64)
-        sidx = np.minimum(np.arange(nsb + 1) * S, nblocks)
-        sbrank = cum_class[sidx].astype(np.int32)
-        sboff = ostart[sidx].astype(np.int32)
-
-        self._nblocks, self._class_bits, self._offset_bits = nblocks, nblocks * 4, total
-        self._sb_bytes = (sbrank.nbytes + sboff.nbytes)
-        self.classes = wp.array(cpk, dtype=wp.uint32, device=device)
-        self.offsets = wp.array(opk, dtype=wp.uint32, device=device)
-        self.sbrank = wp.array(sbrank, dtype=wp.int32, device=device)
-        self.sboff = wp.array(sboff, dtype=wp.int32, device=device)
+        e = rrr_encode(bits)
+        self._nblocks, self._class_bits, self._offset_bits = e["nblocks"], e["class_bits"], e["offset_bits"]
+        self._sb_bytes = e["sbrank"].nbytes + e["sboff"].nbytes
+        self.classes = wp.array(e["cpk"], dtype=wp.uint32, device=device)
+        self.offsets = wp.array(e["opk"], dtype=wp.uint32, device=device)
+        self.sbrank = wp.array(e["sbrank"], dtype=wp.int32, device=device)
+        self.sboff = wp.array(e["sboff"], dtype=wp.int32, device=device)
         self.width = wp.array(_WIDTH, dtype=wp.int32, device=device)
         self.binom = wp.array(_BINOM.astype(np.int32), dtype=wp.int32, device=device)
 

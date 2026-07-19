@@ -198,9 +198,14 @@ reference-delta tree stores. So: keep the base once, store each adapter as a Chr
      with rank still O(1) — the lever that pulls the resident FM-index from packed (1 b/bit) toward Hₖ.
      *(done, standalone; balanced planes stay packed — that's the BWT's exact profile.)*
 
-   So ChromoFold now **decodes, searches, and samples without leaving the GPU**, over an entropy-sized index.
-   Next on this path: wire RRR under the wavelet's `_rank1` (whole self-index entropy-sized *and* GPU-
-   searchable), then the reference-delta apply.
+   - *entropy-sized self-index* — RRR wired **under** the wavelet (`warp_compress/gpu_rrr_wavelet.py`): every
+     wavelet level is an RRR bitvector, so `access`/`rank` and the FM-index `count`/`predict_next` run on the
+     GPU over the *compressed* index. On a Markov BWT it lands **6.0 b/tok vs packed 7.9 (1.31× smaller),
+     right at the BWT's H₀ (5.96)** — one object, entropy-sized *and* GPU-searchable. *(done)*
+
+   So ChromoFold now **decodes, searches, and samples without leaving the GPU, over an entropy-sized
+   self-index**. Next on this path: the reference-delta apply on-GPU (for the `delta`/LoRA presets) and
+   compressing the RRR class stream (the last ~0.27 b/bit floor).
 3. **Bench the effective-gain terms** — not just ratio: measure PCIe avoided, decode µs on-GPU, batch-capacity
    delta at fixed latency. The equation in §1 becomes a table.
 4. **Quantization interop** — wrap INT4/FP4/NF4 as a `quantize` stage; entropy-code the quantized stream;
@@ -215,9 +220,10 @@ reference-delta tree stores. So: keep the base once, store each adapter as a Chr
   not folding. Don't oversell it.
 - GPU decode, search, *and* entropy-coding are now real: wavelet `rank`/`access` (`gpu_wavelet.py`), FM-index
   backward search / `predict_next` (`gpu_fm_index.py`), and RRR rank (`gpu_rrr.py`, skewed planes 0.35–0.67
-  b/bit). Still to do: **wire RRR under the wavelet's `_rank1`** (the standalone RRR isn't yet the wavelet's
-  backing store), the reference-delta apply on-GPU, and `locate` with a sampled SA on-GPU. Also: RRR's class
-  stream is a ~0.27 b/bit floor for very-skewed planes — compressing the class stream is a further lever.
+  b/bit), and **RRR wired under the wavelet** (`gpu_rrr_wavelet.py`: `access`/`rank`/`count`/`predict_next`
+  over the compressed index, ~H₀ on a BWT). Still to do: the reference-delta apply on-GPU (for the
+  `delta`/LoRA presets), `locate` with a sampled SA on-GPU (today only `count`/`predict_next` are GPU), and
+  compressing the RRR class stream (the last ~0.27 b/bit floor).
 - BWT construction is O(n log n) and memory-hungry to *build*; it's cheap to *query*. For write-heavy,
   append-only data prefer the `delta` path.
 - rANS/RRR beat gzip on the id stream, but LZ still wins raw ratio on scattered, high-entropy edits — which is
