@@ -149,10 +149,15 @@ fibre/chromosome scale, drill to tokens on demand (`lm_memory.CompressedContextM
 chromosome). Cost is O(1)/O(log) per access instead of storing & attending over all N. This is an *addressable
 compressed KV/context memory*, the same object measured against a 25 GB KV cache in `memory_profile.py`.
 
-**LoRA & adapter libraries (native fit).** LoRA *is* a low-rank delta on the base weights — exactly what the
-reference-delta tree stores. So: keep the base once, store each adapter as a ChromoFold delta, and hold a whole
-**library** of task adapters compressed in VRAM, swapping the routed one in per request. Sibling adapters
-(fine-tunes of a fine-tune) delta against each other, so the library cost is sublinear in adapter count.
+**LoRA & adapter libraries (native fit — measured on a real model).** LoRA *is* a low-rank delta on the base
+weights — exactly what the reference-delta tree stores. So: keep the base once, store each adapter as a
+ChromoFold delta, and hold a whole **library** of task adapters compressed in VRAM, swapping the routed one in
+per request. Sibling adapters (fine-tunes of a fine-tune) delta against each other, so the library cost is
+sublinear in adapter count. **Verified on gpt2 + peft LoRA** (`warp_compress/lora_library_hf.py`): a 24-adapter
+family stored as base+deltas, each adapter reconstructed on the GPU and hot-swapped, gives **byte-identical
+logits vs the original quantized adapter (max|Δ| = 0.0)** while the swap genuinely changes the model — at
+2.2× vs int8 / 8.7× vs fp32. The synthetic-harness result (`lora_library.py`, tested) is confirmed on an
+actual transformer: the store→reconstruct is identical with tensors.
 
 **Training-side (roadmap, honest about limits).**
 - *Data*: tokenized datasets as ChromoFold shards → random-access minibatch sampling from compressed bytes,
