@@ -55,9 +55,14 @@ whole bet. gzip/zstd optimize the first term and ignore the rest; nvCOMP optimiz
 whole-stream and token-blind. ChromoFold is designed for the **other four terms**:
 
 - **No CPU round-trip.** Decode kernels run on the GPU (Warp; `gpu_wavelet.py` — done). The compressed bytes
-  live in VRAM; you never DMA them to host and back. *First measurement: the succinct wavelet index is ~1.1
-  B/token resident (114× smaller than the CPU prefix-array form) and decodes ~400 M tokens/s in parallel
-  batches on one GPU — the primitive behind every FM-index query and token unfold.*
+  live in VRAM; you never DMA them to host and back. *Measured with hardware identity + repetition stats
+  (`bench_gpu.py`, `docs/bench_gpu_results.md`): the succinct wavelet index is ~1.1 B/token resident, and the
+  access **kernel** does ~1240 M tok/s (0.8 ns/access). The earlier "~400 M/s" was the **full call including a
+  CPU round-trip** (`H2D` positions + `D2H` results over PCIe) — which is ~2/3 of the wall time and exactly
+  what the GPU-resident design exists to avoid. In a serving loop, positions come from on-GPU attention and
+  results feed the next on-GPU op, so the kernel number is the real one. Honest caveat: raw GPU gather is
+  5–14× faster still (pure memory op, no rank/search), so the wavelet earns its place through rank/search and
+  size-at-large-V (V=128K → 1.67× smaller than raw uint32), not raw access speed.*
 - **Partial / random-access unfold.** gzip must inflate from the start of a block. ChromoFold decodes *any
   token, any slice* directly — FM-index positional access is O(1)/O(log); the reference-delta tree reaches any
   token in O(depth)=O(log #sequences). You unfold the 40 KV entries you attend to, not the 4 M you stored.
