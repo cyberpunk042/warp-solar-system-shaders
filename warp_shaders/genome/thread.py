@@ -76,6 +76,12 @@ class Thread:
     col_chromo: np.ndarray      # chromosome: purple banded chromatin (the metaphase X)
     read: np.ndarray            # (N,) scan/read order — position of each token along the thread
     xspan: tuple                # (xmin, xmax) of the card, for the scan bar
+    # --- chromatid-fold internals (per pair), so a chromatid can be re-folded with a different centromere
+    # position / size — e.g. a metacentric X vs an acrocentric Y. (Defaults None for older callers.) ---
+    bead: np.ndarray = None     # (P,) which nucleosome bead each pair belongs to
+    wrap: np.ndarray = None     # (P,3) the pair's offset within its bead (the nucleosome wrap)
+    nb: int = 0                 # number of beads
+    small: np.ndarray = None    # (3,) backbone half-separation at chromatid compaction
 
     @property
     def n(self):
@@ -238,7 +244,33 @@ def build(sub: int = 1, block: int = 5) -> Thread:
     return Thread(card=card, bound=bound, ladder=ladder, a_tok=a_tok, b_tok=b_tok,
                   helix=helix, nucleo=nucleo, fibre=fibre, chromo=chromo,
                   col_card=col_card, col_token=col_token, col_base=col_base, col_chromo=col_chromo,
-                  read=read, xspan=(float(pos[:, 0].min()), float(pos[:, 0].max())))
+                  read=read, xspan=(float(pos[:, 0].min()), float(pos[:, 0].max())),
+                  bead=bead, wrap=wrap, nb=nb, small=small)
+
+
+def fold_chromatid(th: Thread, centromere: float = 0.0, size: float = 1.0, tilt: float = 0.34):
+    """Re-fold the thread into ONE chromatid with the centromere at ``centromere`` (in [-1,1] along the arm
+    axis) and overall ``size``. centromere=0 => metacentric (the symmetric X); centromere≈0.6 => acrocentric,
+    a short arm-pair and a long arm-pair (a real Y). The chromatid is centred on its centromere so that the
+    scene's x-mirror joins the two sisters exactly there. Reuses the same bead/wrap fold as ``build``."""
+    nb = int(th.nb)
+    yb = (np.arange(nb) / max(nb - 1, 1) - 0.5) * 2.0
+    pinch = 0.30 + 0.70 * np.abs(yb - float(centromere))          # waist (min) sits at the centromere
+    angc = np.arange(nb) * (2.0 * np.pi / 6.0)
+    ca, sa = np.cos(tilt), np.sin(tilt)
+    xl = 0.16 * pinch * np.cos(angc)
+    yl = yb * 0.95
+    cb = np.stack([xl * ca - yl * sa, xl * sa + yl * ca, 0.16 * pinch * np.sin(angc)], 1).astype(np.float32)
+    c = (cb[th.bead] + th.wrap) * float(size)
+    out = np.empty((th.n, 3), np.float32)
+    out[th.a_tok] = c + th.small * float(size)
+    out[th.b_tok] = c - th.small * float(size)
+    waist = np.abs(yb[th.bead] - float(centromere)) < 0.12        # tokens at the centromere -> centre on them
+    m = np.zeros(th.n, bool)
+    m[th.a_tok[waist]] = True
+    m[th.b_tok[waist]] = True
+    out -= out[m].mean(0) if m.any() else out.mean(0)
+    return out
 
 
 def _smooth(x):

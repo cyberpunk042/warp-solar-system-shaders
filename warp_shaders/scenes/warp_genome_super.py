@@ -46,9 +46,13 @@ def _tint(col, rgb, amt):
 
 
 # --- precomputed shapes (all centred; the camera auto-frames, so only relative layout matters) -----------
-_posC, _colC = TH.frame(_TH, 1.0)                          # the metaphase chromatid (purple), Act I's finale
-_posC = (_posC - _posC.mean(0)).astype(np.float32)
-_baseX = np.concatenate([_posC, _mir(_posC)], 0).astype(np.float32)   # 2N: chromatid + sister = the X shape
+# X = a metacentric chromatid (centromere in the middle) mirrored -> the symmetric metaphase X.
+# Y = a real Y: acrocentric (centromere near one end -> a short arm-pair + a long arm-pair) and small.
+_chX = TH.fold_chromatid(_TH, centromere=0.0, size=1.0)
+_chY = TH.fold_chromatid(_TH, centromere=0.60, size=0.52)  # off-centre centromere + small = a genuine Y
+_colC = _TH.col_chromo
+_baseX = np.concatenate([_chX, _mir(_chX)], 0).astype(np.float32)     # 2N: chromatid + sister = the X shape
+_baseY = np.concatenate([_chY, _mir(_chY)], 0).astype(np.float32)     # the metaphase Y (short + long arms)
 _colX = np.concatenate([_colC, _colC], 0).astype(np.float32)
 _colY = _tint(_colX, [0.20, 0.85, 0.80], 0.65)             # the Y tinted teal, to read as a distinct chromosome
 
@@ -67,9 +71,9 @@ _START = [0.0, _tA, _tA + _tB, _tA + _tB + _tC]
 
 
 def _two_bodies(sep, colX, colY):
-    """The X (big, left) and Y (small, right) chromosomes as two separate folded bodies."""
-    X = _baseX * 0.62; X = X.copy(); X[:, 0] -= sep
-    Y = _baseX * 0.40; Y = Y.copy(); Y[:, 0] += sep
+    """The X (big, left) and Y (small, acrocentric, right) chromosomes as two separate folded bodies."""
+    X = (_baseX * 0.62).copy(); X[:, 0] -= sep
+    Y = (_baseY * 0.72).copy(); Y[:, 0] += sep                 # Y is already small intrinsically
     return (np.concatenate([X, Y], 0).astype(np.float32),
             np.concatenate([colX, colY], 0).astype(np.float32))
 
@@ -115,9 +119,9 @@ def _compose(time):
     sup = (np.concatenate([fp, _mir(fp)], 0) * 1.30).astype(np.float32)
     sup = sup.copy(); sup[:, 0] -= 0.55 * f                          # drift left to make room for the ghost
     scol = _tint(np.concatenate([fc, fc], 0), _AMBER, 0.55)
-    gx, gcolx = _baseX * 0.34, _tint(_colX, _AMBER, 0.3)
-    gy, gcoly = _baseX * 0.22, _colY
-    gx = gx.copy(); gx[:, 0] += 1.15; gy = gy.copy(); gy[:, 0] += 1.75
+    gx, gcolx = (_baseX * 0.34).copy(), _tint(_colX, _AMBER, 0.3)
+    gy, gcoly = (_baseY * 0.40).copy(), _colY
+    gx[:, 0] += 1.15; gy[:, 0] += 1.75
     ghost_fade = _ss(max(0.0, (f - 0.35) / 0.65))                    # fade the next generation in late
     gcol = np.concatenate([gcolx, gcoly], 0) * (0.20 + 0.30 * ghost_fade)
     pos = np.concatenate([sup, gx, gy], 0).astype(np.float32)
