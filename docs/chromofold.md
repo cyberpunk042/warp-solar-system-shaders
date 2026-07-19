@@ -72,7 +72,13 @@ whole-stream and token-blind. ChromoFold is designed for the **other four terms*
 - **Searchable while compressed.** The FM-index answers `count`/`locate`/`predict_next` without
   materialising the sequence — dedup and retrieval happen *in the compressed domain*.
 
-Ratio is the tie-breaker, not the game.
+Ratio is the tie-breaker, not the game. **Measured, and honest** (`docs/bench_frontier_results.md`): on real
+gpt2 token streams, gzip/zstd *beat* the FM-index self-index on ratio (they copy long exact repeats it does
+not) — ChromoFold is **not a compression-ratio product**. But on a 4M-token stream a sparse random read (q ≤
+16K) is **68–111× faster than a zstd whole-stream decompress**, the cost scales with q while decompress-all is
+fixed, and only ChromoFold answers `count`/`locate`/`predict_next` in the compressed domain. The niche is
+large, GPU-resident stores with *sparse random reads + search* (KV/context memory, RAG, prompt-cache span
+recovery) — not archival ratio, where zstd wins.
 
 ---
 
