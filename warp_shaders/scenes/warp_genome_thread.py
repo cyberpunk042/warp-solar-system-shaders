@@ -221,15 +221,17 @@ def _core(W, H, time, mx, my, zoomf, device):
             return np.where(cover[..., None], part, board)
         posr, colr = _with_rungs(pos, col)                       # draw the base-pair rungs
         return _particles(W, H, posr, colr, cam, device)
-    # REPLICATION -> the metaphase X: the chromatid duplicates; the sister grows out of the centromere and
-    # the two tilt apart, crossing at the centromere into the X.
+    # REPLICATION -> the metaphase X. The chromatid is COPIED: the sister is an identical duplicate lying
+    # coincident with it (r=0), then the two SPLIT — tilting apart about the centromere into the X. So the
+    # second leg emerges FROM the first (it was already there, replicated), never out of nowhere.
     r = _ss((pt - _PARTS) / _T_REPL)
-    pos, col = TH.frame(_TH, 1.0)                                  # the one chromatid
+    pos, col = TH.frame(_TH, 1.0)                                  # the one chromatid (purple)
     pos, col = _with_rungs(pos, col)
-    c = np.array([0.0, 0.55, 0.0], np.float32)
-    tilt = 0.42 * r
-    a = _rotz(pos, +tilt, c)                                       # this chromatid leans one way
-    b = c + r * (_rotz(pos, -tilt, c) - c)                         # its sister grows from the centromere
+    c = np.array([0.0, -0.55, 0.0], np.float32)                   # the centromere (chromatid centre)
+    tilt = 0.40 * r
+    a = _rotz(pos, +tilt, c)                                       # one sister leans one way
+    b = _rotz(pos, -tilt, c)                                       # its replicated sister leans the other —
+    #                                                               coincident at r=0, then splits off
     posX = np.concatenate([a, b], 0)
     colX = np.concatenate([col, col], 0)
     return _particles(W, H, posX, colX, _cam(posX, mx, my, zoomf), device)

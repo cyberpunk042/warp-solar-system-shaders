@@ -204,8 +204,8 @@ def build(sub: int = 1, block: int = 5) -> Thread:
     yb = (np.arange(nb) / max(nb - 1, 1) - 0.5) * 2.0     # -1..1 along the thread
     pinch = 0.30 + 0.70 * np.abs(yb)                      # centromere pinch in the middle
     angc = np.arange(nb) * (2.0 * np.pi / 6.0)            # the fibre coils up the chromatid axis
-    chromo_bead = np.stack([0.16 * pinch * np.cos(angc), 0.55 + yb * 0.85,
-                            0.16 * pinch * np.sin(angc)], 1).astype(np.float32)
+    chromo_bead = np.stack([0.16 * pinch * np.cos(angc), -0.55 + yb * 0.85,
+                            0.16 * pinch * np.sin(angc)], 1).astype(np.float32)   # sits BELOW the tip
     chromo_c = chromo_bead[bead] + wrap
     chromo = np.empty_like(card)
     chromo[a_tok] = chromo_c + small
@@ -287,14 +287,19 @@ def frame(th: Thread, progress: float):
         if g <= a_hi or k == last:
             t = _smooth((g - a_lo) / max(a_hi - a_lo, 1e-6))
             if k == last:
-                # FEED: the fibre pours into the chromosome in READ ORDER (early pairs woven first, through
-                # the telomere tip), recolouring to purple chromatin as each is laid down — the X is written.
+                # FEED, honest: the fibre is drawn through the telomere 3' TIP (one conduit point) and laid
+                # onto the chromatid in READ ORDER. Each pair routes fibre -> tip -> chromatid as the feed
+                # front passes it (never a straight morph — the whole strand threads through the one tip).
+                src = frames[k - 1]                       # the fibre (the source being reeled in)
+                dst = frames[k]                           # its slot on the chromatid
+                tip = np.array([0.35, 0.75, 0.0], np.float32)     # the telomere 3' tip — the conduit
                 pfrac = ((th.read // 2) / max(th.n // 2, 1)).astype(np.float32)
-                ff = np.clip((t * 1.15 - pfrac) / 0.14, 0.0, 1.0)
-                ff = (ff * ff * (3.0 - 2.0 * ff))[:, None]
-                pos = frames[k - 1] * (1.0 - ff) + frames[k] * ff
-                col = th.col_base * (1.0 - ff) + th.col_chromo * ff
-                return pos, col
+                g = np.clip((t * 1.18 - pfrac) / 0.12 + 0.5, 0.0, 1.0)[:, None]   # 0=fibre .5=tip 1=chromatid
+                to_tip = np.clip(g * 2.0, 0.0, 1.0)
+                from_tip = np.clip((g - 0.5) * 2.0, 0.0, 1.0)
+                pos = np.where(g <= 0.5, src + (tip - src) * to_tip, tip + (dst - tip) * from_tip)
+                col = th.col_base * (1.0 - g) + th.col_chromo * g
+                return pos.astype(np.float32), col.astype(np.float32)
             pos = frames[k - 1] * (1.0 - t) + frames[k] * t
             col = th.col_token * (1.0 - t) + th.col_base * t if k == 1 else th.col_base
             return pos, col
