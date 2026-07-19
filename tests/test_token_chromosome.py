@@ -3,7 +3,8 @@ import math
 
 import numpy as np
 
-from warp_compress.token_chromosome import Chromosome, compress, hilbert_index, hilbert_point
+from warp_compress.token_chromosome import (Chromosome, compress, compress_hierarchical,
+                                            hilbert_index, hilbert_point)
 
 
 def _seq():
@@ -48,3 +49,21 @@ def test_rate_beats_raw_id_stream():
     rate = ch.rate_bits()
     raw = ch.n * max(1, math.ceil(math.log2(rate["V"])))
     assert rate["total_bits"] < raw                              # dedup + RLE actually compresses
+
+
+def test_hierarchy_token_ranges_tile_and_drill():
+    seq = _seq()
+    h = compress_hierarchical(seq, branch=4, dim=3)
+    assert h.count(0) == h.n and h.count(h.n_levels - 1) == 1     # a pyramid down to the root
+    for level in range(1, h.n_levels):
+        covered = 0
+        for r in range(h.count(level)):
+            lo, hi = h.token_range(level, r)
+            assert lo == covered                                 # ranges tile the sequence, in order
+            covered = hi
+        assert covered == h.n
+    level = min(3, h.n_levels - 1)
+    r = h.count(level) // 2
+    lo, hi = h.token_range(level, r)
+    assert np.array_equal(h.drill(level, r), seq[lo:hi])         # drill-down == the exact token run
+    assert h.parent(level, h.children(level, r)[0]) == r         # parent/children consistent

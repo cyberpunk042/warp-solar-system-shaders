@@ -186,6 +186,80 @@ def compress(tokens, dim: int = 3) -> Chromosome:
 # Self-test / demo: round-trip, exact invertibility, locality, and a rate readout.
 # --------------------------------------------------------------------------------------------------
 
+# --------------------------------------------------------------------------------------------------
+# Hierarchical chromosome: the DNA "folds" as a multi-resolution index. Level 0 = tokens; each higher
+# level groups `branch` blocks into one and keeps a SUMMARY. Coarse-to-fine navigation: read few blocks at
+# a coarse level, then drill to the tokens under any block (its token range is analytic). This is the
+# addressable-memory structure — attend coarse, expand fine — that the multistage engine encodes.
+# --------------------------------------------------------------------------------------------------
+
+@dataclasses.dataclass
+class HierChromosome:
+    book: np.ndarray
+    ids: np.ndarray                 # (N,) level-0 token ids
+    levels: list                    # levels[l] = (summary ids at level l); levels[0] == ids
+    branch: int
+    dim: int
+
+    @property
+    def n(self) -> int:
+        return int(self.ids.shape[0])
+
+    @property
+    def n_levels(self) -> int:
+        return len(self.levels)
+
+    def count(self, level: int) -> int:
+        return int(self.levels[level].shape[0])
+
+    def span(self, level: int) -> int:
+        """How many level-0 tokens one block at `level` covers."""
+        return self.branch ** level
+
+    def token_range(self, level: int, r: int):
+        """Analytic [lo, hi) token range under block r at `level` — O(1), no traversal."""
+        s = self.span(level)
+        return int(r * s), int(min((r + 1) * s, self.n))
+
+    def summary(self, level: int, r: int):
+        """The block's summary token content at `level`."""
+        return self.book[self.levels[level][int(r)]]
+
+    def at(self, level: int, r: int):
+        """O(1) position of block r at `level` on that level's Hilbert curve, in the unit box."""
+        bits = max(1, math.ceil(math.log2(max(self.count(level), 2)) / self.dim))
+        side = (1 << bits) - 1
+        return np.asarray(hilbert_point(int(r), bits, self.dim), np.float64) / max(side, 1)
+
+    def parent(self, level: int, r: int) -> int:
+        return int(r) // self.branch
+
+    def children(self, level: int, r: int):
+        lo = int(r) * self.branch
+        return list(range(lo, min(lo + self.branch, self.count(level - 1))))
+
+    def token(self, r: int):
+        return self.book[self.ids[int(r)]]
+
+    def drill(self, level: int, r: int):
+        """Expand a coarse block to its underlying tokens (the fine content)."""
+        lo, hi = self.token_range(level, r)
+        return self.book[self.ids[lo:hi]]
+
+
+def compress_hierarchical(tokens, branch: int = 4, dim: int = 3) -> HierChromosome:
+    """Build the multi-resolution index. Summary = the block's first token (pluggable: mode / learned)."""
+    tokens = np.asarray(tokens)
+    book, ids = np.unique(tokens, return_inverse=True)
+    ids = ids.astype(np.int64).ravel()
+    levels = [ids]
+    cur = ids
+    while cur.shape[0] > 1:
+        cur = cur[::branch].copy()                 # representative of each block (first token)
+        levels.append(cur)
+    return HierChromosome(book=book, ids=ids, levels=levels, branch=branch, dim=dim)
+
+
 def _selftest():
     # a token stream with heavy repetition (like the merge-coded card): V unique, N total
     rng = np.random.default_rng(7)
