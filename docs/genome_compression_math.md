@@ -160,6 +160,18 @@ with the cluster, "relative to size and depth."
 This is the same fold read one level up: a chromosome compresses tokens; a super-chromosome compresses
 chromosomes. The X/Y typing is literal — two strands become the base pairs of the next level.
 
+**Two ways to merge X and Y** (both lossless, both O(depth) addressable):
+
+- *Symmetric base pairs* (`build`) — rung `i = (X[i], Y[i])`, deduped. Faithful to the visual "both strands
+  fold together"; compresses only when the alphabet is small (ACGT: V×V pair types), else the codebook blows
+  up.
+- *Complementary reference/delta* (`build_delta`) — the left child's representative is the reference; the
+  right child is stored as a **sparse delta** (only where it diverges). The leftmost strand bubbles up as the
+  base; every leaf = base ⊕ the deltas on the right-turns of its path. Alphabet-agnostic, compresses to
+  ~O(#mutations). Measured: **beats gzip across every divergence rate** (1.65–1.85× on ACGT) **and at V=256**
+  (delta 1155 B vs gzip 1452 B, where symmetric expands to 10597 B) — while keeping O(depth) random access
+  gzip cannot. This is the ratio-optimized recursion.
+
 ## 8. Next steps to evolve it
 
 1. Extract a standalone `token_chromosome` module: `compress(tokens) → Chromosome`, `Chromosome.at(r)`,

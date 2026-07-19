@@ -1,7 +1,7 @@
 """Recursive super-chromosome: X+Y strands merge into base pairs and refold; lossless + O(depth) access."""
 import numpy as np
 
-from warp_compress.super_chromosome import build, pair_strands
+from warp_compress.super_chromosome import build, build_delta, pair_strands
 
 
 def _cluster(k=16, n=300, mut=8, seed=0):
@@ -74,3 +74,56 @@ def test_recursion_beats_raw_at_low_divergence():
     sc = build(seqs)
     raw_bits = sum(len(s) for s in seqs) * 2         # 2 bits/token over ACGT
     assert sc.rate()["total_bits"] < raw_bits        # the recursive fold compresses the cluster
+
+
+# --- reference/delta variant ---
+
+def test_delta_variant_is_lossless():
+    seqs = _cluster(k=16, seed=7)
+    sc = build_delta(seqs)
+    dec = sc.decode()
+    assert len(dec) == len(seqs)
+    assert all(np.array_equal(a, b) for a, b in zip(dec, seqs))
+
+
+def test_delta_fetch_matches_original():
+    seqs = _cluster(k=8, n=256, mut=10, seed=8)
+    sc = build_delta(seqs)
+    rng = np.random.default_rng(2)
+    for _ in range(60):
+        li = int(rng.integers(0, len(seqs)))
+        p = int(rng.integers(0, len(seqs[li])))
+        assert sc.fetch(li, p) == int(seqs[li][p])
+
+
+def test_delta_handles_unequal_lengths_and_odd_counts():
+    rng = np.random.default_rng(3)
+    base = rng.integers(0, 4, size=200)
+    seqs = []
+    for k in range(11):                              # odd count + varying lengths
+        s = base[: 200 - k * 5].copy()               # each a different length
+        f = rng.integers(0, s.shape[0], size=5)
+        s[f] = rng.integers(0, 4, size=5)
+        seqs.append(s)
+    sc = build_delta(seqs)
+    dec = sc.decode()
+    assert all(np.array_equal(a, b) for a, b in zip(dec, seqs))
+    assert [len(d) for d in dec] == [len(s) for s in seqs]   # exact lengths recovered
+
+
+def test_delta_beats_gzip_across_divergence_and_large_alphabet():
+    import gzip
+
+    def cl(V, mut, n=600, k=16, seed=1):
+        rng = np.random.default_rng(seed)
+        b = rng.integers(0, V, size=n)
+        out = []
+        for _ in range(k):
+            s = b.copy(); f = rng.integers(0, n, size=mut); s[f] = rng.integers(0, V, size=mut); out.append(s)
+        return out
+
+    for V, mut in [(4, 6), (4, 30), (256, 12)]:
+        seqs = cl(V, mut)
+        dlt = build_delta(seqs).rate()["total_bits"] // 8
+        gz = len(gzip.compress(np.concatenate(seqs).astype(np.uint8).tobytes()))
+        assert dlt < gz, (V, mut, dlt, gz)           # reference/delta beats gzip in every regime
