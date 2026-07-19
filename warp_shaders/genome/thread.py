@@ -248,19 +248,23 @@ def build(sub: int = 1, block: int = 5) -> Thread:
                   bead=bead, wrap=wrap, nb=nb, small=small)
 
 
-def fold_chromatid(th: Thread, centromere: float = 0.0, size: float = 1.0, tilt: float = 0.34):
+def fold_chromatid(th: Thread, centromere: float = 0.0, size: float = 1.0, tilt: float = 0.34,
+                   arm: float = 0.16):
     """Re-fold the thread into ONE chromatid with the centromere at ``centromere`` (in [-1,1] along the arm
-    axis) and overall ``size``. centromere=0 => metacentric (the symmetric X); centromere≈0.6 => acrocentric,
-    a short arm-pair and a long arm-pair (a real Y). The chromatid is centred on its centromere so that the
-    scene's x-mirror joins the two sisters exactly there. Reuses the same bead/wrap fold as ``build``."""
+    axis) and overall ``size``. centromere=0 => metacentric (the symmetric X); centromere>0 => acrocentric,
+    a short arm-pair and a long arm-pair (a real Y). ``arm`` is the coil radius — smaller = thinner, cleaner
+    rods (a Y wants tight arms so it reads as a narrow chromosome, not a flaring vase). The chromatid is
+    centred on its centromere so the scene's x-mirror joins the two sisters there. Same bead/wrap fold as
+    ``build``."""
     nb = int(th.nb)
     yb = (np.arange(nb) / max(nb - 1, 1) - 0.5) * 2.0
     pinch = 0.30 + 0.70 * np.abs(yb - float(centromere))          # waist (min) sits at the centromere
+    pinch = np.minimum(pinch, 1.0)                                # cap the flare so long arms stay clean rods
     angc = np.arange(nb) * (2.0 * np.pi / 6.0)
     ca, sa = np.cos(tilt), np.sin(tilt)
-    xl = 0.16 * pinch * np.cos(angc)
+    xl = arm * pinch * np.cos(angc)
     yl = yb * 0.95
-    cb = np.stack([xl * ca - yl * sa, xl * sa + yl * ca, 0.16 * pinch * np.sin(angc)], 1).astype(np.float32)
+    cb = np.stack([xl * ca - yl * sa, xl * sa + yl * ca, arm * pinch * np.sin(angc)], 1).astype(np.float32)
     c = (cb[th.bead] + th.wrap) * float(size)
     out = np.empty((th.n, 3), np.float32)
     out[th.a_tok] = c + th.small * float(size)
