@@ -399,7 +399,7 @@ def board_shade(q: wp.vec3, n: wp.vec3, rd: wp.vec3, ao: float, time: float) -> 
 @wp.kernel
 def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
                    right: wp.vec3, up: wp.vec3, width: int, height: int,
-                   time: float, tanfov: float, spin: float):
+                   time: float, tanfov: float, spin: float, cut_x: float):
     i, j = wp.tid()
     aspect = float(width) / float(height)
     u = (2.0 * (float(j) + 0.5) / float(width) - 1.0) * tanfov * aspect
@@ -410,7 +410,9 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
     hit = int(0)
     for _ in range(240):
         p = eye + rd * t
-        d = _map(p, time, spin)
+        # erode: keep the board only where x >= cut_x (intersection with the half-space). As cut_x sweeps
+        # +x, the solid board is eaten away behind the scan — its matter releases as the token particles.
+        d = wp.max(_map(p, time, spin), cut_x - p[0])
         if d < 0.0007 * t + 0.0004:
             hit = 1
             break
@@ -428,7 +430,7 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
     img[i, j] = board_shade(_rot(p, time, spin), n, rd, ao, time)
 
 
-def _render(width, height, time, mouse, device, cam=None):
+def _render(width, height, time, mouse, device, cam=None, cut_x=-1.0e9):
     if cam is None:
         # standalone: the board's own orbiting/tilted 3/4 presentation
         az = 0.14 + float(mouse[0]) * 0.01
@@ -456,7 +458,7 @@ def _render(width, height, time, mouse, device, cam=None):
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(_render_kernel, dim=(height, width),
-              inputs=[img, eye, fwd, right, up, width, height, time, tanfov, spin],
+              inputs=[img, eye, fwd, right, up, width, height, time, tanfov, spin, float(cut_x)],
               device=device)
     wp.synchronize_device(device)
     return ec.finish(img.numpy(), width, height, threshold=1.7, strength=0.3)

@@ -21,16 +21,48 @@ from ..scene import Scene
 _TH = TH.build(sub=1, block=5)
 _N = _TH.n
 
+# We perfect ONE stage at a time. `_END_STAGE` is the stage the take stops at (held, then loops) so the
+# later stages don't clutter the view while we work. Set it to the stage we're refining.
+_END_STAGE = "helix"               # <-- currently working the helix; take ends there
 _T_BOARD = 1.2                     # seconds of the real ray-marched board at the start
-_T_XF = 0.5                        # board -> particles granulation
-_PARTS = 13.0                      # seconds for the particle compression (card -> ... -> chromosome)
-_T_REPL = 3.0                      # replication: the chromatid duplicates into its sister -> the X
-TOTAL = _T_BOARD + _PARTS + _T_REPL
+_PARTS = 11.0                      # seconds for the particle compression up to _END_STAGE
+_T_REPL = 3.0                      # replication -> the X (only used when _END_STAGE == "chromo")
+
+_STOP = dict(TH._STAGES)[_END_STAGE]        # global progress at which the take stops
+_FULL = _END_STAGE == "chromo"              # the whole thing incl. the replication/X finale
+TOTAL = _T_BOARD + _PARTS + (_T_REPL if _FULL else 0.0)
+
+# Stage segments for the viewer's progress bar (name, start_time), up to _END_STAGE. The particle stages
+# map progress 0.._STOP onto the [_T_BOARD, _T_BOARD+_PARTS] window.
+_SEG = [("gpu_board",)]
+_START = [0.0]
+_prev = 0.0
+for _nm, _hi in TH._STAGES:
+    _SEG.append((_nm,))
+    _START.append(_T_BOARD + (_prev / _STOP) * _PARTS)
+    _prev = _hi
+    if _nm == _END_STAGE:
+        break
+if _FULL:
+    _SEG.append(("replicate_X",))
+    _START.append(_T_BOARD + _PARTS)
 
 
 def _ss(x):
     x = min(max(x, 0.0), 1.0)
     return x * x * (3.0 - 2.0 * x)
+
+
+def _with_rungs(pos, col):
+    """Add the base-pair RUNG between each pair's two backbone tokens — two fill points coloured by the
+    pair's bases — so the strand reads as base pairs (coloured A-T/G-C rungs), not loose dots."""
+    a, b = _TH.a_tok, _TH.b_tok
+    pa, pb = pos[a], pos[b]
+    m1 = pa * 0.66 + pb * 0.34
+    m2 = pa * 0.34 + pb * 0.66
+    cm = 0.5 * (col[a] + col[b])
+    return (np.concatenate([pos, m1, m2], 0).astype(np.float32),
+            np.concatenate([col, cm, cm], 0).astype(np.float32))
 
 
 def _rotz(p, ang, c):
@@ -71,7 +103,8 @@ def _splat(pos: wp.array(dtype=wp.vec3), zbuf: wp.array2d(dtype=wp.int32),
 
 @wp.kernel
 def _resolve(zbuf: wp.array2d(dtype=wp.int32), col: wp.array(dtype=wp.vec3),
-             img: wp.array2d(dtype=wp.vec3), width: int, height: int):
+             pos: wp.array(dtype=wp.vec3), img: wp.array2d(dtype=wp.vec3), width: int, height: int,
+             ro: wp.vec3, uu: wp.vec3, vv: wp.vec3, ww: wp.vec3, zoom: float, rad_world: float):
     i, j = wp.tid()
     bg = wp.vec3(0.017, 0.020, 0.030) * (1.0 - 0.5 * float(i) / float(height))
     key = zbuf[i, j]
@@ -79,8 +112,21 @@ def _resolve(zbuf: wp.array2d(dtype=wp.int32), col: wp.array(dtype=wp.vec3),
         img[i, j] = bg
         return
     idx = key & _IDX_MASK
-    shade = 1.2 - 0.5 * (float((key >> _IDX_BITS) & 0x3FF) / 1022.0)
-    img[i, j] = col[idx] * shade
+    # shade the winning particle as a LIT SPHERE: recover its screen centre + radius, take the pixel's
+    # offset as the sphere normal, light it. Flat dots -> rounded, lit 3-D beads.
+    rel = pos[idx] - ro
+    cz = wp.dot(rel, ww)
+    sx = zoom * wp.dot(rel, uu) / cz * float(height) + 0.5 * float(width) - 0.5
+    sy = 0.5 * float(height) - 0.5 - zoom * wp.dot(rel, vv) / cz * float(height)
+    rad = wp.max(zoom * rad_world / cz * float(height), 1.0)
+    ox = (float(j) - sx) / rad
+    oy = (float(i) - sy) / rad
+    nz = wp.sqrt(wp.max(1.0 - ox * ox - oy * oy, 0.0))
+    nrm = wp.normalize(wp.vec3(ox, -oy, nz + 0.35))
+    diff = wp.max(wp.dot(nrm, wp.normalize(wp.vec3(0.45, 0.65, 0.55))), 0.0)
+    rim = wp.pow(1.0 - nz, 2.5) * 0.22
+    dsh = 1.12 - 0.42 * (float((key >> _IDX_BITS) & 0x3FF) / 1022.0)
+    img[i, j] = col[idx] * ((0.32 + 0.82 * diff) * dsh) + wp.vec3(rim, rim, rim) * dsh
 
 
 @wp.kernel
@@ -119,7 +165,7 @@ def _cam(mx: float, my: float, zoomf: float):
     return ro, uu, vv, ww, float(dist)
 
 
-def _particles(W, H, pos_np, col_np, cam, device):
+def _particles_masked(W, H, pos_np, col_np, cam, device):
     pos_np = np.ascontiguousarray(pos_np, np.float32)
     col_np = np.ascontiguousarray(col_np, np.float32)
     m = pos_np.shape[0]
@@ -131,16 +177,19 @@ def _particles(W, H, pos_np, col_np, cam, device):
     zbuf = wp.full((H, W), 0x7FFFFFFF, dtype=wp.int32, device=device)
     img = wp.zeros((H, W), dtype=wp.vec3, device=device)
     wp.launch(_splat, dim=m, inputs=[pos, zbuf, W, H, *wcam, 1.7, 0.02, 1.5, dist + 12.0], device=device)
-    wp.launch(_resolve, dim=(H, W), inputs=[zbuf, col, img, W, H], device=device)
+    wp.launch(_resolve, dim=(H, W), inputs=[zbuf, col, pos, img, W, H, *wcam, 1.7, 0.02], device=device)
     wp.synchronize_device(device)
+    cover = zbuf.numpy() != 0x7FFFFFFF                    # which pixels a particle actually covers
     hdr = post.bloom(img.numpy(), threshold=0.9, strength=0.3, radius=3, passes=2)
-    return post.tonemap(hdr, mode="aces", exposure=1.0, preserve_hue=True)
+    return post.tonemap(hdr, mode="aces", exposure=1.0, preserve_hue=True), cover
 
 
-def _board(W, H, time, cam, device):
-    ro, uu, vv, ww, dist = cam
-    camtuple = (ro, uu, vv, ww, dist)
-    return np.clip(GB._render(W, H, time, (0.0, 0.0), device, cam=camtuple), 0.0, 1.0)
+def _particles(W, H, pos_np, col_np, cam, device):
+    return _particles_masked(W, H, pos_np, col_np, cam, device)[0]
+
+
+def _board(W, H, time, cam, device, cut_x=-1.0e9):
+    return np.clip(GB._render(W, H, time, (0.0, 0.0), device, cam=tuple(cam), cut_x=cut_x), 0.0, 1.0)
 
 
 def _core(W, H, time, mx, my, zoomf, device):
@@ -149,19 +198,29 @@ def _core(W, H, time, mx, my, zoomf, device):
     t = float(time) % TOTAL
     if t < _T_BOARD:
         return _board(W, H, t, cam, device)                       # the real GPU, held
-    if t < _T_BOARD + _T_XF:
-        f = (t - _T_BOARD) / _T_XF                                 # board granulates into its own particles
-        b = _board(W, H, _T_BOARD, cam, device)
-        p0, c0 = TH.frame(_TH, 0.0)
-        return np.clip((1.0 - f) * b + f * _particles(W, H, p0, c0, cam, device), 0.0, 1.0)
     pt = t - _T_BOARD
-    if pt <= _PARTS:                                               # the compression: card -> chromosome
-        pos, col = TH.frame(_TH, min(pt / _PARTS, 1.0))
+    if not _FULL or pt <= _PARTS:                                 # the compression, up to _END_STAGE
+        progress = _STOP * min(pt / _PARTS, 1.0)                  # 0 .. _STOP, then held at the end stage
+        if progress <= TH.scan_end():
+            # GRANULATION SCAN: the board is eroded behind the wavefront and its matter releases as token
+            # particles. Composite the (eroded) real board ahead of the front with the particles behind it —
+            # a physical break, not a crossfade.
+            front = TH.scan_front(_TH, progress)
+            board = _board(W, H, _T_BOARD, cam, device, cut_x=front)
+            pos, col = TH.frame(_TH, progress)
+            pos = pos.copy()
+            ahead = pos[:, 0] > front                              # still-solid board: hide those particles
+            pos[ahead] = cam[0]                                    # collapse onto the eye -> culled (cz<0.05)
+            part, cover = _particles_masked(W, H, pos, col, cam, device)
+            return np.where(cover[..., None], part, board)
+        pos, col = TH.frame(_TH, progress)
+        pos, col = _with_rungs(pos, col)                          # draw the base-pair rungs
         return _particles(W, H, pos, col, cam, device)
     # REPLICATION -> the metaphase X: the chromatid duplicates; the sister grows out of the centromere and
     # the two tilt apart, crossing at the centromere into the X.
     r = _ss((pt - _PARTS) / _T_REPL)
     pos, col = TH.frame(_TH, 1.0)                                  # the one chromatid
+    pos, col = _with_rungs(pos, col)
     c = np.array([0.0, 0.55, 0.0], np.float32)
     tilt = 0.42 * r
     a = _rotz(pos, +tilt, c)                                       # this chromatid leans one way

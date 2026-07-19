@@ -62,7 +62,10 @@ class Thread:
     matter). ``read`` is the scan order that serialises the card into the strand; ``pair`` maps each token
     to its base pair. Colours are (N,3)."""
     card: np.ndarray            # stage 0/1 — tokens at their card voxels (scan order preserved by `read`)
-    ladder: np.ndarray          # stage 2 — tokens laid onto the one base-pair ladder
+    bound: np.ndarray           # stage 2a — tokens bound in twos into base-pair rungs, in place on the card
+    ladder: np.ndarray          # stage 2b — the rungs laid onto the one base-pair ladder
+    a_tok: np.ndarray           # (P,) token index of each pair's backbone-A; b_tok its backbone-B
+    b_tok: np.ndarray
     helix: np.ndarray           # stage 3 — the ladder wound into one double helix (twist along the thread)
     nucleo: np.ndarray          # stage 4 — the helix wrapped into beads on one string (nucleosomes)
     fibre: np.ndarray           # stage 5 — the bead string coiled into one 30 nm fibre (solenoid)
@@ -102,37 +105,63 @@ def build(sub: int = 1, block: int = 5) -> Thread:
     a_tok = order[0::2]                               # first token of each pair (backbone A)
     b_tok = order[1::2]                               # second token (backbone B)
 
-    # ONE continuous strand, rolled into a flat spiral (a clock-spring) — you can follow the single thread
-    # from the outside in. Much smaller than the spread-out card: that shrink is the compression.
+    # --- stage 2a frame: BIND in twos. Consecutive tokens along the read are neighbours on the card, so
+    # each pair's two tokens meet in place and stand up as a base-pair rung (A below, B above) — the pairing,
+    # before anything moves to the ladder. ---
+    pair_mid = 0.5 * (card[a_tok] + card[b_tok])
+    ubind = np.array([0.0, 0.03, 0.0], np.float32)
+    bound = np.empty_like(card)
+    bound[a_tok] = pair_mid - ubind
+    bound[b_tok] = pair_mid + ubind
+
+    # ONE base-pair ladder of UPRIGHT RUNGS (base A on top, base B below), ordered as a single boustrophedon
+    # thread. Base pairing is COMPRESSION — two tokens combine into one pair — so this field is TIGHTER than
+    # the spread card (~half its footprint): the tokens draw in and combine, the thread shrinks. Upright,
+    # dense rungs = the base-pair look, but compact. (Later folds still spiral; `_LT` kept for them.)
     i = np.arange(p)
-    t = i / max(p - 1, 1)                              # 0..1 along the one thread
-    _LT = 24.0                                         # spiral turns
-    lth = t * _LT * 2.0 * np.pi
-    lr = 0.18 + 1.30 * t
-    rung = np.stack([lr * np.cos(lth), np.full(p, 0.55, np.float32), lr * np.sin(lth)], 1).astype(np.float32)
-    up = np.array([0.0, 0.012, 0.0], np.float32)       # the two backbones sit just above/below the strand
+    _LT = 24.0
+    _FNX = 220
+    row = i // _FNX
+    colr = np.where(row % 2 == 0, i % _FNX, _FNX - 1 - (i % _FNX))    # boustrophedon: one snaking thread
+    nrow = int(row.max()) + 1
+    _frac = lambda v: v - np.floor(v)
+    jx = _frac(np.sin(i * 12.9898) * 43758.5453) - 0.5               # break the lattice -> organic
+    jz = _frac(np.sin(i * 78.2330 + 2.0) * 43758.5453) - 0.5
+    sx, sz = 0.020, 0.019                                            # tight spacing -> ~half the card area
+    cx = ((colr - _FNX * 0.5) + 0.6 * jx) * sx
+    cz = ((row - nrow * 0.5) + 0.6 * jz) * sz
+    rung = np.stack([cx, np.full(p, 0.9, np.float32), cz], 1).astype(np.float32)
+    up = np.array([0.0, 0.075, 0.0], np.float32)                     # upright rung: A on top, B below
 
     ladder = np.empty_like(card)
-    ladder[a_tok] = rung - up                          # each token flows to its backbone site on the strand
-    ladder[b_tok] = rung + up
+    ladder[a_tok] = rung + up                          # each token flows to its backbone site on the rung
+    ladder[b_tok] = rung - up
 
     # --- stage 3 frame: wind the ONE ladder into ONE double helix. The thread's path (rung centres) stays
     # put; along it the two backbones twist around each other — real B-DNA (~10.5 bp/turn). Local frame
     # (tangent/normal/binormal) so the twist follows the snaking thread. Chains from the ladder exactly. ---
-    tan = np.zeros_like(rung)
-    tan[1:-1] = rung[2:] - rung[:-2]
-    tan[0] = rung[1] - rung[0]
-    tan[-1] = rung[-1] - rung[-2]
+    # the one thread WINDS into a double helix — it coils up into a visible spring (much tighter footprint
+    # than the spread base-pair field: compression continues), and the two backbones spiral around that coil
+    # at 10.5 bp/turn. One continuous strand.
+    th_t = i / max(p - 1, 1)
+    _HTURNS = 46.0                                             # the coil the whole thread winds into
+    hth = th_t * _HTURNS * 2.0 * np.pi
+    hr = 0.62
+    hy = 0.9 + (th_t - 0.5) * 1.7
+    hcenter = np.stack([hr * np.cos(hth), hy, hr * np.sin(hth)], 1).astype(np.float32)
+    tan = np.zeros_like(hcenter)
+    tan[1:-1] = hcenter[2:] - hcenter[:-2]
+    tan[0] = hcenter[1] - hcenter[0]
+    tan[-1] = hcenter[-1] - hcenter[-2]
     tan /= np.maximum(np.linalg.norm(tan, axis=1, keepdims=True), 1e-6)
     binormal = np.cross(tan, np.array([0.0, 1.0, 0.0], np.float32))
     binormal /= np.maximum(np.linalg.norm(binormal, axis=1, keepdims=True), 1e-6)
     normal = np.cross(binormal, tan)
-    theta = (np.arange(p) * (2.0 * np.pi / 10.5))[:, None]
-    r_h = 0.028
-    off = r_h * (np.cos(theta) * normal + np.sin(theta) * binormal)
+    theta = (np.arange(p) * (2.0 * np.pi / 10.5))[:, None]     # real B-DNA: 10.5 base pairs per turn
+    off = 0.05 * (np.cos(theta) * normal + np.sin(theta) * binormal)
     helix = np.empty_like(card)
-    helix[a_tok] = rung + off
-    helix[b_tok] = rung - off
+    helix[a_tok] = hcenter + off                              # the two backbones spiral around the coil
+    helix[b_tok] = hcenter - off
 
     # --- stage 4 frame: wrap the helix into BEADS ON ONE STRING (nucleosomes). Group G pairs per bead; the
     # bead centres run as one compact serpentine (fewer than the ladder — tighter), and inside each bead the
@@ -187,7 +216,8 @@ def build(sub: int = 1, block: int = 5) -> Thread:
     col_base[a_tok] = _BASES[a_base]
     col_base[b_tok] = _BASES[a_base ^ 1]              # complementary base on the partner strand
 
-    return Thread(card=card, ladder=ladder, helix=helix, nucleo=nucleo, fibre=fibre, chromo=chromo,
+    return Thread(card=card, bound=bound, ladder=ladder, a_tok=a_tok, b_tok=b_tok,
+                  helix=helix, nucleo=nucleo, fibre=fibre, chromo=chromo,
                   col_card=col_card, col_token=col_token, col_base=col_base, read=read,
                   xspan=(float(pos[:, 0].min()), float(pos[:, 0].max())))
 
@@ -200,13 +230,27 @@ def _smooth(x):
 # stage boundaries in global progress [0,1]: card -> tokenize -> ladder -> helix -> nucleosome -> fibre.
 # Each interval folds one end frame toward the next; the boundaries are exact hand-offs (end IS start).
 _STAGES = [
-    ("scan", 0.15),      # scan sweeps the card, colouring it into tokens (positions fixed)
-    ("pair", 0.30),      # token stream folds onto the one base-pair ladder
-    ("helix", 0.44),     # the ladder winds into one double helix
-    ("nucleo", 0.60),    # the helix wraps into beads on one string
-    ("fibre", 0.78),     # the bead string coils into one 30 nm fibre
+    ("scan", 0.14),      # scan sweeps the card, colouring it into tokens (positions fixed)
+    ("bind", 0.26),      # tokens bind in twos into base-pair rungs, in place
+    ("pair", 0.40),      # the rungs arrange onto the one base-pair ladder
+    ("helix", 0.52),     # the ladder winds into one double helix
+    ("nucleo", 0.66),    # the helix wraps into beads on one string
+    ("fibre", 0.82),     # the bead string coils into one 30 nm fibre
     ("chromo", 1.00),    # the fibre folds into one compact chromatid (the chromosome)
 ]
+
+
+def scan_end() -> float:
+    """Global progress at which the tokenization scan finishes (the card is fully read into tokens)."""
+    return _STAGES[0][1]
+
+
+def scan_front(th: Thread, progress: float) -> float:
+    """World x of the scan wavefront at ``progress`` — the board is solid ahead of it (x > front) and has
+    been read into token particles behind it (x <= front)."""
+    g = float(np.clip(progress, 0.0, 1.0))
+    x0, x1 = th.xspan
+    return x0 + (x1 - x0 + 0.2) * _smooth(g / _STAGES[0][1])
 
 
 def frame(th: Thread, progress: float):
@@ -223,15 +267,15 @@ def frame(th: Thread, progress: float):
         return th.card, th.col_card * (1.0 - rev) + th.col_token * rev
 
     # position keyframes per fold stage, and the colour they carry
-    frames = [th.card, th.ladder, th.helix, th.nucleo, th.fibre, th.chromo]
+    frames = [th.card, th.bound, th.ladder, th.helix, th.nucleo, th.fibre, th.chromo]
     for k in range(1, len(_STAGES)):
         a_lo, a_hi = _STAGES[k - 1][1], _STAGES[k][1]
         if g <= a_hi or k == len(_STAGES) - 1:
             t = _smooth((g - a_lo) / max(a_hi - a_lo, 1e-6))
             pos = frames[k - 1] * (1.0 - t) + frames[k] * t
-            if k == 1:                                # card->ladder: colour token -> base pair
+            if k == 1:                                # BIND: tokens pair up -> take their base-pair colour
                 col = th.col_token * (1.0 - t) + th.col_base * t
             else:
                 col = th.col_base
             return pos, col
-    return th.fibre, th.col_base
+    return th.chromo, th.col_base
