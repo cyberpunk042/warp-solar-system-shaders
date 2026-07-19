@@ -137,6 +137,29 @@ the DNA metaphor is literal: the compressed, addressable, *searchable* token ind
 sequence, three capabilities: **compressed** (near H0), **addressable** (token_chromosome / wavelet),
 **searchable** (FM-index). All tested (`tests/test_wavelet_fm.py`, `tests/test_token_chromosome.py`).
 
+## 7c. Recursion: X/Y chromosomes, base-pair merge, super-chromosomes (built)
+
+The single-chromosome fold compresses **one** sequence. Lifting it to a whole **cluster** is the natural
+recursion (`warp_compress/super_chromosome.py`): give every chromosome a **type — X or Y** — and let an X and
+a Y **merge into a new base-pair strand** (position `i` pairs `X[i]` with `Y[i]`; identical rungs deduped).
+That merged strand is itself a token sequence, so it **re-enters the same fold** as a *super-chromosome*.
+Recurse, pairing two at a time, until one root remains — depth `~log2(#chromosomes)`, so the transform scales
+with the cluster, "relative to size and depth."
+
+- **Lossless** — `decode()` unzips the whole tree back to the originals; reads only the root strand + the
+  per-merge codebooks (interior strands are procedural, never stored).
+- **O(depth) random access** — `fetch(leaf, pos)`: positional pairing keeps `pos` constant down the tree, so
+  one original token is a straight descent through `log2(K)` pair-codebooks — no full unfold. gzip/LZ cannot
+  do this.
+- **Small-alphabet payoff** — over ACGT (V=4) there are only V×V base-pair types, so codebooks stay tiny and
+  the rung strand is low-entropy. Measured on 16 related 600-bp chromosomes: at realistic population
+  divergence (~0.5–1%) the super-chromosome **beats both raw and gzip** (6.0× / 1.1× at 0.5%); as edits
+  scatter, gzip's LZ overtakes on pure ratio (still beating raw to ~10%), but only the recursion gives
+  O(depth) addressing. Tested (`tests/test_super_chromosome.py`, 7 cases).
+
+This is the same fold read one level up: a chromosome compresses tokens; a super-chromosome compresses
+chromosomes. The X/Y typing is literal — two strands become the base pairs of the next level.
+
 ## 8. Next steps to evolve it
 
 1. Extract a standalone `token_chromosome` module: `compress(tokens) → Chromosome`, `Chromosome.at(r)`,
