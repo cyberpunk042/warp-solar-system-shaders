@@ -23,7 +23,7 @@ _N = _TH.n
 
 # We perfect ONE stage at a time. `_END_STAGE` is the stage the take stops at (held, then loops) so the
 # later stages don't clutter the view while we work. Set it to the stage we're refining.
-_END_STAGE = "helix"               # <-- currently working the helix; take ends there
+_END_STAGE = "nucleo"              # <-- currently working the nucleosome; take ends there
 _T_BOARD = 1.2                     # seconds of the real ray-marched board at the start
 _PARTS = 11.0                      # seconds for the particle compression up to _END_STAGE
 _T_REPL = 3.0                      # replication -> the X (only used when _END_STAGE == "chromo")
@@ -125,8 +125,11 @@ def _resolve(zbuf: wp.array2d(dtype=wp.int32), col: wp.array(dtype=wp.vec3),
     nrm = wp.normalize(wp.vec3(ox, -oy, nz + 0.35))
     diff = wp.max(wp.dot(nrm, wp.normalize(wp.vec3(0.45, 0.65, 0.55))), 0.0)
     rim = wp.pow(1.0 - nz, 2.5) * 0.22
-    dsh = 1.12 - 0.42 * (float((key >> _IDX_BITS) & 0x3FF) / 1022.0)
-    img[i, j] = col[idx] * ((0.32 + 0.82 * diff) * dsh) + wp.vec3(rim, rim, rim) * dsh
+    depthq = float((key >> _IDX_BITS) & 0x3FF) / 1022.0
+    dsh = 1.12 - 0.42 * depthq
+    lit = col[idx] * ((0.32 + 0.82 * diff) * dsh) + wp.vec3(rim, rim, rim) * dsh
+    fog = wp.clamp((depthq - 0.35) * 1.7, 0.0, 0.9)           # far strands recede into the dark -> depth
+    img[i, j] = wp.lerp(lit, bg, fog)
 
 
 @wp.kernel
@@ -152,14 +155,18 @@ def _ensure_cardcol(device):
     _cardcol_done = True
 
 
-def _cam(mx: float, my: float, zoomf: float):
+def _cam(pos, mx: float, my: float, zoomf: float):
+    # AUTO-FRAME: aim at the thread's centre and set the distance from its current extent, so as the thread
+    # compresses the camera eases inward and every stage stays readable at the same on-screen size. One
+    # continuous, motivated dolly (no jerky per-stage jumps). User orbit (mx,my) + wheel zoom ride on top.
+    c = pos.mean(0).astype(np.float32)
+    r = float(np.percentile(np.linalg.norm(pos - c, axis=1), 94)) + 1e-3
+    dist = max(r * 2.2, 0.5) / max(zoomf, 0.15)
     az = 0.62 + float(mx) * 0.010
     el = min(max(0.36 + float(my) * 0.006, 0.05), 1.45)
-    dist = 9.2 / max(zoomf, 0.15)
-    target = np.array([0.0, 0.55, 0.0], np.float32)
-    ro = target + dist * np.array([math.cos(el) * math.sin(az), math.sin(el),
-                                   math.cos(el) * math.cos(az)], np.float32)
-    ww = target - ro; ww /= np.linalg.norm(ww)
+    ro = c + dist * np.array([math.cos(el) * math.sin(az), math.sin(el),
+                              math.cos(el) * math.cos(az)], np.float32)
+    ww = c - ro; ww /= np.linalg.norm(ww)
     uu = np.cross(ww, np.array([0.0, 1.0, 0.0], np.float32)); uu /= np.linalg.norm(uu)
     vv = np.cross(uu, ww)
     return ro, uu, vv, ww, float(dist)
@@ -194,28 +201,26 @@ def _board(W, H, time, cam, device, cut_x=-1.0e9):
 
 def _core(W, H, time, mx, my, zoomf, device):
     _ensure_cardcol(device)
-    cam = _cam(mx, my, zoomf)
     t = float(time) % TOTAL
-    if t < _T_BOARD:
-        return _board(W, H, t, cam, device)                       # the real GPU, held
+    if t < _T_BOARD:                                              # the real GPU, held; frame the whole card
+        pos0, _ = TH.frame(_TH, 0.0)
+        return _board(W, H, t, _cam(pos0, mx, my, zoomf), device)
     pt = t - _T_BOARD
     if not _FULL or pt <= _PARTS:                                 # the compression, up to _END_STAGE
         progress = _STOP * min(pt / _PARTS, 1.0)                  # 0 .. _STOP, then held at the end stage
+        pos, col = TH.frame(_TH, progress)
+        cam = _cam(pos, mx, my, zoomf)                            # auto-frame the thread's current size
         if progress <= TH.scan_end():
             # GRANULATION SCAN: the board is eroded behind the wavefront and its matter releases as token
-            # particles. Composite the (eroded) real board ahead of the front with the particles behind it —
-            # a physical break, not a crossfade.
+            # particles. Composite the (eroded) real board ahead of the front with the particles behind it.
             front = TH.scan_front(_TH, progress)
             board = _board(W, H, _T_BOARD, cam, device, cut_x=front)
-            pos, col = TH.frame(_TH, progress)
-            pos = pos.copy()
-            ahead = pos[:, 0] > front                              # still-solid board: hide those particles
-            pos[ahead] = cam[0]                                    # collapse onto the eye -> culled (cz<0.05)
-            part, cover = _particles_masked(W, H, pos, col, cam, device)
+            pos2 = pos.copy()
+            pos2[pos2[:, 0] > front] = cam[0]                     # hide still-solid-board particles (cull)
+            part, cover = _particles_masked(W, H, pos2, col, cam, device)
             return np.where(cover[..., None], part, board)
-        pos, col = TH.frame(_TH, progress)
-        pos, col = _with_rungs(pos, col)                          # draw the base-pair rungs
-        return _particles(W, H, pos, col, cam, device)
+        posr, colr = _with_rungs(pos, col)                       # draw the base-pair rungs
+        return _particles(W, H, posr, colr, cam, device)
     # REPLICATION -> the metaphase X: the chromatid duplicates; the sister grows out of the centromere and
     # the two tilt apart, crossing at the centromere into the X.
     r = _ss((pt - _PARTS) / _T_REPL)
@@ -227,7 +232,7 @@ def _core(W, H, time, mx, my, zoomf, device):
     b = c + r * (_rotz(pos, -tilt, c) - c)                         # its sister grows from the centromere
     posX = np.concatenate([a, b], 0)
     colX = np.concatenate([col, col], 0)
-    return _particles(W, H, posX, colX, cam, device)
+    return _particles(W, H, posX, colX, _cam(posX, mx, my, zoomf), device)
 
 
 def render_view(width, height, time, mx, my, zoomf, device):

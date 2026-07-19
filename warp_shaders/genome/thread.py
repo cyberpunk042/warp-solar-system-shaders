@@ -140,45 +140,48 @@ def build(sub: int = 1, block: int = 5) -> Thread:
     # --- stage 3 frame: wind the ONE ladder into ONE double helix. The thread's path (rung centres) stays
     # put; along it the two backbones twist around each other — real B-DNA (~10.5 bp/turn). Local frame
     # (tangent/normal/binormal) so the twist follows the snaking thread. Chains from the ladder exactly. ---
-    # the one thread WINDS into a double helix — it coils up into a visible spring (much tighter footprint
-    # than the spread base-pair field: compression continues), and the two backbones spiral around that coil
-    # at 10.5 bp/turn. One continuous strand.
-    th_t = i / max(p - 1, 1)
-    _HTURNS = 46.0                                             # the coil the whole thread winds into
-    hth = th_t * _HTURNS * 2.0 * np.pi
-    hr = 0.62
-    hy = 0.9 + (th_t - 0.5) * 1.7
-    hcenter = np.stack([hr * np.cos(hth), hy, hr * np.sin(hth)], 1).astype(np.float32)
-    tan = np.zeros_like(hcenter)
-    tan[1:-1] = hcenter[2:] - hcenter[:-2]
-    tan[0] = hcenter[1] - hcenter[0]
-    tan[-1] = hcenter[-1] - hcenter[-2]
-    tan /= np.maximum(np.linalg.norm(tan, axis=1, keepdims=True), 1e-6)
-    binormal = np.cross(tan, np.array([0.0, 1.0, 0.0], np.float32))
-    binormal /= np.maximum(np.linalg.norm(binormal, axis=1, keepdims=True), 1e-6)
-    normal = np.cross(binormal, tan)
-    theta = (np.arange(p) * (2.0 * np.pi / 10.5))[:, None]     # real B-DNA: 10.5 base pairs per turn
-    off = 0.05 * (np.cos(theta) * normal + np.sin(theta) * binormal)
+    # the base-pair ladder winds into a FOREST OF DOUBLE HELICES (the dedicated warp_helix look): the one
+    # thread runs column by column (boustrophedon), and within each column the two backbones spiral up at
+    # 10.5 bp/turn — tall twisting strands. The footprint is tighter than the flat base-pair field
+    # (compression continues) but the pairs now stand up into the forest.
+    _HG = 90                                                   # base pairs per helical column
+    ncolh = (p + _HG - 1) // _HG
+    hcol = i // _HG
+    hl_pos = (i % _HG).astype(np.float32)                      # 0..HG within the column
+    hnx = max(int(round(np.sqrt(ncolh * 1.7))), 1)
+    hcrow = hcol // hnx
+    hccol = np.where(hcrow % 2 == 0, hcol % hnx, hnx - 1 - (hcol % hnx))   # boustrophedon: one thread
+    hnz = int(hcrow.max()) + 1
+    _hcx = (hccol - hnx * 0.5) * 0.135                         # compact column grid (tighter than the field)
+    _hcz = (hcrow - hnz * 0.5) * 0.135
+    hy = 0.35 + (hl_pos / _HG) * 1.35                          # the column rises — tall strands
+    hcenter = np.stack([_hcx, hy, _hcz], 1).astype(np.float32)
+    theta = (hl_pos * (2.0 * np.pi / 10.5))[:, None]           # real B-DNA: 10.5 bp per turn, twisting up
+    off = np.concatenate([0.045 * np.cos(theta), np.zeros_like(theta), 0.045 * np.sin(theta)], 1)
     helix = np.empty_like(card)
-    helix[a_tok] = hcenter + off                              # the two backbones spiral around the coil
-    helix[b_tok] = hcenter - off
+    helix[a_tok] = hcenter + off.astype(np.float32)           # the two backbones spiral around the column
+    helix[b_tok] = hcenter - off.astype(np.float32)
 
     # --- stage 4 frame: wrap the helix into BEADS ON ONE STRING (nucleosomes). Group G pairs per bead; the
     # bead centres run as one compact serpentine (fewer than the ladder — tighter), and inside each bead the
     # strand wraps ~1.75 turns around the core. Same ordered pairs, folded tighter. ---
-    tw = 0.010                                        # the dsDNA is thin at this compaction
+    tw = 0.008                                        # the dsDNA is thin at this compaction
     small = np.array([0.0, tw, 0.0], np.float32)
-    G = 180
+    G = 180                                           # ~180 bp per nucleosome bead
     nb = (p + G - 1) // G
     bead = np.arange(p) // G
     lf = (np.arange(p) % G).astype(np.float32)
-    bt = (np.arange(nb) + 0.5) / nb                   # bead position along the one thread
-    bth = bt * _LT * 2.0 * np.pi
-    br = 0.18 + 1.30 * bt
-    bead_c = np.stack([br * np.cos(bth), np.full(nb, 0.55, np.float32),
-                       br * np.sin(bth)], 1).astype(np.float32)   # beads strung along the SAME spiral
+    bt = (np.arange(nb) + 0.5) / nb                   # bead position along the one thread (used by fibre)
+    # bead centres on ONE compact serpentine STRING (beads on a string) — tighter than the helix.
+    bnx = max(int(round(np.sqrt(nb * 1.5))), 1)
+    brow = np.arange(nb) // bnx
+    bcol = np.where(brow % 2 == 0, np.arange(nb) % bnx, bnx - 1 - (np.arange(nb) % bnx))
+    bnz = int(brow.max()) + 1
+    bead_c = np.stack([(bcol - bnx * 0.5) * 0.15, np.full(nb, 0.55, np.float32),
+                       (brow - bnz * 0.5) * 0.15], 1).astype(np.float32)
+    # inside each bead the DNA wraps ~1.75 turns around the histone core -> a squat disc (the nucleosome)
     phi = (lf / G) * (1.75 * 2.0 * np.pi)
-    wrap = np.stack([0.045 * np.cos(phi), (lf / G - 0.5) * 0.06, 0.045 * np.sin(phi)], 1).astype(np.float32)
+    wrap = np.stack([0.058 * np.cos(phi), (lf / G - 0.5) * 0.03, 0.058 * np.sin(phi)], 1).astype(np.float32)
     nucleo_c = bead_c[bead] + wrap
     nucleo = np.empty_like(card)
     nucleo[a_tok] = nucleo_c + small
