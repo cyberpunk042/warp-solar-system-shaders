@@ -126,6 +126,17 @@ paying O(1) per access instead of storing/attending over the full `N`. The multi
   - *LM utility* — does token-by-token navigation over a chromosome-compressed context match full-context
     quality at lower memory? That is the actual experiment.
 
+## 7b. The principled realization: wavelet matrix + FM-index (built)
+
+The flat `Φ` gives O(1) *positional* access; the principled compressed **self-index** over the alphabet is
+the **wavelet matrix** (`warp_compress/wavelet.py`): `access(i)`, `rank(c,i)`, `select(c,k)` in O(bits),
+index size near the H0 entropy bound. Put `rank` behind the sequence's **BWT** and you get the **FM-index**
+(`warp_compress/fm_index.py`): `count(pattern)` / `locate(pattern)` by backward search in O(|pattern|·bits),
+**inside the compressed sequence, never materialised**. That is exactly how genomic reads are aligned — so
+the DNA metaphor is literal: the compressed, addressable, *searchable* token index is the FM-index. One
+sequence, three capabilities: **compressed** (near H0), **addressable** (token_chromosome / wavelet),
+**searchable** (FM-index). All tested (`tests/test_wavelet_fm.py`, `tests/test_token_chromosome.py`).
+
 ## 8. Next steps to evolve it
 
 1. Extract a standalone `token_chromosome` module: `compress(tokens) → Chromosome`, `Chromosome.at(r)`,
