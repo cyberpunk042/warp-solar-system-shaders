@@ -183,8 +183,8 @@ def _cam(pos, az, el, mx: float, my: float, zoomf: float):
     # extent (so the camera eases inward with the compression), az/el from the timeline (each stage from its
     # best angle). User orbit (mx,my) + wheel zoom ride on top. One continuous motivated move.
     c = pos.mean(0).astype(np.float32)
-    r = float(np.percentile(np.linalg.norm(pos - c, axis=1), 94)) + 1e-3
-    dist = max(r * 2.2, 0.5) / max(zoomf, 0.15)
+    r = float(np.percentile(np.linalg.norm(pos - c, axis=1), 99)) + 1e-3   # full extent — don't clip
+    dist = max(r * 4.2, 1.2) / max(zoomf, 0.15)                            # zoomed OUT, lots of margin
     azf = float(az) + float(mx) * 0.010
     elf = min(max(float(el) + float(my) * 0.006, 0.05), 1.45)
     ro = c + dist * np.array([math.cos(elf) * math.sin(azf), math.sin(elf),
