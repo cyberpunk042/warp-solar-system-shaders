@@ -77,3 +77,22 @@ def test_fm_predict_next_beats_uniform_on_markov():
         d = fm.predict_next([int(seq[i - 2]), int(seq[i - 1])])
         ll += -math.log2(d.get(int(seq[i]), 1e-6)); n += 1
     assert ll / n < math.log2(V) * 0.75          # clearly better than uniform (the index recovers structure)
+
+
+def test_fm_prob_next_context_beats_unigram():
+    import math
+    rng = np.random.default_rng(2)
+    V = 16
+    trans = rng.dirichlet(np.ones(V) * 0.25, size=(V, V))
+    seq = np.empty(30000, np.int64)
+    seq[:2] = [0, 1]
+    for i in range(2, len(seq)):
+        seq[i] = rng.choice(V, p=trans[seq[i - 2], seq[i - 1]])
+    fm = FMIndex(seq[:26000], sa_sample=32)
+    uni = ctx = m = 0.0
+    for i in rng.integers(26002, len(seq), 400):
+        c = int(seq[i])
+        uni += -math.log2(max(fm.prob_next([], c, max_order=0), 1e-12))
+        ctx += -math.log2(max(fm.prob_next([int(seq[i - 2]), int(seq[i - 1])], c, max_order=4), 1e-12))
+        m += 1
+    assert ctx / m < uni / m - 0.5          # variable-order context clearly beats the unigram

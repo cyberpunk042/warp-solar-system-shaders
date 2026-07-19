@@ -86,6 +86,22 @@ class FMIndex:
         tot = sum(dist.values())
         return {c: n / tot for c, n in dist.items()} if tot else {}
 
+    def prob_next(self, context, c, max_order: int = 8, D: float = 4.0) -> float:
+        """Interpolated variable-order backoff probability of token `c` given `context` — the '∞-gram' LM
+        built straight from the index. Start at the unigram (add-1), interpolate UP through longer contexts;
+        each order's weight lambda = count(ctx)/(count(ctx)+D) (Witten-Bell-ish: trust higher order when it
+        has support). O(max_order) backward searches — no V loop, so it's cheap for perplexity."""
+        c = int(c)
+        p = (self.count([c]) + 1.0) / ((self.n - 1) + (self.sigma - 1))     # unigram, add-1
+        for L in range(1, min(max_order, len(context)) + 1):
+            ctx = list(context[-L:])
+            n_ctx = self.count(ctx)
+            if n_ctx == 0:
+                continue                                                     # order unseen -> keep backoff
+            lam = n_ctx / (n_ctx + D)
+            p = lam * (self.count(ctx + [c]) / n_ctx) + (1.0 - lam) * p
+        return p
+
     def locate(self, pattern):
         """Text positions where `pattern` occurs (via LF-walk to the nearest sampled SA entry)."""
         lo, hi = self._bw_range(pattern)
