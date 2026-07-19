@@ -217,11 +217,14 @@ def _camera(time: float):
     return ro, uu, vv, ww, dist
 
 
-def _render(width, height, time, mouse, device):
+def _render(width, height, time, mouse, device, cam=None):
     _ensure(device)
     W, H = int(width), int(height)
     to_bead = _schedule(float(time))
-    ro, uu, vv, ww, dist = _camera(float(time))
+    if cam is None:
+        ro, uu, vv, ww, dist = _camera(float(time))
+    else:
+        ro, uu, vv, ww, dist = cam
     dnear = 1.5
     dfar = float(dist) + 34.0
 

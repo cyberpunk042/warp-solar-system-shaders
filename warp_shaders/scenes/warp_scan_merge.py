@@ -306,8 +306,13 @@ def _state(time):
     return front, mrg, con, berode                          # by the time the cube is done, no card left
 
 
-def _render(width, height, time, mouse, device):
-    front, mrg, con, berode = _state(time)
+def _render(width, height, time, mouse, device, cam=None, state=None):
+    # state=(front, mrg, con, berode) lets a caller (the genome chain) drive JUST the scan+classify
+    # (front sweep, mrg=con=berode=0) as the tokenization — the card colouring into tokens, no merge/gather.
+    if state is None:
+        front, mrg, con, berode = _state(time)
+    else:
+        front, mrg, con, berode = state
     tok = wp.array2d(_TOK2D, dtype=wp.int32, device=device)
     canon = wp.array2d(_CANON, dtype=wp.int32, device=device)
     tcx = wp.array(_TCX, dtype=float, device=device)
@@ -318,16 +323,25 @@ def _render(width, height, time, mouse, device):
     sly = wp.array(_SLY, dtype=float, device=device)
     slz = wp.array(_SLZ, dtype=float, device=device)
 
-    az = 0.58 + float(mouse[0]) * 0.006
-    el = 0.60
-    dist = 9.6 * (1.0 - con) + 3.9 * con                     # dolly in as the storage cube forms
-    tgt = wp.vec3(-0.1, 0.25 * (1.0 - con) + (_CBASE + 0.24) * con, 0.0)
-    eye = tgt + wp.vec3(dist * math.cos(el) * math.sin(az), dist * math.sin(el),
-                        dist * math.cos(el) * math.cos(az))
-    fwd = wp.normalize(tgt - eye)
-    right = wp.normalize(wp.cross(fwd, wp.vec3(0.0, 1.0, 0.0)))
-    up = wp.cross(right, fwd)
-    tanfov = math.tan(math.radians(44.0) * 0.5)
+    if cam is None:
+        az = 0.58 + float(mouse[0]) * 0.006
+        el = 0.60
+        dist = 9.6 * (1.0 - con) + 3.9 * con                 # dolly in as the storage cube forms
+        tgt = wp.vec3(-0.1, 0.25 * (1.0 - con) + (_CBASE + 0.24) * con, 0.0)
+        eye = tgt + wp.vec3(dist * math.cos(el) * math.sin(az), dist * math.sin(el),
+                            dist * math.cos(el) * math.cos(az))
+        fwd = wp.normalize(tgt - eye)
+        right = wp.normalize(wp.cross(fwd, wp.vec3(0.0, 1.0, 0.0)))
+        up = wp.cross(right, fwd)
+        tanfov = math.tan(math.radians(44.0) * 0.5)
+    else:
+        # the genome chain's locked camera, in the raw board_map frame (matches the token voxels)
+        ro, uu, vv, ww, _dist = cam
+        eye = wp.vec3(float(ro[0]), float(ro[1]), float(ro[2]))
+        fwd = wp.vec3(float(ww[0]), float(ww[1]), float(ww[2]))
+        right = wp.vec3(float(uu[0]), float(uu[1]), float(uu[2]))
+        up = wp.vec3(float(vv[0]), float(vv[1]), float(vv[2]))
+        tanfov = 0.5 / 1.7                                   # match the splat stages' zoom so sizes agree
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(_render_kernel, dim=(height, width),

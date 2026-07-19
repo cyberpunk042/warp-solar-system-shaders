@@ -194,10 +194,13 @@ def _camera(time: float):
     return ro, uu, vv, ww
 
 
-def _render(width, height, time, mouse, device):
+def _render(width, height, time, mouse, device, cam=None):
     _ensure(device)
     W, H = int(width), int(height)
-    ro, uu, vv, ww = _camera(float(time))
+    if cam is None:
+        ro, uu, vv, ww = _camera(float(time))
+    else:
+        ro, uu, vv, ww, _d = cam
     bind = _bind(float(time))
 
     zbuf = wp.full((H, W), 0x7FFFFFFF, dtype=wp.int32, device=device)

@@ -26,12 +26,14 @@ _DIEH = wp.vec3(0.86, 0.05, 0.76)   # die half-extents
 
 
 @wp.func
-def _rot(p: wp.vec3, time: float) -> wp.vec3:
-    a = 0.12 + 0.05 * wp.sin(time * 0.3)
+def _rot(p: wp.vec3, time: float, amt: float) -> wp.vec3:
+    # amt scales the board's pose: 1 = the standalone tilted/rotated presentation; 0 = the raw board_map
+    # frame (no rotation, no tilt) — used by the genome chain so the board overlays its own token voxels.
+    a = (0.12 + 0.05 * wp.sin(time * 0.3)) * amt
     ca = wp.cos(a)
     sa = wp.sin(a)
     q = wp.vec3(ca * p[0] + sa * p[2], p[1], -sa * p[0] + ca * p[2])
-    tb = 0.16
+    tb = 0.16 * amt
     ct = wp.cos(tb)
     st = wp.sin(tb)
     return wp.vec3(q[0], ct * q[1] - st * q[2], st * q[1] + ct * q[2])
@@ -177,26 +179,26 @@ def board_map(q: wp.vec3) -> float:
 
 
 @wp.func
-def _map(p: wp.vec3, time: float) -> float:
-    return board_map(_rot(p, time))
+def _map(p: wp.vec3, time: float, amt: float) -> float:
+    return board_map(_rot(p, time, amt))
 
 
 @wp.func
-def _normal(p: wp.vec3, time: float) -> wp.vec3:
+def _normal(p: wp.vec3, time: float, amt: float) -> wp.vec3:
     e = 0.0011
-    dx = _map(p + wp.vec3(e, 0.0, 0.0), time) - _map(p - wp.vec3(e, 0.0, 0.0), time)
-    dy = _map(p + wp.vec3(0.0, e, 0.0), time) - _map(p - wp.vec3(0.0, e, 0.0), time)
-    dz = _map(p + wp.vec3(0.0, 0.0, e), time) - _map(p - wp.vec3(0.0, 0.0, e), time)
+    dx = _map(p + wp.vec3(e, 0.0, 0.0), time, amt) - _map(p - wp.vec3(e, 0.0, 0.0), time, amt)
+    dy = _map(p + wp.vec3(0.0, e, 0.0), time, amt) - _map(p - wp.vec3(0.0, e, 0.0), time, amt)
+    dz = _map(p + wp.vec3(0.0, 0.0, e), time, amt) - _map(p - wp.vec3(0.0, 0.0, e), time, amt)
     return wp.normalize(wp.vec3(dx, dy, dz))
 
 
 @wp.func
-def _ao(p: wp.vec3, n: wp.vec3, time: float) -> float:
+def _ao(p: wp.vec3, n: wp.vec3, time: float, amt: float) -> float:
     occ = float(0.0)
     sca = float(1.0)
     for k in range(5):
         hr = 0.012 + 0.06 * float(k)
-        d = _map(p + n * hr, time)
+        d = _map(p + n * hr, time, amt)
         occ += (hr - d) * sca
         sca *= 0.85
     return wp.clamp(1.0 - 2.0 * occ, 0.0, 1.0)
@@ -397,7 +399,7 @@ def board_shade(q: wp.vec3, n: wp.vec3, rd: wp.vec3, ao: float, time: float) -> 
 @wp.kernel
 def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
                    right: wp.vec3, up: wp.vec3, width: int, height: int,
-                   time: float, tanfov: float):
+                   time: float, tanfov: float, spin: float):
     i, j = wp.tid()
     aspect = float(width) / float(height)
     u = (2.0 * (float(j) + 0.5) / float(width) - 1.0) * tanfov * aspect
@@ -408,7 +410,7 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
     hit = int(0)
     for _ in range(240):
         p = eye + rd * t
-        d = _map(p, time)
+        d = _map(p, time, spin)
         if d < 0.0007 * t + 0.0004:
             hit = 1
             break
@@ -421,27 +423,40 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
         return
 
     p = eye + rd * t
-    n = _normal(p, time)
-    ao = _ao(p, n, time)
-    img[i, j] = board_shade(_rot(p, time), n, rd, ao, time)
+    n = _normal(p, time, spin)
+    ao = _ao(p, n, time, spin)
+    img[i, j] = board_shade(_rot(p, time, spin), n, rd, ao, time)
 
 
-def _render(width, height, time, mouse, device):
-    az = 0.14 + float(mouse[0]) * 0.01
-    el = 0.78 + float(mouse[1]) * 0.005
-    dist = 8.4
-    eye = wp.vec3(dist * math.cos(el) * math.sin(az),
-                  dist * math.sin(el) + 0.15,
-                  dist * math.cos(el) * math.cos(az))
-    tgt = wp.vec3(0.0, -0.12, 0.0)
-    fwd = wp.normalize(tgt - eye)
-    right = wp.normalize(wp.cross(fwd, wp.vec3(0.0, 1.0, 0.0)))
-    up = wp.cross(right, fwd)
-    tanfov = math.tan(math.radians(42.0) * 0.5)
+def _render(width, height, time, mouse, device, cam=None):
+    if cam is None:
+        # standalone: the board's own orbiting/tilted 3/4 presentation
+        az = 0.14 + float(mouse[0]) * 0.01
+        el = 0.78 + float(mouse[1]) * 0.005
+        dist = 8.4
+        eye = wp.vec3(dist * math.cos(el) * math.sin(az),
+                      dist * math.sin(el) + 0.15,
+                      dist * math.cos(el) * math.cos(az))
+        tgt = wp.vec3(0.0, -0.12, 0.0)
+        fwd = wp.normalize(tgt - eye)
+        right = wp.normalize(wp.cross(fwd, wp.vec3(0.0, 1.0, 0.0)))
+        up = wp.cross(right, fwd)
+        tanfov = math.tan(math.radians(42.0) * 0.5)
+        spin = 1.0
+    else:
+        # chain: render from the genome chain's locked splat camera, in the RAW board_map frame (spin=0),
+        # so the solid card overlays its own token voxels exactly and can fragment into them in place.
+        ro, uu, vv, ww, _dist = cam
+        eye = wp.vec3(float(ro[0]), float(ro[1]), float(ro[2]))
+        fwd = wp.vec3(float(ww[0]), float(ww[1]), float(ww[2]))
+        right = wp.vec3(float(uu[0]), float(uu[1]), float(uu[2]))
+        up = wp.vec3(float(vv[0]), float(vv[1]), float(vv[2]))
+        tanfov = 0.5 / 1.7          # match the splat stages' zoom=1.7 so the card is the tokens' size
+        spin = 0.0
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(_render_kernel, dim=(height, width),
-              inputs=[img, eye, fwd, right, up, width, height, time, tanfov],
+              inputs=[img, eye, fwd, right, up, width, height, time, tanfov, spin],
               device=device)
     wp.synchronize_device(device)
     return ec.finish(img.numpy(), width, height, threshold=1.7, strength=0.3)

@@ -207,11 +207,14 @@ def _camera(time: float):
     return ro, uu, vv, ww, dist
 
 
-def _render(width, height, time, mouse, device):
+def _render(width, height, time, mouse, device, cam=None):
     _ensure(device)
     W, H = int(width), int(height)
     feed = _schedule(float(time))
-    ro, uu, vv, ww, dist = _camera(float(time))
+    if cam is None:
+        ro, uu, vv, ww, dist = _camera(float(time))
+    else:
+        ro, uu, vv, ww, dist = cam
     dnear = float(dist) - 18.0
     dfar = float(dist) + 50.0
 

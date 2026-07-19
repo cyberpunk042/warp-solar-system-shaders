@@ -40,6 +40,7 @@ def main() -> None:
     ap.add_argument("--width", type=int, default=384)
     ap.add_argument("--height", type=int, default=256)
     ap.add_argument("--colors", type=int, default=200)
+    ap.add_argument("--hold", type=float, default=1.2, help="seconds to hold on the settled X at the end")
     ap.add_argument("-o", "--out", default=OUT)
     args = ap.parse_args()
 
@@ -51,13 +52,20 @@ def main() -> None:
 
     frames = []
     s = _t.time()
+    # sample t in [0, TOTAL) — never exactly TOTAL, which would wrap (gt = t % TOTAL) back to the
+    # opening board and make the take look like it *ends* on a graphics card.
+    eps = min(1e-3, TOTAL / (2.0 * max(n, 1)))
     for k in range(n):
-        t = TOTAL * (k / max(n - 1, 1))
+        t = min(TOTAL * (k / max(n - 1, 1)), TOTAL - eps)
         fr = np.clip(sc.render(args.width, args.height, t, (0.0, 0.0), device), 0.0, 1.0)
         frames.append(Image.fromarray((fr * 255.0 + 0.5).astype(np.uint8), "RGB"))
         if k % 20 == 0:
             print(f"  {k + 1}/{n}  t={t:.2f}s", end="\r", flush=True)
-    print(f"\n  rendered {n} frames in {_t.time() - s:.1f}s", flush=True)
+    # hold on the settled metaphase X so the take ends on the chromosome, not a wrap
+    hold = int(round(args.hold * args.fps))
+    frames.extend(frames[-1].copy() for _ in range(hold))
+    print(f"\n  rendered {n} frames (+{hold} hold) in {_t.time() - s:.1f}s", flush=True)
+    n = len(frames)
 
     # one global palette sampled ACROSS every stage (card pastels, grey beads, purple chromosome).
     picks = [int(n * fr) for fr in (0.03, 0.12, 0.22, 0.33, 0.45, 0.57, 0.70, 0.82, 0.93, 0.99)]
