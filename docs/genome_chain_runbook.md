@@ -131,6 +131,16 @@ scenes free-run. `Ctrl-C` stops it.
 
 ## 6. Open work / next steps
 
+- **KNOWN DEFECT — stray trailing frame in `docs/engine/genome_chain.gif`.** A cross-branch merge
+  (`8ab821a`) + GIF recompress (`2ab2795`, `gifsicle -O3 --lossy=60`) left the committed GIF ending on a
+  single **gpu_board** frame *after* the chromosome (frame 282 = chromosome ✓, frame 283 = board ✗) — a
+  one-frame flash at the loop point, exactly the kind of glitch the operator rejects. The rendered scene
+  (`warp_genome_chain`) is correct and ends on the chromosome; only the encoded artifact is wrong.
+  **Fix (needs `gifsicle`, which this box lacks):**
+  `gifsicle docs/engine/genome_chain.gif '#0-282' -O3 --lossy=60 -o docs/engine/genome_chain.gif`
+  (drops the last frame, keeps the ~5.8 MB size). Or regenerate from source
+  (`python build_genome_chain.py`) — correct ordering, no stray frame — then re-shrink with the same
+  `gifsicle` pass to stay small. Don't re-encode with PIL alone: it can't match the lossy size (~11 MB).
 - **Audit every seam for registration (the current live thread).** Stage 0→1 (card→tokens) is fixed and
   verified in place. The operator's standing bar is *"all the scene must make sense"* — confirm each later
   seam is the **same matter re-forming in place**, not a jump: tokens→base-pairs, base-pairs→helices,
