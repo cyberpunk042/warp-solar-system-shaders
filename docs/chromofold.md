@@ -54,8 +54,10 @@ gzip at **2.5×** that requires a CPU inflate + a PCIe copy of the *decompressed
 whole bet. gzip/zstd optimize the first term and ignore the rest; nvCOMP optimizes GPU throughput but is
 whole-stream and token-blind. ChromoFold is designed for the **other four terms**:
 
-- **No CPU round-trip.** Decode kernels run on the GPU (roadmap: Warp/CUDA; §7). The compressed bytes live in
-  VRAM; you never DMA them to host and back.
+- **No CPU round-trip.** Decode kernels run on the GPU (Warp; `gpu_wavelet.py` — done). The compressed bytes
+  live in VRAM; you never DMA them to host and back. *First measurement: the succinct wavelet index is ~1.1
+  B/token resident (114× smaller than the CPU prefix-array form) and decodes ~400 M tokens/s in parallel
+  batches on one GPU — the primitive behind every FM-index query and token unfold.*
 - **Partial / random-access unfold.** gzip must inflate from the start of a block. ChromoFold decodes *any
   token, any slice* directly — FM-index positional access is O(1)/O(log); the reference-delta tree reaches any
   token in O(depth)=O(log #sequences). You unfold the 40 KV entries you attend to, not the 4 M you stored.
@@ -181,9 +183,11 @@ reference-delta tree stores. So: keep the base once, store each adapter as a Chr
 
 ## 7. Roadmap — first roll → real system
 
-1. **Config + presets** (`warp_compress/chromofold.py`) — one dial-set, per-workload sweet spots. *(this roll)*
-2. **GPU decode kernels** — port wavelet `rank`, RRR, and delta-apply to **Warp/CUDA** (we already run Warp for
-   rendering). This is what turns "1.7× but GPU-resident" from a claim into a measurement.
+1. **Config + presets** (`warp_compress/chromofold.py`) — one dial-set, per-workload sweet spots. *(done)*
+2. **GPU decode kernels** — wavelet `rank`/`access` now run on the GPU in Warp
+   (`warp_compress/gpu_wavelet.py`): the succinct packed-bitplane + superblock-popcount index, resident in
+   VRAM, answering a whole **batch** of queries in parallel. *(done — the make-or-break, now measured; see
+   below.)* Next: RRR-coded bitplanes and delta-apply on the same path.
 3. **Bench the effective-gain terms** — not just ratio: measure PCIe avoided, decode µs on-GPU, batch-capacity
    delta at fixed latency. The equation in §1 becomes a table.
 4. **Quantization interop** — wrap INT4/FP4/NF4 as a `quantize` stage; entropy-code the quantized stream;
@@ -196,8 +200,9 @@ reference-delta tree stores. So: keep the base once, store each adapter as a Chr
 
 - Dense post-quant weights barely compress losslessly — the win there is small and comes from entropy-coding,
   not folding. Don't oversell it.
-- GPU decode kernels don't exist yet; today's code is numpy/CPU. The GPU-resident thesis is *designed for* but
-  not *yet measured*. §7.2 is the make-or-break.
+- GPU decode is now real for wavelet `rank`/`access` (`gpu_wavelet.py`: ~1.1 B/tok resident, ~400 M tok/s
+  batched) — the core primitive is measured. Still to port: RRR-coded bitplanes (entropy-sized, not just
+  packed), the reference-delta apply, and the full FM-index backward-search loop on-GPU.
 - BWT construction is O(n log n) and memory-hungry to *build*; it's cheap to *query*. For write-heavy,
   append-only data prefer the `delta` path.
 - rANS/RRR beat gzip on the id stream, but LZ still wins raw ratio on scattered, high-entropy edits — which is
