@@ -29,26 +29,30 @@ OVERLAP = 11                       # frames cross-dissolved at each seam
 DEV = "cpu"
 OUT = os.path.join("docs", "engine", "genome_chain.gif")
 
-# (scene, t0, t1, n_frames) — each genome scene forms from the previous stage over ~0..3.4s then settles.
+# (scene, t0, t1, n_frames, mouse) — each genome scene forms from the previous stage over ~0..3.4s
+# then settles. Stage 0 is gpu_board — the *exact* board tokenize_card voxel-samples (its board_map is
+# the tokenization source) — posed via mouse to the same flat grazing angle as the token field, so the
+# dissolve reads as this board becoming its own tokens, not a cut to a different card.
+_GB_POSE = (48.0, -88.0)   # gpu_board mouse -> az=0.62, el=0.34 (matches warp_tokenize's camera)
 SEGMENTS = [
-    ("graphics_card",   0.3, 3.3, 34),   # 0 the real RTX board (hero)
-    ("warp_tokenize",   0.0, 5.2, 46),   # 1 board -> tokens
-    ("warp_basepair",   0.0, 5.2, 46),   # 2 tokens -> base pairs
-    ("warp_helix",      0.0, 5.6, 48),   # 3 -> double helices
-    ("warp_nucleosome", 0.0, 5.6, 48),   # 4 -> nucleosome beads
-    ("warp_fibre",      0.0, 5.6, 48),   # 5 -> 30 nm fibre
-    ("warp_telomere",   0.0, 5.6, 48),   # 6 -> telomere-capped strand
-    ("warp_chromosome", 0.0, 7.2, 62),   # 7 -> merged chromosome (held)
+    ("gpu_board",       0.0, 3.0, 34, _GB_POSE),   # 0 the real source board (posed to the token angle)
+    ("warp_tokenize",   0.0, 5.2, 46, (0.0, 0.0)), # 1 that same board -> its tokens
+    ("warp_basepair",   0.0, 5.2, 46, (0.0, 0.0)), # 2 tokens -> base pairs
+    ("warp_helix",      0.0, 5.6, 48, (0.0, 0.0)), # 3 -> double helices
+    ("warp_nucleosome", 0.0, 5.6, 48, (0.0, 0.0)), # 4 -> nucleosome beads
+    ("warp_fibre",      0.0, 5.6, 48, (0.0, 0.0)), # 5 -> 30 nm fibre
+    ("warp_telomere",   0.0, 5.6, 48, (0.0, 0.0)), # 6 -> telomere-capped strand
+    ("warp_chromosome", 0.0, 7.2, 62, (0.0, 0.0)), # 7 -> merged chromosome (held)
 ]
 
 
-def _render_segment(name: str, t0: float, t1: float, n: int) -> np.ndarray:
+def _render_segment(name: str, t0: float, t1: float, n: int, mouse=(0.0, 0.0)) -> np.ndarray:
     sc = get_scene(name)
     out = np.empty((n, H, W, 3), np.float32)
     s = _t.time()
     for k in range(n):
         t = t0 + (t1 - t0) * (k / max(n - 1, 1))
-        out[k] = np.clip(sc.render(W, H, t, (0.0, 0.0), DEV), 0.0, 1.0)
+        out[k] = np.clip(sc.render(W, H, t, (float(mouse[0]), float(mouse[1])), DEV), 0.0, 1.0)
     print(f"  {name}: {n} frames in {_t.time() - s:.1f}s", flush=True)
     return out
 
