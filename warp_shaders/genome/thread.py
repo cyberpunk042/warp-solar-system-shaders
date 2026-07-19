@@ -73,6 +73,7 @@ class Thread:
     col_card: np.ndarray        # muted card material
     col_token: np.ndarray       # tokenised: coloured by merge-codec type
     col_base: np.ndarray        # base-pair colour (A/T/G/C)
+    col_chromo: np.ndarray      # chromosome: purple banded chromatin (the metaphase X)
     read: np.ndarray            # (N,) scan/read order — position of each token along the thread
     xspan: tuple                # (xmin, xmax) of the card, for the scan bar
 
@@ -219,10 +220,19 @@ def build(sub: int = 1, block: int = 5) -> Thread:
     col_base[a_tok] = _BASES[a_base]
     col_base[b_tok] = _BASES[a_base ^ 1]              # complementary base on the partner strand
 
+    # chromosome: purple chromatin with banding along the thread (the metaphase X look)
+    band = 0.5 + 0.5 * np.sin(np.arange(p) * 0.5 + 0.4) * np.sin(np.arange(p) * 0.13)
+    _dark = np.array([0.40, 0.28, 0.60], np.float32)
+    _lite = np.array([0.82, 0.72, 0.94], np.float32)
+    cpair = (_dark[None] + (_lite - _dark)[None] * band[:, None]).astype(np.float32)
+    col_chromo = np.empty_like(card)
+    col_chromo[a_tok] = cpair
+    col_chromo[b_tok] = cpair
+
     return Thread(card=card, bound=bound, ladder=ladder, a_tok=a_tok, b_tok=b_tok,
                   helix=helix, nucleo=nucleo, fibre=fibre, chromo=chromo,
-                  col_card=col_card, col_token=col_token, col_base=col_base, read=read,
-                  xspan=(float(pos[:, 0].min()), float(pos[:, 0].max())))
+                  col_card=col_card, col_token=col_token, col_base=col_base, col_chromo=col_chromo,
+                  read=read, xspan=(float(pos[:, 0].min()), float(pos[:, 0].max())))
 
 
 def _smooth(x):
@@ -271,14 +281,21 @@ def frame(th: Thread, progress: float):
 
     # position keyframes per fold stage, and the colour they carry
     frames = [th.card, th.bound, th.ladder, th.helix, th.nucleo, th.fibre, th.chromo]
+    last = len(_STAGES) - 1
     for k in range(1, len(_STAGES)):
         a_lo, a_hi = _STAGES[k - 1][1], _STAGES[k][1]
-        if g <= a_hi or k == len(_STAGES) - 1:
+        if g <= a_hi or k == last:
             t = _smooth((g - a_lo) / max(a_hi - a_lo, 1e-6))
+            if k == last:
+                # FEED: the fibre pours into the chromosome in READ ORDER (early pairs woven first, through
+                # the telomere tip), recolouring to purple chromatin as each is laid down — the X is written.
+                pfrac = ((th.read // 2) / max(th.n // 2, 1)).astype(np.float32)
+                ff = np.clip((t * 1.15 - pfrac) / 0.14, 0.0, 1.0)
+                ff = (ff * ff * (3.0 - 2.0 * ff))[:, None]
+                pos = frames[k - 1] * (1.0 - ff) + frames[k] * ff
+                col = th.col_base * (1.0 - ff) + th.col_chromo * ff
+                return pos, col
             pos = frames[k - 1] * (1.0 - t) + frames[k] * t
-            if k == 1:                                # BIND: tokens pair up -> take their base-pair colour
-                col = th.col_token * (1.0 - t) + th.col_base * t
-            else:
-                col = th.col_base
+            col = th.col_token * (1.0 - t) + th.col_base * t if k == 1 else th.col_base
             return pos, col
-    return th.chromo, th.col_base
+    return th.chromo, th.col_chromo

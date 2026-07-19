@@ -23,7 +23,7 @@ _N = _TH.n
 
 # We perfect ONE stage at a time. `_END_STAGE` is the stage the take stops at (held, then loops) so the
 # later stages don't clutter the view while we work. Set it to the stage we're refining.
-_END_STAGE = "nucleo"              # <-- currently working the nucleosome; take ends there
+_END_STAGE = "chromo"              # <-- the whole chain incl. the telomere feed + metaphase X finale
 _T_BOARD = 1.2                     # seconds of the real ray-marched board at the start
 _PARTS = 11.0                      # seconds for the particle compression up to _END_STAGE
 _T_REPL = 3.0                      # replication -> the X (only used when _END_STAGE == "chromo")
