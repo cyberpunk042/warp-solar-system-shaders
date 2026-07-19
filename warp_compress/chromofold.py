@@ -21,7 +21,7 @@ from typing import Optional
 # knob vocabularies (kept as plain strings so configs serialise trivially)
 SERIALIZE = ("hilbert", "scan", "identity")
 DEDUP = ("merge", "none")
-TRANSFORM = ("bwt", "delta", "none")
+TRANSFORM = ("bwt", "delta", "seed", "none")            # "seed" = N typed seed chromosomes (multi-prefix)
 CODE = ("rrr", "rans", "none")
 QUANTIZE = (None, "int8", "int4", "fp4", "nf4")
 TARGET = ("gpu", "cpu")
@@ -40,6 +40,8 @@ class ChromoFoldConfig:
     block: int = 5                   # dedup/merge block granularity
     sa_sample: int = 32              # suffix-array sampling: memory⇄locate-latency dial
     branch: int = 4                  # hierarchical fan-out for coarse→fine memory
+    n_seeds: "int | None" = None     # transform="seed": number of typed seed chromosomes (None=auto, 1=global)
+    seed_sig_len: int = 32           # transform="seed": prefix-signature length used to cluster to anchors
 
     def __post_init__(self):
         for name, vocab in [("serialize", SERIALIZE), ("dedup", DEDUP), ("transform", TRANSFORM),
@@ -57,11 +59,16 @@ class ChromoFoldConfig:
         if self.dedup != "none":
             stages.append(f"dedup:{self.dedup}(block={self.block})")
         if self.transform != "none":
-            extra = f"(sa_sample={self.sa_sample})" if self.transform == "bwt" and self.random_access else ""
+            if self.transform == "bwt" and self.random_access:
+                extra = f"(sa_sample={self.sa_sample})"
+            elif self.transform == "seed":
+                extra = f"(n_seeds={self.n_seeds or 'auto'})"
+            else:
+                extra = ""
             stages.append(f"transform:{self.transform}{extra}")
         if self.code != "none":
             stages.append(f"code:{self.code}")
-        if self.random_access and self.transform != "delta":
+        if self.random_access and self.transform not in ("delta", "seed"):
             stages.append("index:wavelet+sa")
         stages.append(f"decode@{self.target}")
         return "  →  ".join(stages)
@@ -74,6 +81,9 @@ class ChromoFoldConfig:
         if self.transform == "delta":
             return ("warp_compress.super_chromosome.build_delta",
                     "reference/delta tree; O(depth) fetch; beats gzip across divergence")
+        if self.transform == "seed":
+            return ("warp_compress.multi_seed.MultiSeedStore",
+                    "N typed seed chromosomes: cluster a mixed batch to prefix anchors, share each once")
         if self.transform == "none" and self.random_access:
             return ("warp_compress.token_chromosome.compress",
                     "positional O(1) addressing (Hilbert), no self-index")
@@ -86,6 +96,7 @@ PRESETS = {
     "conversation":     ChromoFoldConfig(transform="delta", dedup="none",  code="rans", serialize="identity"),
     "system-prompt":    ChromoFoldConfig(transform="none",  dedup="merge", code="rans"),
     "shared-prefix":    ChromoFoldConfig(transform="delta", dedup="merge", code="rans", serialize="identity"),
+    "mixed-prompt-cache": ChromoFoldConfig(transform="seed", dedup="none", code="none", serialize="identity"),
     "rag":              ChromoFoldConfig(transform="bwt",   dedup="merge", code="rrr", branch=4),
     "dataset":          ChromoFoldConfig(transform="bwt",   dedup="merge", code="rans", target="cpu"),
     "spec-decode":      ChromoFoldConfig(transform="bwt",   dedup="none",  code="rrr"),

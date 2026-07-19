@@ -87,6 +87,13 @@ recovery) — not archival ratio, where zstd wins.
 ChromoFold is a **configurable pipeline**. Each workload gets its own point in this space; we find sweet
 spots empirically. `warp_compress/chromofold.py` holds the config + presets.
 
+- **transform** also offers `seed`: **N typed seed chromosomes** — cluster a *mixed* batch (many distinct
+  system prompts / near-dup families) to its prefix **anchors**, share each anchor once. X/Y were the first two
+  seeds; `n_seeds` is the tunable (None = auto one-per-distinct-prefix, 1 = a single global prefix, which finds
+  no common head across different prompts and compresses a mixed batch by ~1×). Anchors are ranked by cluster
+  size = importance (A, B, C, …). Measured (`multi_seed.py`): 300 requests over 5 system prompts →
+  single-global 1.25× vs **multi-seed 21.3×**, GPU span recovery at ~4 ns/token. This is the realistic serving
+  mix, and the honest generalization of the shared-prefix prompt cache.
 - **serialize**: `hilbert` (best locality, invertible) · `scan` (cheap) · `identity` (already ordered).
 - **dedup**: `merge` (content-addressed blocks — huge for shared prefixes/system prompts) · `none`.
 - **transform**: `bwt` (searchable self-index, reaches Hₖ) · `delta` (reference + sparse diff, native for
