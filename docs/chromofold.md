@@ -109,6 +109,19 @@ spots empirically. `warp_compress/chromofold.py` holds the config + presets.
 The point of naming all of these: *nothing is fixed*. If BWT is too hungry for a workload, we run
 `delta`+`rans`. If the fold is too slow, we drop to `scan`+`merge`. We tune per stratum.
 
+**Three ways to get a config — preset, auto-detect, manual** (the trio the engine is built around):
+
+- *preset* — `preset("rag")`, `preset("mixed-prompt-cache")`, … per-workload sweet spots (§3).
+- *auto-detect* — `auto(sample, intent)` (`warp_compress/autotune.py`): profile the actual data (prefix
+  anchors, near-duplicate divergence, entropy/skew, gzip ratio) and pick the transform. It is **build-driven
+  and self-correcting** — it constructs the candidate on the sample and keeps a compressing transform *only if
+  it beats raw*, so it never over-recommends. Measured verdicts: mixed-prompt batch → `seed` (0.14 B/tok, beats
+  gzip 0.16); near-duplicate batch → `delta` (0.02, beats gzip 0.06); skewed stream → `bwt`+`rrr` (0.64, beats
+  gzip 0.71); **uniform noise → `none`/raw** ("ChromoFold adds no ratio here, use zstd"); `search` intent →
+  `bwt` kept for the *capability* even if a codec were smaller. `autotune.plan` also returns the rationale +
+  achieved bytes/token.
+- *manual* — hand-set any `ChromoFoldConfig` field; presets and auto both return one you can further tune.
+
 ---
 
 ## 3. Where it wins (the workload map)

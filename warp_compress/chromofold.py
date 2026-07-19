@@ -110,6 +110,14 @@ PRESETS = {
 }
 
 
+def auto(data, intent: str | None = None) -> ChromoFoldConfig:
+    """Auto-detect a config from a data sample (batch of sequences or one stream). Profiles the structure,
+    builds the candidate, and keeps a compressing transform only if it beats raw. `intent`:
+    serving|search|archival|dataset|None. For the rationale + achieved bytes/token, call `autotune.plan`."""
+    from .autotune import plan
+    return plan(data, intent=intent)[0]
+
+
 def preset(name: str) -> ChromoFoldConfig:
     if name not in PRESETS:
         raise KeyError(f"unknown preset {name!r}; have {sorted(PRESETS)}")
