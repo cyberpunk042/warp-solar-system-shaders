@@ -203,9 +203,16 @@ reference-delta tree stores. So: keep the base once, store each adapter as a Chr
      GPU over the *compressed* index. On a Markov BWT it lands **6.0 b/tok vs packed 7.9 (1.31× smaller),
      right at the BWT's H₀ (5.96)** — one object, entropy-sized *and* GPU-searchable. *(done)*
 
-   So ChromoFold now **decodes, searches, and samples without leaving the GPU, over an entropy-sized
-   self-index**. Next on this path: the reference-delta apply on-GPU (for the `delta`/LoRA presets) and
-   compressing the RRR class stream (the last ~0.27 b/bit floor).
+   - *reference-delta decode* — the `delta`/`conversation`/`lora-library` path on the GPU
+     (`warp_compress/gpu_delta.py`): a cluster stored as base + a tree of sparse deltas; batched **fetch**
+     reconstructs any token as `base[pos]` overridden by the deepest path-delta touching it, and whole-leaf
+     decode round-trips. Measured on a LoRA-library-flavour cluster (64 members, ~1% divergence): **22×
+     compression, ~200 M tok/s** batched, in VRAM. *(done — the adapter-library / near-dup-context preset,
+     running.)*
+
+   So ChromoFold now **decodes, searches, samples, AND delta-reconstructs without leaving the GPU**, over an
+   entropy-sized self-index. Next: `locate` with a sampled SA on-GPU, and compressing the RRR class stream
+   (the last ~0.27 b/bit floor).
 3. **Bench the effective-gain terms** — not just ratio: measure PCIe avoided, decode µs on-GPU, batch-capacity
    delta at fixed latency. The equation in §1 becomes a table.
 4. **Quantization interop** — wrap INT4/FP4/NF4 as a `quantize` stage; entropy-code the quantized stream;
@@ -221,9 +228,10 @@ reference-delta tree stores. So: keep the base once, store each adapter as a Chr
 - GPU decode, search, *and* entropy-coding are now real: wavelet `rank`/`access` (`gpu_wavelet.py`), FM-index
   backward search / `predict_next` (`gpu_fm_index.py`), and RRR rank (`gpu_rrr.py`, skewed planes 0.35–0.67
   b/bit), and **RRR wired under the wavelet** (`gpu_rrr_wavelet.py`: `access`/`rank`/`count`/`predict_next`
-  over the compressed index, ~H₀ on a BWT). Still to do: the reference-delta apply on-GPU (for the
-  `delta`/LoRA presets), `locate` with a sampled SA on-GPU (today only `count`/`predict_next` are GPU), and
-  compressing the RRR class stream (the last ~0.27 b/bit floor).
+  over the compressed index, ~H₀ on a BWT), and the reference-delta decode (`gpu_delta.py`: batched fetch /
+  whole-leaf decode of a base+delta cluster, ~22× on a near-dup cluster). Still to do: `locate` with a sampled
+  SA on-GPU (today only `count`/`predict_next` are GPU), and compressing the RRR class stream (the last
+  ~0.27 b/bit floor).
 - BWT construction is O(n log n) and memory-hungry to *build*; it's cheap to *query*. For write-heavy,
   append-only data prefer the `delta` path.
 - rANS/RRR beat gzip on the id stream, but LZ still wins raw ratio on scattered, high-entropy edits — which is
