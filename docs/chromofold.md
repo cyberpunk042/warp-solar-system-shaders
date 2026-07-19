@@ -192,8 +192,15 @@ reference-delta tree stores. So: keep the base once, store each adapter as a Chr
      model** and substring search run resident in VRAM, **~1.2 M patterns/s** batched (~36× a numpy CPU
      baseline). *(done)*
 
-   So ChromoFold now **decodes, searches, and samples without leaving the GPU**. Next on this path:
-   RRR-coded bitplanes (entropy-sized, not just packed) and the reference-delta apply.
+   - *entropy-sized bitplanes* — RRR succinct bitvector with rank on the GPU (`warp_compress/gpu_rrr.py`):
+     each block stored as (class, enumerative offset), rank1 = superblock jump + in-block scan + a single
+     **combinatorial block decode in registers**. Skewed planes drop to **0.35–0.67 bits/bit** (toward H₀)
+     with rank still O(1) — the lever that pulls the resident FM-index from packed (1 b/bit) toward Hₖ.
+     *(done, standalone; balanced planes stay packed — that's the BWT's exact profile.)*
+
+   So ChromoFold now **decodes, searches, and samples without leaving the GPU**, over an entropy-sized index.
+   Next on this path: wire RRR under the wavelet's `_rank1` (whole self-index entropy-sized *and* GPU-
+   searchable), then the reference-delta apply.
 3. **Bench the effective-gain terms** — not just ratio: measure PCIe avoided, decode µs on-GPU, batch-capacity
    delta at fixed latency. The equation in §1 becomes a table.
 4. **Quantization interop** — wrap INT4/FP4/NF4 as a `quantize` stage; entropy-code the quantized stream;
@@ -206,10 +213,11 @@ reference-delta tree stores. So: keep the base once, store each adapter as a Chr
 
 - Dense post-quant weights barely compress losslessly — the win there is small and comes from entropy-coding,
   not folding. Don't oversell it.
-- GPU decode *and* search are now real: wavelet `rank`/`access` (`gpu_wavelet.py`, ~1.1 B/tok, ~400 M tok/s)
-  and FM-index backward search / `predict_next` (`gpu_fm_index.py`, ~1.2 M patterns/s). Still to port:
-  RRR-coded bitplanes (entropy-sized, not just packed), the reference-delta apply, and `locate` with a sampled
-  SA on-GPU (today only `count`/`predict_next` are GPU; `locate` still walks the CPU sampled-SA).
+- GPU decode, search, *and* entropy-coding are now real: wavelet `rank`/`access` (`gpu_wavelet.py`), FM-index
+  backward search / `predict_next` (`gpu_fm_index.py`), and RRR rank (`gpu_rrr.py`, skewed planes 0.35–0.67
+  b/bit). Still to do: **wire RRR under the wavelet's `_rank1`** (the standalone RRR isn't yet the wavelet's
+  backing store), the reference-delta apply on-GPU, and `locate` with a sampled SA on-GPU. Also: RRR's class
+  stream is a ~0.27 b/bit floor for very-skewed planes — compressing the class stream is a further lever.
 - BWT construction is O(n log n) and memory-hungry to *build*; it's cheap to *query*. For write-heavy,
   append-only data prefer the `delta` path.
 - rANS/RRR beat gzip on the id stream, but LZ still wins raw ratio on scattered, high-entropy edits — which is
