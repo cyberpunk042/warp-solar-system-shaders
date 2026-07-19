@@ -399,7 +399,7 @@ def board_shade(q: wp.vec3, n: wp.vec3, rd: wp.vec3, ao: float, time: float) -> 
 @wp.kernel
 def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
                    right: wp.vec3, up: wp.vec3, width: int, height: int,
-                   time: float, tanfov: float, spin: float, cut_x: float):
+                   time: float, tanfov: float, spin: float, cut_x: float, dark: float):
     i, j = wp.tid()
     aspect = float(width) / float(height)
     u = (2.0 * (float(j) + 0.5) / float(width) - 1.0) * tanfov * aspect
@@ -421,7 +421,10 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
             break
 
     if hit == 0:
-        img[i, j] = ec.studio_sky(rd)
+        if dark > 0.5:                                   # dark backdrop matching the particle stages
+            img[i, j] = wp.vec3(0.017, 0.020, 0.030) * (1.0 - 0.5 * float(i) / float(height))
+        else:
+            img[i, j] = ec.studio_sky(rd)
         return
 
     p = eye + rd * t
@@ -430,7 +433,7 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), eye: wp.vec3, fwd: wp.vec3,
     img[i, j] = board_shade(_rot(p, time, spin), n, rd, ao, time)
 
 
-def _render(width, height, time, mouse, device, cam=None, cut_x=-1.0e9):
+def _render(width, height, time, mouse, device, cam=None, cut_x=-1.0e9, bg_dark=False):
     if cam is None:
         # standalone: the board's own orbiting/tilted 3/4 presentation
         az = 0.14 + float(mouse[0]) * 0.01
@@ -458,7 +461,8 @@ def _render(width, height, time, mouse, device, cam=None, cut_x=-1.0e9):
 
     img = wp.zeros((height, width), dtype=wp.vec3, device=device)
     wp.launch(_render_kernel, dim=(height, width),
-              inputs=[img, eye, fwd, right, up, width, height, time, tanfov, spin, float(cut_x)],
+              inputs=[img, eye, fwd, right, up, width, height, time, tanfov, spin, float(cut_x),
+                      1.0 if bg_dark else 0.0],
               device=device)
     wp.synchronize_device(device)
     return ec.finish(img.numpy(), width, height, threshold=1.7, strength=0.3)

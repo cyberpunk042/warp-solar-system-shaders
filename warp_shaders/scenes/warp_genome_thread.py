@@ -219,7 +219,8 @@ def _particles(W, H, pos_np, col_np, cam, device):
 
 
 def _board(W, H, time, cam, device, cut_x=-1.0e9):
-    return np.clip(GB._render(W, H, time, (0.0, 0.0), device, cam=tuple(cam), cut_x=cut_x), 0.0, 1.0)
+    return np.clip(GB._render(W, H, time, (0.0, 0.0), device, cam=tuple(cam), cut_x=cut_x,
+                              bg_dark=True), 0.0, 1.0)
 
 
 def _core(W, H, time, mx, my, zoomf, device):

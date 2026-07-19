@@ -89,7 +89,7 @@ _PAGE = """<!doctype html><html><head><meta charset=utf-8><title>{scene}</title>
 <div class=hud>
  <input id=t type=range min=0 max=0 step=1 value=0 style="width:min(94vw,1000px)">
  <div style="margin-top:6px">
-  <button onclick=stp(-1)>◀</button><button id=play onclick=tog()>▶ play</button><button onclick=stp(1)>▶</button>
+  <button onclick=stp(-1)>◀</button><button onclick=play(-1)>◀◀ rev</button><button id=play onclick=tog()>▶ play</button><button onclick=stp(1)>▶</button>
   &nbsp;<button onclick=seam(-1)>◀ stage</button><button onclick=seam(1)>stage ▶</button>
   &nbsp;<button onclick=resetView()>⟲ reset view</button>
   <span style="opacity:.6"> &nbsp;drag = rotate · wheel = zoom</span>
@@ -100,7 +100,7 @@ const FPS={fps}, SEGS={segs}, TOTAL={total};
 const img=document.getElementById('img'),tR=document.getElementById('t'),tv=document.getElementById('tv');
 const fiE=document.getElementById('fi'),fnE=document.getElementById('fn'),stg=document.getElementById('stage'),ld=document.getElementById('ld');
 let N=0,ready=0,cur=-1,playing=false,timer=null;
-let mx=0,my=0,zoom=1,inspect=false,drag=false,px=0,py=0;
+let mx=0,my=0,zoom=1,inspect=false,drag=false,px=0,py=0,dir=1;
 const hues=['#8fd','#df8','#fd8','#f8d','#8df','#d8f','#8fb','#8fb'];
 const seg=document.getElementById('seg');
 SEGS.forEach((s,i)=>{{const d=document.createElement('div');d.style.flex=(s[2]-s[1]);d.style.background=hues[i%hues.length];d.textContent=s[0].replace('warp_','');seg.appendChild(d);}});
@@ -116,15 +116,15 @@ function stp(d){{pause();show(cur+d);}}
 function seam(dir){{const t=N?TOTAL*cur/N:0;let bt=SEGS.map(s=>s[1]).concat([TOTAL]),nt=t;
  if(dir>0){{for(const b of bt)if(b>t+1e-3){{nt=b;break;}}}}else{{for(let k=bt.length-1;k>=0;k--)if(bt[k]<t-1e-3){{nt=bt[k];break;}}}}
  pause();show(Math.round(nt/TOTAL*N));}}
-function play(){{inspect=false;if(timer)return;playing=true;document.getElementById('play').textContent='❚❚ pause';
- timer=setInterval(()=>{{let n=cur+1;if(n>=ready)n=0;show(n);}},1000/FPS);}}
+function play(d){{if(d)dir=d;inspect=false;if(timer)clearInterval(timer);playing=true;document.getElementById('play').textContent='❚❚ pause';
+ timer=setInterval(()=>{{let n=cur+dir;if(n>=ready)n=0;if(n<0)n=ready-1;show(n);}},1000/FPS);}}
 function resetView(){{mx=0;my=0;zoom=1;inspect=false;show(cur);}}
 img.onmousedown=e=>{{drag=true;inspect=true;pause();px=e.clientX;py=e.clientY;e.preventDefault();}};
 window.addEventListener('mouseup',()=>{{drag=false;}});
 window.addEventListener('mousemove',e=>{{if(!drag)return;mx+=(e.clientX-px)*0.6;my+=(e.clientY-py)*0.6;px=e.clientX;py=e.clientY;show(cur);}});
 img.addEventListener('wheel',e=>{{inspect=true;pause();zoom*=e.deltaY<0?1.12:0.89;zoom=Math.max(0.3,Math.min(6,zoom));show(cur);e.preventDefault();}},{{passive:false}});
 function pause(){{playing=false;if(timer){{clearInterval(timer);timer=null;}}document.getElementById('play').textContent='▶ play';}}
-function tog(){{playing?pause():play();}}
+function tog(){{playing?pause():play(1);}}
 tR.oninput=()=>{{pause();show(parseInt(tR.value));}};
 document.onkeydown=e=>{{if(e.key==='ArrowRight')stp(1);if(e.key==='ArrowLeft')stp(-1);if(e.key===' '){{e.preventDefault();tog();}}}};
 async function poll(){{
