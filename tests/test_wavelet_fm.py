@@ -1,0 +1,62 @@
+"""Wavelet matrix (access/rank/select) and FM-index (count/locate) over token sequences."""
+import numpy as np
+
+from warp_compress.fm_index import FMIndex, suffix_array
+from warp_compress.wavelet import WaveletMatrix
+
+
+def _seq(n=6000, V=64, seed=1):
+    rng = np.random.default_rng(seed)
+    p = 1.0 / np.arange(1, V + 1)
+    p /= p.sum()
+    return rng.choice(V, size=n, p=p), V
+
+
+def test_wavelet_access_reconstructs():
+    seq, _ = _seq()
+    wm = WaveletMatrix(seq)
+    assert all(wm.access(i) == seq[i] for i in range(len(seq)))
+
+
+def test_wavelet_rank_matches_naive():
+    seq, V = _seq()
+    wm = WaveletMatrix(seq)
+    for c in range(0, V, 7):
+        for i in (0, 1, len(seq) // 3, len(seq)):
+            assert wm.rank(c, i) == int(np.count_nonzero(seq[:i] == c))
+
+
+def test_wavelet_select_matches_naive():
+    seq, V = _seq()
+    wm = WaveletMatrix(seq)
+    for c in range(0, V, 5):
+        occ = np.flatnonzero(seq == c)
+        for k in range(0, len(occ), max(1, len(occ) // 4)):
+            assert wm.select(c, k) == int(occ[k])
+        assert wm.select(c, len(occ)) == -1                       # out of range
+
+
+def test_suffix_array_is_sorted():
+    seq, _ = _seq(n=1500)
+    s = np.concatenate([seq + 1, [0]])
+    sa = suffix_array(s)
+    for a, b in zip(sa[:-1], sa[1:]):
+        assert tuple(s[a:]) <= tuple(s[b:])                       # suffixes in lex order
+
+
+def test_fm_count_and_locate_match_naive():
+    seq, _ = _seq(n=4000)
+    fm = FMIndex(seq, sa_sample=16)
+    rng = np.random.default_rng(5)
+    for _ in range(10):
+        at = int(rng.integers(0, len(seq) - 3))
+        pat = seq[at:at + 3]
+        naive = [i for i in range(len(seq) - len(pat) + 1) if np.array_equal(seq[i:i + len(pat)], pat)]
+        assert fm.count(pat) == len(naive)
+        assert fm.locate(pat) == naive
+
+
+def test_fm_absent_pattern_is_zero():
+    seq, V = _seq(n=2000)
+    fm = FMIndex(seq)
+    assert fm.count([V + 5, V + 6]) == 0                          # symbols outside the alphabet
