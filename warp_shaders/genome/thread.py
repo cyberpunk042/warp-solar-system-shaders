@@ -277,6 +277,34 @@ def fold_chromatid(th: Thread, centromere: float = 0.0, size: float = 1.0, tilt:
     return out
 
 
+def fold_Y(th: Thread, centromere: float = 0.32, size: float = 0.62, stem: float = 0.045,
+           splay: float = 1.05, arm: float = 0.07):
+    """Re-fold ONE chromatid into the STEM+FORK half of a metaphase Y. A Y is acrocentric: the two long
+    sister arms run PARALLEL as a single downward stem, and the two SHORT arms FORK apart at the top. So,
+    unlike ``fold_chromatid`` (which forks at both ends -> the X), this bends: below the centromere the arm
+    is a straight vertical stem at x=±stem; above it the (short) arm angles outward by ``splay``. The scene
+    mirrors x -> the sister, giving stem (two parallel legs, nearly touching) + fork (the two prongs) = a Y."""
+    nb = int(th.nb)
+    yb = (np.arange(nb) / max(nb - 1, 1) - 0.5) * 2.0            # -1 (stem tip) .. +1 (prong tip)
+    fork = np.clip(yb - float(centromere), 0.0, None)            # 0 along the stem, grows up the short arm
+    xoff = float(stem) + fork * float(splay)                     # stem parallel; short arm forks outward
+    angc = np.arange(nb) * (2.0 * np.pi / 6.0)                   # keep the nucleosome coil for texture
+    cx = xoff + arm * np.cos(angc)
+    cy = yb * 0.95
+    cz = arm * np.sin(angc)
+    cb = np.stack([cx, cy, cz], 1).astype(np.float32)
+    c = (cb[th.bead] + th.wrap) * float(size)
+    out = np.empty((th.n, 3), np.float32)
+    out[th.a_tok] = c + th.small * float(size)
+    out[th.b_tok] = c - th.small * float(size)
+    waist = np.abs(yb[th.bead] - float(centromere)) < 0.12       # centre on the centromere (the fork point)
+    m = np.zeros(th.n, bool)
+    m[th.a_tok[waist]] = True
+    m[th.b_tok[waist]] = True
+    out -= out[m].mean(0) if m.any() else out.mean(0)
+    return out
+
+
 def _smooth(x):
     x = np.clip(x, 0.0, 1.0)
     return x * x * (3.0 - 2.0 * x)

@@ -49,7 +49,7 @@ def _tint(col, rgb, amt):
 # X = a metacentric chromatid (centromere in the middle) mirrored -> the symmetric metaphase X.
 # Y = a real Y: acrocentric (centromere near one end -> a short arm-pair + a long arm-pair) and small.
 _chX = TH.fold_chromatid(_TH, centromere=0.0, size=1.0)
-_chY = TH.fold_chromatid(_TH, centromere=0.30, size=0.60, tilt=0.16, arm=0.08)  # acrocentric, narrow: a real Y
+_chY = TH.fold_Y(_TH, centromere=0.30, size=0.62, stem=0.05, splay=1.0, arm=0.07)  # stem + fork = a real Y
 _colC = _TH.col_chromo
 _baseX = np.concatenate([_chX, _mir(_chX)], 0).astype(np.float32)     # 2N: chromatid + sister = the X shape
 _baseY = np.concatenate([_chY, _mir(_chY)], 0).astype(np.float32)     # the metaphase Y (short + long arms)
