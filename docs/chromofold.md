@@ -150,9 +150,13 @@ compresses, because dense weights *after* quantization are near-incompressible l
 **not** replace quantization — it **stacks on the strata that still have structure**:
 
 - **Dense quantized weights** — quantization is the 4–8× lever (INT4/FP4/NF4). ChromoFold adds **entropy
-  coding of the quantized stream** (quantized weights are *not* uniform — their histogram is peaky, so rANS/RRR
-  buys another ~5–20%) and stores **scales + outliers** as a sparse side-channel. Net: quant × a bit more,
-  losslessly, with GPU decode.
+  coding of the quantized stream** (quantized weights are *not* uniform — their histogram is peaky, so RRR/rANS
+  buys more) and stores **scales + outliers** as a sparse side-channel. **Measured on real gpt2**
+  (`weight_store.py`, `bench_weights.py`, `docs/bench_weights_results.md`): the RRR wavelet entropy-codes int4
+  weights to **2.24 b/w overall — 1.78× beyond int4** (up to 2.99× per tensor), **losslessly** (forward-pass
+  logits byte-identical to the plain-quantized model, max|Δ|=0.00), with **per-weight GPU random access**.
+  Composed with int4's 4× that's ~7× vs fp32. (int8's margin is thinner — 1.18× — bounded by the RRR
+  class-stream floor, the next lever.) Net: quant × a lossless entropy layer, GPU-addressable.
 - **MoE experts** — many experts, few active per token. Keep cold experts **ChromoFolded in VRAM**, unfold the
   routed expert on demand. Random access is the entire win; this is where "fit the whole model" gets real,
   because most of an MoE is idle at any step.
