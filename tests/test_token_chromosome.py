@@ -3,6 +3,7 @@ import math
 
 import numpy as np
 
+from warp_compress.lm_memory import build_memory
 from warp_compress.token_chromosome import (Chromosome, compress, compress_hierarchical,
                                             hilbert_index, hilbert_point)
 
@@ -67,3 +68,17 @@ def test_hierarchy_token_ranges_tile_and_drill():
     lo, hi = h.token_range(level, r)
     assert np.array_equal(h.drill(level, r), seq[lo:hi])         # drill-down == the exact token run
     assert h.parent(level, h.children(level, r)[0]) == r         # parent/children consistent
+
+
+def test_lm_memory_lossless_fetch_and_saving():
+    rng = np.random.default_rng(0)
+    table = rng.standard_normal((3000, 32)).astype(np.float32)
+    p = 1.0 / np.arange(1, 3001)
+    p /= p.sum()
+    ctx = rng.choice(3000, size=20000, p=p)          # repetitive context: used-unique V << N
+    mem = build_memory(ctx, table, branch=4, dim=3)
+    for r in (0, 1, 999, mem.n - 1):
+        assert np.array_equal(mem.fetch(r), table[ctx[r]])   # O(1) lossless reconstruction
+    m = mem.memory_bytes()
+    fetch_mem = m["embeddings_bytes"] + m["index_bytes"]
+    assert fetch_mem < m["naive_bytes"]                      # smaller than the full per-token cache
