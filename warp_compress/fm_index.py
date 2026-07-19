@@ -102,6 +102,40 @@ class FMIndex:
             p = lam * (self.count(ctx + [c]) / n_ctx) + (1.0 - lam) * p
         return p
 
+    def distinct_following(self, context) -> int:
+        """N1+(context·): number of distinct token TYPES that follow `context`."""
+        ctx = list(context)
+        return sum(1 for c in range(self.sigma - 1) if self.count(ctx + [c]) > 0)
+
+    def distinct_preceding(self, c: int) -> int:
+        """N1+(·c): number of distinct token TYPES that PRECEDE token c — cheap via the BWT, since the BWT
+        column over c's suffix range IS the multiset of preceding symbols. This is KN's continuation count."""
+        cc = int(c) + 1
+        lo, hi = int(self.C[cc]), (int(self.C[cc + 1]) if cc + 1 < len(self.C) else self.n)
+        return sum(1 for s in range(self.sigma)
+                   if self.wm.rank(s, hi) - self.wm.rank(s, lo) > 0)
+
+    def _total_distinct_bigrams(self) -> int:
+        if not hasattr(self, "_ndb"):
+            self._ndb = sum(self.distinct_preceding(c) for c in range(self.sigma - 1))
+        return int(self._ndb)
+
+    def prob_kn(self, context, c, max_order: int = 4, d: float = 0.75) -> float:
+        """Interpolated Kneser-Ney from the index. Lowest order = the CONTINUATION probability
+        N1+(·c)/N1+(··) (from the BWT), then absolute-discount up through longer contexts using
+        N1+(ctx·) as the interpolation mass. Absolute discounting is the right fix for high-order overfit."""
+        c = int(c)
+        p = (self.distinct_preceding(c) + 1e-9) / max(self._total_distinct_bigrams(), 1)
+        for L in range(1, min(max_order, len(context)) + 1):
+            ctx = list(context[-L:])
+            n_ctx = self.count(ctx)
+            if n_ctx == 0:
+                continue
+            higher = max(self.count(ctx + [c]) - d, 0.0) / n_ctx
+            lam = d * self.distinct_following(ctx) / n_ctx        # interpolation weight to the lower order
+            p = higher + lam * p
+        return p
+
     def locate(self, pattern):
         """Text positions where `pattern` occurs (via LF-walk to the nearest sampled SA entry)."""
         lo, hi = self._bw_range(pattern)

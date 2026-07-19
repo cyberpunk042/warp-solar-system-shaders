@@ -96,3 +96,34 @@ def test_fm_prob_next_context_beats_unigram():
         ctx += -math.log2(max(fm.prob_next([int(seq[i - 2]), int(seq[i - 1])], c, max_order=4), 1e-12))
         m += 1
     assert ctx / m < uni / m - 0.5          # variable-order context clearly beats the unigram
+
+
+def test_fm_continuation_counts_match_naive():
+    rng = np.random.default_rng(4)
+    seq = rng.integers(0, 12, 3000)
+    fm = FMIndex(seq)
+    for c in range(12):
+        naive_prec = len({int(seq[i - 1]) for i in range(1, len(seq)) if seq[i] == c})
+        # distinct_preceding excludes the sentinel-adjacency of position 0; allow +1 slack for the sentinel
+        assert abs(fm.distinct_preceding(c) - naive_prec) <= 1
+    for ctx in ([int(seq[0])], [int(seq[5]), int(seq[6])]):
+        naive_fol = len({int(seq[i + len(ctx)]) for i in range(len(seq) - len(ctx))
+                         if list(seq[i:i + len(ctx)]) == ctx and i + len(ctx) < len(seq)})
+        assert fm.distinct_following(ctx) == naive_fol
+
+
+def test_fm_kn_is_a_valid_distribution_and_beats_unigram():
+    import math
+    rng = np.random.default_rng(5)
+    V = 12
+    trans = rng.dirichlet(np.ones(V) * 0.3, size=(V, V))
+    seq = np.empty(20000, np.int64)
+    seq[:2] = [0, 1]
+    for i in range(2, len(seq)):
+        seq[i] = rng.choice(V, p=trans[seq[i - 2], seq[i - 1]])
+    fm = FMIndex(seq[:17000])
+    ctx = [int(seq[17001]), int(seq[17002])]
+    tot = sum(fm.prob_kn(ctx, c, max_order=2) for c in range(V))
+    assert 0.5 < tot < 1.5                                  # roughly normalised
+    kn = -math.log2(max(fm.prob_kn(ctx, int(seq[17003]), max_order=2), 1e-9))
+    assert kn < math.log2(V)                                # better than uniform on a real continuation
