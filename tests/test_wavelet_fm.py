@@ -60,3 +60,20 @@ def test_fm_absent_pattern_is_zero():
     seq, V = _seq(n=2000)
     fm = FMIndex(seq)
     assert fm.count([V + 5, V + 6]) == 0                          # symbols outside the alphabet
+
+
+def test_fm_predict_next_beats_uniform_on_markov():
+    import math
+    rng = np.random.default_rng(1)
+    V = 16
+    trans = rng.dirichlet(np.ones(V) * 0.25, size=(V, V))
+    seq = np.empty(40000, np.int64)
+    seq[:2] = [0, 1]
+    for i in range(2, len(seq)):
+        seq[i] = rng.choice(V, p=trans[seq[i - 2], seq[i - 1]])
+    fm = FMIndex(seq[:35000], sa_sample=32)
+    ll = n = 0.0
+    for i in rng.integers(35002, len(seq), 500):
+        d = fm.predict_next([int(seq[i - 2]), int(seq[i - 1])])
+        ll += -math.log2(d.get(int(seq[i]), 1e-6)); n += 1
+    assert ll / n < math.log2(V) * 0.75          # clearly better than uniform (the index recovers structure)

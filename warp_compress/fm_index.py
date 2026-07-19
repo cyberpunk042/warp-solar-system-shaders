@@ -73,6 +73,19 @@ class FMIndex:
         lo, hi = self._bw_range(pattern)
         return hi - lo
 
+    def predict_next(self, context):
+        """FM-index AS a retrieval language model: the next-token distribution given `context` is, for each
+        candidate c, count(context + [c]) — pure backward search over the COMPRESSED sequence, no raw text.
+        Returns {token: probability} over tokens that have ever followed this context."""
+        ctx = list(context)
+        dist = {}
+        for c in range(self.sigma - 1):                   # candidate next tokens (exclude the sentinel)
+            cnt = self.count(ctx + [c])                    # occurrences of context FOLLOWED by c
+            if cnt:
+                dist[c] = cnt
+        tot = sum(dist.values())
+        return {c: n / tot for c, n in dist.items()} if tot else {}
+
     def locate(self, pattern):
         """Text positions where `pattern` occurs (via LF-walk to the nearest sampled SA entry)."""
         lo, hi = self._bw_range(pattern)
