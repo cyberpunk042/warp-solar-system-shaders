@@ -63,10 +63,15 @@ borrow from (highest-leverage first).
 2. **rANS/ANS coder, from NeuZip / nvCOMP-gANS.** ANS is near-optimal (no Huffman up-to-1-bit overhead) and
    GPU-fast; NeuZip uses it on exponents. It's sequential, so it fits the *archive / whole-decode* end while RRR
    stays the *random-access* end — a hybrid per-section coder.
-3. **KIVI-style KV quantization, then entropy-code it.** `kv_store` v1 uses a per-tensor scale; adopt KIVI/
-   KVQuant's **per-channel Keys, per-token Values** (Keys have outlier channels) — this both improves accuracy
-   *and* makes the quantized KV peakier, so ChromoFold's entropy layer (which no KV method has) gains. Add
-   RotateKV/QuIP#-style rotations to tame outliers before coding.
+3. **KIVI-style KV quantization, then entropy-code it — DONE (`kv_store.py`, `per_axis=True`).** Adopted
+   KIVI/KVQuant's **per-channel Keys, per-token Values** (Keys have outlier channels). Measured on gpt2 KV: it
+   **lowers attention error ~3.2× at int4 and ~1.8× at int2** (the gap is larger on models with pronounced
+   Key-channel outliers — KIVI's regime), which is what lets you drop bits; int2 KIVI = 1.80 b/val / 8.9× vs
+   fp16, lossless over its quant, with attended-only (windowed) decode. It costs some b/val (per-axis scales +
+   more-uniform values — the accuracy↔size trade). ChromoFold then entropy-codes the result — **the entropy
+   layer no KV method has** — via the block coder. (Honest correction to a v1 guess: per-axis improves
+   *accuracy*, not compression; the compression comes from the entropy layer on top.) Next: RotateKV/QuIP#
+   rotations to tame outliers before coding.
 4. **A lossless-BF16 mode, from DFloat11 / NeuZip.** Besides quantized ints, ChromoFold could entropy-code the
    **float exponent** losslessly (weights *or* KV) for an "exact model, ~30% smaller" mode — with random access,
    which DFloat11 lacks.

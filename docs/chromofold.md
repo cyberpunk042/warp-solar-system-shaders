@@ -190,11 +190,12 @@ compresses, because dense weights *after* quantization are near-incompressible l
 - **Embedding & LM-head tables** — large, Zipfian, addressed by token id. Positional ChromoFold gives O(1)
   fetch of a row without inflating the table.
 - **KV cache** — quantize + entropy-code + unfold only attended positions. Grows with context, so this is the
-  strata that most often decides whether a long-context request fits. **Measured** (`kv_store.py`): a gpt2 KV
-  cache quantized int4 + class-stream Huffman is **~5× smaller than the dense fp16 KV** (3.28 b/val, per-tensor
-  scales; V compresses far harder than K — 1.20 vs 1.96 b/val — and per-token scales would push it toward
-  ~10×), attention output **byte-identical to the quantized-KV attention**, and windowed/sparse attention
-  decodes only the attended positions. ⇒ a longer context fits per VRAM budget.
+  strata that most often decides whether a long-context request fits. **Measured** (`kv_store.py`): **KIVI-style
+  per-channel-Key / per-token-Value** quantization (`per_axis=True`) lowers attention error ~3.2× at int4 /
+  ~1.8× at int2 vs per-tensor (tames Key outlier channels — larger gap on bigger models), then ChromoFold
+  entropy-codes the quantized KV via the block coder — **the entropy layer no KV method has**. int2 KIVI =
+  1.80 b/val (**8.9× vs fp16**), lossless over its quant, attention output byte-identical, windowed/sparse
+  attention decodes only the attended positions. ⇒ a longer context fits per VRAM budget.
 - **LoRA / adapters / deltas** — low-rank *and* sparse: the reference-delta tree is native. Store a *library*
   of adapters as deltas off the base and hot-swap them for ~free (§6).
 

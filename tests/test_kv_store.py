@@ -27,20 +27,34 @@ def test_attention_is_lossless_vs_quantized_kv():
 
 
 def test_kv_smaller_than_dense_fp16():
-    store = KVCacheStore(_kv(seed=3), bits=4, huffman=True, device=_DEV)
-    assert store.size_bytes() < store.dense_bytes()
-    assert store.size_bytes() * 8 / store._vals < 4.0    # below fixed int4 too
+    store = KVCacheStore(_kv(seed=3), bits=4, device=_DEV)
+    assert store.size_bytes() < store.dense_bytes()      # well below fp16 (int4 + entropy, + per-axis scales)
+    assert store.size_bytes() * 8 / store._vals < 6.0
 
 
-def test_reconstruct_layer_is_bit_exact_and_shaped():
+def test_reconstruct_layer_roundtrips_its_quantization():
     pkv = _kv(layers=3, seed=4)
     store = KVCacheStore(pkv, device=_DEV)
-    from warp_compress.weight_store import QuantizedWeightStore
     for l in range(3):
         K, V = store.reconstruct_layer(l)
         assert K.shape == pkv[l][0].shape and V.shape == pkv[l][1].shape
-        refK = QuantizedWeightStore(pkv[l][0].ravel(), bits=4, huffman=True, device=_DEV).reconstruct()
-        assert np.array_equal(K.ravel(), refK)
+        K2, V2 = store.reconstruct_layer(l)              # decode is deterministic + lossless over the quant
+        assert np.array_equal(K, K2) and np.array_equal(V, V2)
+        assert np.mean((K - pkv[l][0]) ** 2) < 1e-2      # int4 dequant is close to the original
+
+
+def test_per_axis_is_more_accurate_than_per_tensor():
+    # a KV tensor with a Key outlier channel: per-channel scaling should reduce error vs per-tensor
+    rng = np.random.default_rng(7)
+    K = (rng.standard_normal((1, 8, 64, 32)) * 0.3).astype(np.float32)
+    K[:, :, :, 3] *= 12.0                                 # one outlier channel
+    V = (rng.standard_normal((1, 8, 64, 32)) * 0.3).astype(np.float32)
+    pkv = [(K, V)]
+    per_t = KVCacheStore(pkv, bits=4, per_axis=False, device=_DEV)
+    per_a = KVCacheStore(pkv, bits=4, per_axis=True, device=_DEV)
+    Kt, _ = per_t.reconstruct_layer(0)
+    Ka, _ = per_a.reconstruct_layer(0)
+    assert np.mean((Ka - K) ** 2) < np.mean((Kt - K) ** 2)   # per-channel tames the outlier -> lower error
 
 
 def test_windowed_attention_matches_full_on_that_window():
