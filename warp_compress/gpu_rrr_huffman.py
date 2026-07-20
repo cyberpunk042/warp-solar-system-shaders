@@ -16,7 +16,7 @@ import heapq
 import numpy as np
 import warp as wp
 
-from .gpu_rrr import S, T, _BINOM, _WIDTH, _decode_word, rrr_encode
+from .gpu_rrr import K, S, T, _BINOM, _WIDTH, _decode_word, _two_level_2d, rrr_encode
 from .gpu_wavelet import _popcount
 
 wp.init()
@@ -235,8 +235,10 @@ def _huff_decode_lvl(cs: wp.array(dtype=wp.uint32), fc: wp.array2d(dtype=wp.int3
 
 @wp.func
 def _rank1_lvl_h(cwords: wp.array(dtype=wp.uint32), offsets: wp.array(dtype=wp.uint32),
-                 sbrank: wp.array2d(dtype=wp.int32), sboff: wp.array2d(dtype=wp.int32),
-                 sbclass: wp.array2d(dtype=wp.int32), cbase: wp.array(dtype=wp.int32),
+                 rank_a: wp.array2d(dtype=wp.int32), rank_d: wp.array2d(dtype=wp.uint16),
+                 off_a: wp.array2d(dtype=wp.int32), off_d: wp.array2d(dtype=wp.uint16),
+                 cls_a: wp.array2d(dtype=wp.int32), cls_d: wp.array2d(dtype=wp.uint16),
+                 cbase: wp.array(dtype=wp.int32),
                  obase: wp.array(dtype=wp.int32), width: wp.array(dtype=wp.int32),
                  binom: wp.array2d(dtype=wp.int32), fc: wp.array2d(dtype=wp.int32),
                  cnt: wp.array2d(dtype=wp.int32), fidx: wp.array2d(dtype=wp.int32),
@@ -245,9 +247,10 @@ def _rank1_lvl_h(cwords: wp.array(dtype=wp.uint32), offsets: wp.array(dtype=wp.u
     blk = pos // T
     b = pos % T
     sbi = blk // S
-    r = sbrank[lvl, sbi]
-    obit = obase[lvl] + sboff[lvl, sbi]
-    cbit = cbase[lvl] + sbclass[lvl, sbi]
+    a = sbi // K                                              # two-level samples: int32 anchor + uint16 delta
+    r = rank_a[lvl, a] + int(rank_d[lvl, sbi])
+    obit = obase[lvl] + off_a[lvl, a] + int(off_d[lvl, sbi])
+    cbit = cbase[lvl] + cls_a[lvl, a] + int(cls_d[lvl, sbi])
     j = sbi * S
     while j < blk:
         dec = _huff_decode_lvl(cwords, fc, cnt, fidx, syms, maxlens, lvl, cbit)
@@ -268,8 +271,10 @@ def _rank1_lvl_h(cwords: wp.array(dtype=wp.uint32), offsets: wp.array(dtype=wp.u
 
 @wp.kernel
 def _access_kh(cwords: wp.array(dtype=wp.uint32), offsets: wp.array(dtype=wp.uint32),
-               sbrank: wp.array2d(dtype=wp.int32), sboff: wp.array2d(dtype=wp.int32),
-               sbclass: wp.array2d(dtype=wp.int32), cbase: wp.array(dtype=wp.int32),
+               rank_a: wp.array2d(dtype=wp.int32), rank_d: wp.array2d(dtype=wp.uint16),
+               off_a: wp.array2d(dtype=wp.int32), off_d: wp.array2d(dtype=wp.uint16),
+               cls_a: wp.array2d(dtype=wp.int32), cls_d: wp.array2d(dtype=wp.uint16),
+               cbase: wp.array(dtype=wp.int32),
                obase: wp.array(dtype=wp.int32), zeros: wp.array(dtype=wp.int32),
                width: wp.array(dtype=wp.int32), binom: wp.array2d(dtype=wp.int32),
                fc: wp.array2d(dtype=wp.int32), cnt: wp.array2d(dtype=wp.int32),
@@ -280,10 +285,10 @@ def _access_kh(cwords: wp.array(dtype=wp.uint32), offsets: wp.array(dtype=wp.uin
     i = pos_in[t]
     v = int(0)
     for lvl in range(bits):
-        r0 = _rank1_lvl_h(cwords, offsets, sbrank, sboff, sbclass, cbase, obase, width, binom, fc, cnt, fidx,
-                          syms, maxlens, lvl, i)
-        r1 = _rank1_lvl_h(cwords, offsets, sbrank, sboff, sbclass, cbase, obase, width, binom, fc, cnt, fidx,
-                          syms, maxlens, lvl, i + 1)
+        r0 = _rank1_lvl_h(cwords, offsets, rank_a, rank_d, off_a, off_d, cls_a, cls_d, cbase, obase, width,
+                          binom, fc, cnt, fidx, syms, maxlens, lvl, i)
+        r1 = _rank1_lvl_h(cwords, offsets, rank_a, rank_d, off_a, off_d, cls_a, cls_d, cbase, obase, width,
+                          binom, fc, cnt, fidx, syms, maxlens, lvl, i + 1)
         if r1 - r0 == 1:
             v = (v << 1) | 1
             i = zeros[lvl] + r0
@@ -321,12 +326,18 @@ class RRRWaveletGPUHuff:
         ML = max(mls)
         pad = lambda a, L: np.pad(np.asarray(a, np.int32)[:L], (0, max(0, L - len(a))))
         self.maxlen = ML
-        self._sb_bytes = np.stack(sbr).nbytes + np.stack(sbo).nbytes + np.stack(sbc).nbytes
+        rank_a, rank_d = _two_level_2d(np.stack(sbr))            # two-level each of the three per-level samples
+        off_a, off_d = _two_level_2d(np.stack(sbo))
+        cls_a, cls_d = _two_level_2d(np.stack(sbc))
+        self._sb_bytes = (rank_a.nbytes + rank_d.nbytes + off_a.nbytes + off_d.nbytes + cls_a.nbytes + cls_d.nbytes)
         self.cwords = wp.array(np.concatenate(cwl), dtype=wp.uint32, device=device)
         self.offsets = wp.array(np.concatenate(opl), dtype=wp.uint32, device=device)
-        self.sbrank = wp.array(np.stack(sbr), dtype=wp.int32, device=device)
-        self.sboff = wp.array(np.stack(sbo), dtype=wp.int32, device=device)
-        self.sbclass = wp.array(np.stack(sbc), dtype=wp.int32, device=device)
+        self.rank_a = wp.array(rank_a, dtype=wp.int32, device=device)
+        self.rank_d = wp.array(rank_d, dtype=wp.uint16, device=device)
+        self.off_a = wp.array(off_a, dtype=wp.int32, device=device)
+        self.off_d = wp.array(off_d, dtype=wp.uint16, device=device)
+        self.cls_a = wp.array(cls_a, dtype=wp.int32, device=device)
+        self.cls_d = wp.array(cls_d, dtype=wp.uint16, device=device)
         self.cbase = wp.array(np.asarray(cbase[:-1], np.int32) * 32, dtype=wp.int32, device=device)
         self.obase = wp.array(np.asarray(obase[:-1], np.int32) * 32, dtype=wp.int32, device=device)
         self.zeros = wp.array(np.asarray(zeros, np.int32), dtype=wp.int32, device=device)
@@ -346,8 +357,8 @@ class RRRWaveletGPUHuff:
         params = {"n": self.n, "bits": self.bits, "maxlen": int(self.maxlen),
                   "bits_stored": self._bits_stored, "sb_bytes": self._sb_bytes}
         arrays = {k: getattr(self, k).numpy() for k in
-                  ("cwords", "offsets", "sbrank", "sboff", "sbclass", "cbase", "obase", "zeros",
-                   "fc", "cnt", "fidx", "syms", "maxlens")}
+                  ("cwords", "offsets", "rank_a", "rank_d", "off_a", "off_d", "cls_a", "cls_d",
+                   "cbase", "obase", "zeros", "fc", "cnt", "fidx", "syms", "maxlens")}
         return params, arrays
 
     @classmethod
@@ -357,7 +368,9 @@ class RRRWaveletGPUHuff:
         self.maxlen, self._bits_stored, self._sb_bytes = params["maxlen"], params["bits_stored"], params["sb_bytes"]
         self.cwords = wp.array(arrays["cwords"], dtype=wp.uint32, device=device)
         self.offsets = wp.array(arrays["offsets"], dtype=wp.uint32, device=device)
-        for k in ("sbrank", "sboff", "sbclass", "cbase", "obase", "zeros", "fc", "cnt", "fidx", "syms", "maxlens"):
+        for k in ("rank_d", "off_d", "cls_d"):
+            setattr(self, k, wp.array(arrays[k], dtype=wp.uint16, device=device))
+        for k in ("rank_a", "off_a", "cls_a", "cbase", "obase", "zeros", "fc", "cnt", "fidx", "syms", "maxlens"):
             setattr(self, k, wp.array(arrays[k], dtype=wp.int32, device=device))
         self.width = wp.array(_WIDTH, dtype=wp.int32, device=device)
         self.binom = wp.array(_BINOM.astype(np.int32), dtype=wp.int32, device=device)
@@ -367,9 +380,10 @@ class RRRWaveletGPUHuff:
         pos = wp.array(np.asarray(positions, np.int32), dtype=wp.int32, device=self.device)
         out = wp.zeros(pos.shape[0], dtype=wp.int32, device=self.device)
         wp.launch(_access_kh, dim=pos.shape[0],
-                  inputs=[self.cwords, self.offsets, self.sbrank, self.sboff, self.sbclass, self.cbase,
-                          self.obase, self.zeros, self.width, self.binom, self.fc, self.cnt, self.fidx,
-                          self.syms, self.maxlens, pos, out, self.bits], device=self.device)
+                  inputs=[self.cwords, self.offsets, self.rank_a, self.rank_d, self.off_a, self.off_d,
+                          self.cls_a, self.cls_d, self.cbase, self.obase, self.zeros, self.width, self.binom,
+                          self.fc, self.cnt, self.fidx, self.syms, self.maxlens, pos, out, self.bits],
+                  device=self.device)
         wp.synchronize_device(self.device)
         return out.numpy()
 

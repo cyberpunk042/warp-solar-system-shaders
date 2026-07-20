@@ -76,6 +76,27 @@ def test_weight_store_huffman_is_lossless_and_smaller():
     assert huff.bits_per_weight() <= base.bits_per_weight()
 
 
+def test_huffman_wavelet_two_level_samples_and_serialise():
+    from warp_compress.gpu_rrr_huffman import RRRWaveletGPUHuff
+    rng = np.random.default_rng(8)
+    seq = np.clip(np.round(rng.standard_normal(50000) * 2), -7, 7).astype(np.int64) + 7
+    rh = RRRWaveletGPUHuff(seq, device=_DEV, bits=4)
+    # all three per-level sample tables (rank / offset / class) are two-level: uint16 deltas + sparser anchors
+    for d, a in ((rh.rank_d, rh.rank_a), (rh.off_d, rh.off_a), (rh.cls_d, rh.cls_a)):
+        assert d.dtype == wp.uint16 and a.shape[1] < d.shape[1]
+    p, arrs = rh.to_host()                                          # survives round-trip with access still exact
+    rh2 = RRRWaveletGPUHuff.from_host(p, arrs, _DEV)
+    assert np.array_equal(rh2.access(np.arange(len(seq))), seq)
+
+
+def test_weight_store_huffman_serialises_with_two_level():
+    from warp_compress.weight_store import QuantizedWeightStore
+    W = (np.random.default_rng(9).standard_normal((256, 256)) / 16).astype(np.float32)
+    st = QuantizedWeightStore(W, bits=4, device=_DEV, huffman=True)
+    st2 = QuantizedWeightStore.load(st.save(), device=_DEV)         # the huffman=True default container round-trips
+    assert np.array_equal(st.reconstruct(), st2.reconstruct())
+
+
 def test_canonical_codes_are_prefix_free():
     L = _huff_lengths(np.array([50, 10, 3, 1] + [0] * 12))  # a skewed class histogram
     maxlen, first_code, cnt, fidx, syms, code_of = _canonical(L)

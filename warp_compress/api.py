@@ -68,7 +68,7 @@ class Artifact:
         if self.kind == "tokens":
             p, a = self.store.to_host()
             cfg = {"transform": "wavelet", "code": "huffman"}
-            mono = {"sbrank", "sboff", "sbclass", "cbase", "obase", "offbase"} & set(a)
+            mono = {"rank_a", "off_a", "cls_a", "cbase", "obase", "offbase"} & set(a)   # two-level anchors
             return fmt.pack("token_index", cfg, p, a, compress=mono)
         raise NotImplementedError(f"save() supports 'weights' and 'tokens'; kind={self.kind} is decode-only")
 

@@ -109,8 +109,11 @@ borrow from (highest-leverage first).
    `access`/`rank` and everything on them — the **FM-index** (`GPURRRFMIndex`) and `weight_store(coder="rrr")` —
    inherit it automatically. Measured on a real Markov BWT the FM-index dropped **6.02 → 5.80 b/tok**, now
    *below* the BWT's H₀ (5.96) that the int32-sample version sat above; access/rank/count/predict_next still
-   exact, save/load round-trips. (Applying the same split to the Huffman-class wavelet `RRRWaveletGPUHuff` — the
-   `huffman=True` weight-store default — is the remaining mechanical step.)
+   exact, save/load round-trips. The **same split is now also under the Huffman-class wavelet** `RRRWaveletGPUHuff`
+   (all three per-level sample tables — rank, offset, *and* the Huffman class-bit position — two-levelled), so the
+   `huffman=True` weight-store default *and* the token self-index (`api.compress(tokens)`) inherit it too: **1.88×
+   smaller sample table** on both, access exact, weight and token containers round-trip. Two-level is now
+   universal across every RRR-backed structure.
 7. **Decode-in-the-matmul, with Marlin as the template — DONE as a Warp proof-of-concept (`gpu_fused_matmul.py`).**
    Marlin fuses *fixed-width* INT4 dequant into the GEMM (~4× to batch 16–32); fusing ChromoFold's *variable-
    length* entropy decode is the hard part, and the **fixed-COUNT block layout is what makes it tractable** — the
