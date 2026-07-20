@@ -111,3 +111,32 @@ def test_outliers_serialise_and_round_trip():
     st2 = QuantizedWeightStore.load(st.save(), device=_DEV)
     assert np.array_equal(st.reconstruct(), st2.reconstruct())
     assert st2._out_idx is not None and np.array_equal(st._out_idx, st2._out_idx)
+
+
+def test_channel_scale_is_lossless_over_scaled_quant():
+    from warp_compress.awq import awq_scale, _fake_quant
+    W = _peaky((256, 384), seed=16)
+    act = np.abs(np.random.default_rng(17).standard_normal(384)).astype(np.float32)
+    s = awq_scale(W, act, bits=4)[0]
+    st = QuantizedWeightStore(W, bits=4, huffman=True, device=_DEV, channel_scale=s)
+    cs = s.astype(np.float16).astype(np.float32)                # store rounds the scale to fp16
+    ref = _fake_quant(W * cs[None, :], 4, None) / cs[None, :]   # dequant of scaled W, scale undone
+    assert np.allclose(st.reconstruct(), ref, atol=1e-4)
+    idx = np.random.default_rng(18).integers(0, W.size, 500)
+    assert np.allclose(st.fetch(idx), st.reconstruct().ravel()[idx], atol=1e-5)   # random access still holds
+
+
+def test_channel_scale_serialises_and_lowers_output_error():
+    from warp_compress.awq import awq_scale
+    rng = np.random.default_rng(19)
+    W = (rng.standard_normal((256, 256)) / 16).astype(np.float32)
+    act = np.abs(rng.standard_normal(256)).astype(np.float32)
+    act[rng.choice(256, 5, replace=False)] *= 30.0             # salient channels -> AWQ should help
+    s = awq_scale(W, act, bits=4)[0]
+    awq = QuantizedWeightStore(W, bits=4, huffman=True, device=_DEV, channel_scale=s)
+    plain = QuantizedWeightStore(W, bits=4, huffman=True, device=_DEV)
+    x = act[None, :] * rng.standard_normal((32, 256)).astype(np.float32)
+    err = lambda st: np.mean((x @ (W - st.reconstruct()).T) ** 2)
+    assert err(awq) < err(plain)                               # activation-aware scaling lowers output error
+    st2 = QuantizedWeightStore.load(awq.save(), device=_DEV)   # channel scale survives serialisation
+    assert np.array_equal(awq.reconstruct(), st2.reconstruct())

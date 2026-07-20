@@ -96,7 +96,15 @@ borrow from (highest-leverage first).
    4.37e-5) at the same size**, and **8.4× lower MSE than int4 group-128** (3.82 b/w) — it fixes the *cause* where
    group scaling only softens it. It also **rescues int3** (per-tensor int3 is unusable; +1% outliers → 15×
    better MSE). Exact at the outlier positions, lossless over the quantized rest, GPU-addressable, serialises.
-   Still round-to-nearest on the bulk; GPTQ/AWQ *calibration* on top is the remaining part of this lever.
+   **Calibration (AWQ) — built and honestly measured (`awq.py`, `bench_awq.py`, `channel_scale=`).** AWQ's
+   per-input-channel scaling is a diagonal (so it *preserves random access*, unlike a rotation); `channel_scale`
+   quantizes W·diag(s) and undoes it at dequant, lossless. But on **real gpt2 the measured lever is group-wise
+   scaling, not AWQ**: per-tensor int4 PPL ≈ 4168 (broken, "commas") → **group-128 int4 PPL 30.86, near the fp32
+   26.62 and fully coherent** (int8 = 29.96), while per-tensor+AWQ stays broken (6842 — scaling salient channels
+   blows the single tensor scale) and group-128+AWQ (31.56) ≈ group-128 alone. So the accuracy lever that makes
+   int4 usable on gpt2 is **grouping — already a ChromoFold knob** (`group_size`) — and AWQ adds nothing here (an
+   honest negative; AWQ's win is model- and salient-channel-dependent). ChromoFold entropy-codes whichever form
+   you pick and keeps it addressable.
 6. **Two-level succinct superblocks in VRAM — DONE (`gpu_rrr.py`, `GPURRR`).** v1 delta-compresses superblocks
    *on disk* (container-only); a resident **two-level rank** shrinks them in VRAM too. `_two_level` splits each
    int32 cumulative sample into an int32 **anchor** every `K=32` superblocks + a **uint16 delta** per superblock

@@ -28,7 +28,8 @@ class QuantizedWeightStore:
     of quantized weights)."""
 
     def __init__(self, W, bits: int = 4, device: str = "cuda:0", huffman: bool = False,
-                 group_size: "int | None" = None, coder: str = "rrr", block: int = 64, outliers: float = 0.0):
+                 group_size: "int | None" = None, coder: str = "rrr", block: int = 64, outliers: float = 0.0,
+                 channel_scale=None):
         W = np.asarray(W, np.float32)
         self.shape = W.shape
         self.bits = bits
@@ -38,6 +39,12 @@ class QuantizedWeightStore:
         self._zero = lim
         flat = W.ravel()
         self.n = int(flat.shape[0])
+        self._channel_scale = None
+        if channel_scale is not None:                          # AWQ: scale salient input channels UP before quant
+            cs = np.asarray(channel_scale, np.float32).astype(np.float16).astype(np.float32)   # fp16-exact (as saved)
+            self._channel_scale = cs                            # len = in_features (W is out×in, row-major)
+            self._cs_flat = np.tile(cs, self.shape[0]).astype(np.float32)   # per-element column scale
+            flat = flat * self._cs_flat                         # quantize the scaled weights; undo at dequant
         self._out_idx = None
         if outliers > 0.0:                                      # SpQR-style: keep the biggest weights in fp16,
             group_size = None                                   # so they don't blow the int4 scale (per-tensor)
@@ -90,6 +97,8 @@ class QuantizedWeightStore:
         base += self._scales.shape[0] * 2 if self._scales is not None else 8   # fp16 scale side-channel
         if self._out_idx is not None:                          # sparse outliers: int32 index + fp16 value
             base += self._out_idx.shape[0] * 6
+        if self._channel_scale is not None:                    # fp16 per-input-channel AWQ scale
+            base += self._channel_scale.shape[0] * 2
         return base
 
     def bits_per_weight(self) -> float:
@@ -104,6 +113,8 @@ class QuantizedWeightStore:
             pos = np.searchsorted(self._out_idx, idx)
             hit = (pos < self._out_idx.shape[0]) & (self._out_idx[np.clip(pos, 0, self._out_idx.shape[0] - 1)] == idx)
             out[hit] = self._out_val[pos[hit]].astype(np.float32)
+        if self._channel_scale is not None:                    # undo the AWQ scaling (per input channel)
+            out = out / self._cs_flat[idx]
         return out
 
     def reconstruct(self) -> np.ndarray:
@@ -111,6 +122,8 @@ class QuantizedWeightStore:
         recon = (vals - self._zero).astype(np.float32) * self._per_val_scale()
         if self._out_idx is not None:
             recon[self._out_idx] = self._out_val.astype(np.float32)   # exact fp16 at the outlier positions
+        if self._channel_scale is not None:
+            recon = recon / self._cs_flat                      # undo AWQ scaling -> true (dequantized) weights
         return recon.reshape(self.shape)
 
     # --- serialisation: a compressed weight tensor as one portable ChromoFold container blob ---
@@ -129,6 +142,9 @@ class QuantizedWeightStore:
             params["outliers"] = int(self._out_idx.shape[0])
             warrays = {**warrays, "_out_idx": self._out_idx.astype(np.int64),
                        "_out_val": self._out_val.astype(np.float16)}
+        if self._channel_scale is not None:
+            params["channel_scale"] = True
+            warrays = {**warrays, "_channel_scale": self._channel_scale.astype(np.float16)}
         code = self.coder if self.coder in ("block", "rans") else ("huffman" if huff else "rrr")
         config = {"quantize": f"int{self.bits}", "transform": "none",
                   "code": code, "group_size": self.group_size}
@@ -155,7 +171,13 @@ class QuantizedWeightStore:
             self._out_val = np.asarray(arrays["_out_val"], np.float16)
         else:
             self._out_idx = None
-        warrays = {k: v for k, v in arrays.items() if k not in ("_scales", "_out_idx", "_out_val")}
+        if p.get("channel_scale"):
+            self._channel_scale = np.asarray(arrays["_channel_scale"], np.float32)
+            self._cs_flat = np.tile(self._channel_scale, self.shape[0]).astype(np.float32)
+        else:
+            self._channel_scale = None
+        warrays = {k: v for k, v in arrays.items()
+                   if k not in ("_scales", "_out_idx", "_out_val", "_channel_scale")}
         if self.coder == "block":
             from .gpu_block_huffman import BlockHuffmanArray
             self.wm = BlockHuffmanArray.from_host(p["wm"], warrays, device)
