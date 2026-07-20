@@ -136,7 +136,8 @@ def rrr_encode(bits) -> dict:
     cum_class = np.concatenate([[0], np.cumsum(classes)]).astype(np.int64)
     sidx = np.minimum(np.arange(nsb + 1) * S, nblocks)
     return dict(cpk=cpk, opk=opk, sbrank=cum_class[sidx].astype(np.int32), sboff=ostart[sidx].astype(np.int32),
-                nblocks=nblocks, nsb=nsb, cwords=cwords, class_bits=nblocks * 4, offset_bits=total)
+                nblocks=nblocks, nsb=nsb, cwords=cwords, class_bits=nblocks * 4, offset_bits=total,
+                classes=classes, sidx=sidx)
 
 
 class GPURRR:

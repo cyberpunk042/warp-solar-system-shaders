@@ -155,8 +155,10 @@ compresses, because dense weights *after* quantization are near-incompressible l
   (`weight_store.py`, `bench_weights.py`, `docs/bench_weights_results.md`): the RRR wavelet entropy-codes int4
   weights to **2.24 b/w overall — 1.78× beyond int4** (up to 2.99× per tensor), **losslessly** (forward-pass
   logits byte-identical to the plain-quantized model, max|Δ|=0.00), with **per-weight GPU random access**.
-  Composed with int4's 4× that's ~7× vs fp32. (int8's margin is thinner — 1.18× — bounded by the RRR
-  class-stream floor, the next lever.) Net: quant × a lossless entropy layer, GPU-addressable.
+  Composed with int4 (4× vs fp16) that's ~7× vs fp16. And the **class-stream Huffman** (`gpu_rrr_huffman.py`,
+  the next lever, now built at the bitvector level with in-kernel GPU decode) pushes int4 further — **1.83 →
+  1.33 b/w, another 1.37×, right at the plane H0 (~1.2) → ~12× vs fp16** — while GPU rank stays exact. Net:
+  quant × a lossless entropy layer at ~H0, GPU-addressable.
 - **MoE experts** — many experts, few active per token. Keep cold experts **ChromoFolded in VRAM**, unfold the
   routed expert on demand. Random access is the entire win; this is where "fit the whole model" gets real,
   because most of an MoE is idle at any step.
@@ -286,6 +288,10 @@ actual transformer: the store→reconstruct is identical with tensors.
   append-only data prefer the `delta` path.
 - rANS/RRR beat gzip on the id stream, but LZ still wins raw ratio on scattered, high-entropy edits — which is
   exactly why ratio is only one term in §1.
+- The RRR **class-stream floor** (~0.27 b/bit × planes) is now addressed by `gpu_rrr_huffman.py` (canonical
+  Huffman, in-kernel GPU decode, rank verified exact; 1.84× on skewed planes, int4 weights → ~H0). It exists at
+  the *bitvector* level; the mechanical remaining step is swapping it under the full RRR **wavelet**'s rank
+  kernel (per-level Huffman tables) so the FM-index / weight-store paths get it automatically.
 
 ---
 

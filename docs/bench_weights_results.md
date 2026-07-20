@@ -24,9 +24,15 @@ Entropy-coding quantized gpt2 weights (RRR wavelet) — bits/weight vs fixed qua
 ## Reading it (honest)
 
 - **Real win on int4.** Entropy-coding quantized weights beats fixed int4 by **1.78× overall** (up to 2.99× on
-  the MLP proj), because quantized weights cluster near zero. Composed with int4's 4× vs fp32, that's ~7× vs
-  fp32 — and every weight stays **randomly addressable on the GPU** (fetch the routed MoE expert / dequant on
-  the fly).
+  the MLP proj), because quantized weights cluster near zero. int4 is 4× vs fp16 (8× vs fp32); composed with the
+  1.78× entropy layer that's **~7× vs fp16 (~14× vs fp32)** — and every weight stays **randomly addressable on
+  the GPU** (fetch the routed MoE expert / dequant on the fly).
+- **Class-stream Huffman goes further (`gpu_rrr_huffman.py`).** The 4-bit-per-block class stream is the RRR
+  floor; a canonical Huffman over the 16 class values (decoded in-kernel, GPU rank stays exact — verified)
+  lifts it toward H0. Standalone: **1.84× smaller on very-skewed bitplanes**. On gpt2 int4 weights (per-plane
+  size): **1.83 → 1.33 b/w, a further 1.37×**, right at the plane H0 (~1.2) — i.e. **~12× vs fp16 (24× vs
+  fp32)**. (The Huffman *bitvector* rank is validated on-GPU; wiring it under the full wavelet's rank kernel is
+  the mechanical next step — the number above is the achieved size.)
 - **Lossless on top of quantization.** `max|Δlogits| = 0.00` between the RRR-stored and plain-quantized model:
   the entropy layer recovers the *exact* quantized values. (The 18.19 quant-vs-fp32 gap is int4 quantization's
   own cost — a quantization concern, not ChromoFold's; use a gentler quantizer if that matters.)
