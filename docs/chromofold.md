@@ -10,6 +10,9 @@ This is the first roll. Everything here is a knob, not a commitment.
 **Where it fits (read first):** [`docs/chromofold_positioning.md`](chromofold_positioning.md) — ChromoFold is a
 GPU-resident, random-access, *searchable* entropy code for LLM-shaped data; it competes with a KV cache / raw
 weights / an index, **not** with gzip/xz. Placement, the three advantages with evidence, and a decision guide.
+**Lineage & thesis:** [`docs/chromofold_related_work.md`](chromofold_related_work.md) — the honest prior art
+(nvCOMP, Deep Compression / DFloat11, FM-index, infini-gram, GPTQ/AWQ, KVQuant), what's reused vs. distinctive
+(the *unification* across strata), and the compute-for-memory thesis. v1 has a lot of borrowable headroom.
 
 **On-disk format & protocol:** a ChromoFold-compressed object serialises to one self-describing, versioned blob
 (`warp_compress/format.py`; a compressed weight tensor via `QuantizedWeightStore.save/load`, a whole model via
