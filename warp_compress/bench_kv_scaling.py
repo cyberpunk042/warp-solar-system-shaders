@@ -17,6 +17,7 @@ python -m warp_compress.bench_kv_scaling
 """
 from __future__ import annotations
 
+import os
 import time
 import warnings
 
@@ -24,7 +25,7 @@ import numpy as np
 
 warnings.filterwarnings("ignore")
 
-_MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
+_MODEL = os.environ.get("CHROMOFOLD_KV_MODEL", "Qwen/Qwen2.5-0.5B-Instruct")
 _TEXT = ("Large language models keep their attention state in a key-value cache that grows with every token, "
          "so long contexts are bounded not by compute but by memory. " * 24)
 
