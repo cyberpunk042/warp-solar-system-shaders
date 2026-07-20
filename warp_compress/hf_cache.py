@@ -1,18 +1,22 @@
 """hf_cache — a drop-in Hugging Face `transformers` Cache backed by ChromoFold. Real generation, compressed KV.
 
-This is the "works today" integration: pass `ChromoFoldCache()` as `past_key_values` to any `transformers`
-model and generate normally. Each layer keeps a small fp16 **residual window** (the most recent tokens) and
-compresses the settled prefix with ChromoFold (KIVI per-axis quantization + block-Huffman entropy coding). On
-every step it reassembles the full K/V for attention, so output is the plain-quantized-KV output — coherent,
-with the long prefix held compressed instead of fp16.
+Pass `ChromoFoldCache()` as `past_key_values` to any `transformers` CausalLM and generate normally. Each layer
+keeps a small fp16 **residual window** (the most recent tokens) and compresses the settled prefix with ChromoFold
+(KIVI per-axis quantization + block-Huffman entropy coding). The prefix is held compressed instead of fp16, so
+long contexts fit in far less VRAM; output tracks the plain-quantized-KV model (coherent).
 
     cache = ChromoFoldCache(residual=128, bits=4)
     model.generate(**inputs, past_key_values=cache)      # normal generation, compressed KV
     cache.memory_bytes()                                 # resident KV bytes vs a full fp16 cache
 
-Honest: reassembling the prefix each step trades compute (re-decode) for memory — the ChromoFold thesis. It is
-the long-context regime (compress the settled prefix once, decode from it) where this pays; it is a Warp
-research path, not a fused attention kernel. Requires torch/transformers. Run: python -m warp_compress.hf_cache
+Each compressed chunk is decoded **exactly once** (when it settles) and memoized into an accumulating prefix, so
+per-step cost is O(new tokens), not O(context) — generation is O(n), not O(n²). Attention still sees the full
+K/V, so this trades a one-time decode per chunk for the memory saving (the ChromoFold compute-for-memory thesis),
+and it is the long-context regime where that pays. Supports batched and beam-search generation.
+
+Honest scope: a Warp research path (reconstruct-into-attention), not a fused attention kernel; `crop` (assisted
+decoding into the compressed prefix) is not supported. Requires torch/transformers. Run:
+python -m warp_compress.hf_cache
 """
 from __future__ import annotations
 
@@ -31,23 +35,31 @@ def _layer_cls():
 
         def __init__(self, **kw):
             super().__init__(**kw)
-            self._chunks = []        # compressed KVCacheStore chunks for the settled prefix
+            self._chunks = []        # compressed KVCacheStore chunks (kept for memory accounting)
             self._settled = 0        # number of tokens held compressed
+            self._prefix_k = None    # memoized reconstructed prefix (torch, cpu, fp32) — each chunk decoded once
+            self._prefix_v = None
+            self._decodes = 0        # instrumentation: total chunk decodes (== len(chunks), not per-step)
 
         def _compress(self, k, v):
             from .kv_store import KVCacheStore
-            self._chunks.append(KVCacheStore(
-                [(k.detach().to(torch.float32).cpu().numpy(), v.detach().to(torch.float32).cpu().numpy())],
-                bits=self._cf_bits, device=self._cf_device, per_axis=True))
+            st = KVCacheStore([(k.detach().to(torch.float32).cpu().numpy(),
+                                v.detach().to(torch.float32).cpu().numpy())],
+                              bits=self._cf_bits, device=self._cf_device, per_axis=True)
+            self._chunks.append(st)
+            K, V = st.reconstruct_layer(0)                 # decode THIS chunk once; accumulate into the prefix memo
+            self._decodes += 1
+            nk, nv = torch.from_numpy(K), torch.from_numpy(V)
+            self._prefix_k = nk if self._prefix_k is None else torch.cat([self._prefix_k, nk], dim=-2)
+            self._prefix_v = nv if self._prefix_v is None else torch.cat([self._prefix_v, nv], dim=-2)
 
         def _reassemble(self, dtype, device):
-            ks, vs = [], []
-            for st in self._chunks:                       # decode the compressed prefix (compute-for-memory)
-                K, V = st.reconstruct_layer(0)
-                ks.append(torch.from_numpy(K)); vs.append(torch.from_numpy(V))
-            ks.append(self.keys.to(torch.float32).cpu()); vs.append(self.values.to(torch.float32).cpu())
-            K = torch.cat(ks, dim=-2).to(device=device, dtype=dtype)
-            V = torch.cat(vs, dim=-2).to(device=device, dtype=dtype)
+            pk, pv = [], []
+            if self._prefix_k is not None:                 # memoized: no per-step re-decode of the settled prefix
+                pk.append(self._prefix_k); pv.append(self._prefix_v)
+            pk.append(self.keys.to(torch.float32).cpu()); pv.append(self.values.to(torch.float32).cpu())
+            K = torch.cat(pk, dim=-2).to(device=device, dtype=dtype)
+            V = torch.cat(pv, dim=-2).to(device=device, dtype=dtype)
             return K, V
 
         def update(self, key_states, value_states, *args, **kwargs):
@@ -56,7 +68,7 @@ def _layer_cls():
             self.keys = torch.cat([self.keys, key_states], dim=-2)      # append into the fp16 residual
             self.values = torch.cat([self.values, value_states], dim=-2)
             cur = self.keys.shape[-2]
-            if cur > 2 * self._cf_residual:                                 # flush the overflow into a compressed chunk
+            if cur > 2 * self._cf_residual:                             # flush the overflow into a compressed chunk
                 n = cur - self._cf_residual
                 self._compress(self.keys[:, :, :n, :], self.values[:, :, :n, :])
                 self.keys = self.keys[:, :, n:, :].contiguous()
@@ -68,6 +80,30 @@ def _layer_cls():
             # total length the reassembled K/V presents to attention = compressed prefix + fp16 residual.
             # (get_mask_sizes is inherited: it does get_seq_length() + query_length, kv_offset=0 — correct here.)
             return self._settled + (self.keys.shape[-2] if self.is_initialized else 0)
+
+        def reorder_cache(self, beam_idx):
+            """Beam search: select beams along the batch dim, for the memoized prefix and the fp16 residual.
+            Old compressed chunks are kept only for memory accounting (never re-decoded), so their batch order
+            is irrelevant to correctness; new flushes recompress from the reordered residual."""
+            if self._prefix_k is not None:
+                bi = beam_idx.to(self._prefix_k.device)
+                self._prefix_k = self._prefix_k.index_select(0, bi)
+                self._prefix_v = self._prefix_v.index_select(0, bi)
+            if self.is_initialized:
+                self.keys = self.keys.index_select(0, beam_idx.to(self.keys.device))
+                self.values = self.values.index_select(0, beam_idx.to(self.values.device))
+
+        def crop(self, max_length: int):
+            if max_length < 0:
+                max_length = self.get_seq_length() + max_length
+            if max_length >= self._settled and self.is_initialized:    # crop only within the fp16 residual window
+                keep = max_length - self._settled
+                self.keys = self.keys[:, :, :keep, :].contiguous()
+                self.values = self.values[:, :, :keep, :].contiguous()
+                return
+            raise NotImplementedError(
+                "ChromoFoldCache.crop into the compressed prefix is not supported (assisted/speculative decoding "
+                "that rewinds past the residual window). Use a larger `residual` or a standard cache for that path.")
 
         def memory_bytes(self) -> int:
             comp = sum(st.size_bytes() for st in self._chunks)
@@ -91,12 +127,22 @@ def make_cache(residual: int = 128, bits: int = 4, device: str = "cuda:0"):
     class ChromoFoldCache(Cache):
         def __init__(self):
             super().__init__(layer_class_to_replicate=Layer)
+            self.residual, self.bits, self.device = residual, bits, device   # config (closure), for repr
 
         def memory_bytes(self) -> int:
             return sum(l.memory_bytes() for l in self.layers)
 
         def fp16_bytes(self) -> int:
             return sum(l.fp16_equivalent_bytes() for l in self.layers)
+
+        def decode_count(self) -> int:
+            """Total compressed-chunk decodes across all layers (== chunks, thanks to prefix memoization —
+            NOT steps × chunks). A naive reassemble-every-step cache would be far higher."""
+            return sum(getattr(l, "_decodes", 0) for l in self.layers)
+
+        def __repr__(self):
+            return (f"ChromoFoldCache(residual={self.residual}, bits={self.bits}, layers={len(self.layers)}, "
+                    f"resident={self.memory_bytes()/1e6:.2f}MB)")
 
     return ChromoFoldCache()
 

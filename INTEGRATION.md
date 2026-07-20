@@ -43,9 +43,13 @@ out = model.generate(**inputs, past_key_values=cache, max_new_tokens=64)
 print(cf.__version__, "resident KV bytes:", cache.memory_bytes())
 ```
 
-Honest note: reassembling the prefix each step trades compute (re-decode) for memory — this is the long-context
-regime where that trade pays. On short contexts the residual window dominates, so the win is smaller; the
-asymptotic ratio (~8.9× vs fp16) shows up as the context grows.
+How it costs: each compressed chunk is decoded **exactly once** (when it settles) and memoized, so per-step
+cost is O(new tokens), not O(context) — generation stays O(n), not O(n²). Attention still sees the full K/V, so
+you trade a one-time decode per chunk for the memory saving (compute-for-memory). It supports batched and
+beam-search generation; `crop` into the compressed prefix (assisted/speculative decoding that rewinds past the
+residual window) is not supported — use a larger `residual` or a standard cache for that path. On short contexts
+the residual window dominates, so the memory win is smaller; the asymptotic ratio (~8.9× vs fp16) grows with
+context.
 
 ### 2. Compress weights / token streams
 

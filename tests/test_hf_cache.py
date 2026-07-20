@@ -49,3 +49,51 @@ def test_reassembled_prefix_is_the_quantized_roundtrip():
     ref = KVCacheStore([(Kin[:, :, :Kr.shape[2], :].numpy(), Vin[:, :, :Kr.shape[2], :].numpy())],
                        bits=4, device=_DEV, per_axis=True).reconstruct_layer(0)[0]
     assert np.allclose(Kr, ref, atol=1e-4)
+
+
+def test_prefix_memoized_each_chunk_decoded_once():
+    # the O(n)-not-O(n^2) win: each compressed chunk is decoded exactly once, not re-decoded every step
+    cache = make_cache(residual=8, bits=4, device=_DEV)
+    torch.manual_seed(2)
+    for _ in range(60):
+        K, V = cache.update(torch.randn(1, 2, 1, 64) * 0.3, torch.randn(1, 2, 1, 64) * 0.3, 0)
+    L = cache.layers[0]
+    assert L._decodes == len(L._chunks) and len(L._chunks) > 1     # decodes == chunks, NOT steps x chunks
+    assert cache.decode_count() == L._decodes
+    # memoized reassembly is bit-identical to a from-scratch decode-all of every chunk + residual
+    ks = [torch.from_numpy(st.reconstruct_layer(0)[0]) for st in L._chunks] + [L.keys.float().cpu()]
+    ref = torch.cat(ks, dim=-2)
+    assert torch.allclose(K.float().cpu(), ref, atol=1e-4)
+
+
+def test_batch_dimension():
+    cache = make_cache(residual=8, bits=4, device=_DEV)
+    torch.manual_seed(3)
+    for _ in range(40):
+        K, V = cache.update(torch.randn(3, 2, 1, 64) * 0.3, torch.randn(3, 2, 1, 64) * 0.3, 0)
+    assert K.shape[0] == 3 and K.shape[-2] == 40 and torch.isfinite(K).all()
+
+
+def test_reorder_cache_for_beam_search():
+    cache = make_cache(residual=8, bits=4, device=_DEV)
+    torch.manual_seed(4)
+    for _ in range(40):
+        cache.update(torch.randn(2, 2, 1, 64) * 0.3, torch.randn(2, 2, 1, 64) * 0.3, 0)
+    L = cache.layers[0]
+    before_pref = L._prefix_k.clone()
+    before_res = L.keys.clone()
+    L.reorder_cache(torch.tensor([1, 0]))                          # swap the two beams
+    assert torch.allclose(L._prefix_k[0], before_pref[1]) and torch.allclose(L._prefix_k[1], before_pref[0])
+    assert torch.allclose(L.keys[0], before_res[1]) and torch.allclose(L.keys[1], before_res[0])
+
+
+def test_crop_within_residual_ok_and_raises_into_prefix():
+    cache = make_cache(residual=16, bits=4, device=_DEV)
+    torch.manual_seed(5)
+    for _ in range(60):
+        cache.update(torch.randn(1, 2, 1, 64) * 0.3, torch.randn(1, 2, 1, 64) * 0.3, 0)
+    L = cache.layers[0]
+    L.crop(L.get_seq_length() - 2)                                 # crop inside the fp16 residual window: ok
+    assert L.get_seq_length() == 58
+    with pytest.raises(NotImplementedError):
+        L.crop(L._settled - 1)                                     # cropping into the compressed prefix is refused
