@@ -97,8 +97,16 @@ borrow from (highest-leverage first).
    group scaling only softens it. It also **rescues int3** (per-tensor int3 is unusable; +1% outliers → 15×
    better MSE). Exact at the outlier positions, lossless over the quantized rest, GPU-addressable, serialises.
    Still round-to-nearest on the bulk; GPTQ/AWQ *calibration* on top is the remaining part of this lever.
-6. **Two-level succinct superblocks in VRAM.** v1 delta-compresses superblocks *on disk*; a resident two-level
-   rank (int32 anchors + int16 deltas) shrinks them in VRAM while keeping O(1) — the standard succinct-DS trick.
+6. **Two-level succinct superblocks in VRAM — DONE (`gpu_rrr.py`, `GPURRR`).** v1 delta-compresses superblocks
+   *on disk* (container-only); a resident **two-level rank** shrinks them in VRAM too. `_two_level` splits each
+   int32 cumulative sample into an int32 **anchor** every `K=32` superblocks + a **uint16 delta** per superblock
+   (the delta ≤ (K−1)·S·T = 29 760 fits uint16), so the resident sample table drops **1.88×** (16 K→8 K bytes on
+   a 2 M-bit plane) with one extra add per query and rank still bit-exact. Honest regime dependence: **negligible
+   on balanced planes** (samples are a sliver of ~1 b/bit → 2.7% off the plane) but **real on the skewed planes
+   the BWT/FM-index produces** — there the samples are the biggest slice, so it trims **up to ~8.8%** off the
+   whole plane (p=0.005). Built standalone in `GPURRR` (matching the RRR-first-then-wire pattern); wiring the
+   two-level layout under the full wavelet's per-level `_rank1` is the mechanical follow-up so the FM-index /
+   weight-store inherit it.
 7. **Decode-in-the-matmul, with Marlin as the template.** Marlin fuses *fixed-width* INT4 dequant into the GEMM
    (~4× to batch 16–32). Fusing ChromoFold's *variable-length* entropy decode into the GEMM is the hard open
    problem and the real "bigger model resident during compute" endgame; a LUT-decode-then-Marlin two-stage is

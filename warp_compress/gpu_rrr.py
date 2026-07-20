@@ -27,6 +27,9 @@ wp.init()
 T = 15                                       # block size (bits): C(15,k) ≤ 6435 ⇒ offsets fit in 13 bits
 S = 64                                        # blocks per superblock — sparse rank samples (else the samples
                                              # dominate the size); a thread scans ≤S-1 blocks, cheap on GPU
+K = 32                                        # superblocks per ANCHOR (two-level rank): one int32 anchor per K
+                                             # superblocks + a uint16 delta per superblock. (K-1)·S·T = 29 760
+                                             # ones and ·13 = 25 792 offset-bits both fit uint16 ⇒ K≤64 is safe.
 _BINOM = np.zeros((T + 1, T + 1), np.int64)  # Pascal's triangle
 for _nn in range(T + 1):
     _BINOM[_nn, 0] = 1
@@ -73,7 +76,8 @@ def _readbits(stream: wp.array(dtype=wp.uint32), bitpos: int, width: int) -> int
 
 @wp.kernel
 def _rank1_k(classes: wp.array(dtype=wp.uint32), offsets: wp.array(dtype=wp.uint32),
-             sbrank: wp.array(dtype=wp.int32), sboff: wp.array(dtype=wp.int32),
+             rank_anchor: wp.array(dtype=wp.int32), rank_delta: wp.array(dtype=wp.uint16),
+             off_anchor: wp.array(dtype=wp.int32), off_delta: wp.array(dtype=wp.uint16),
              width: wp.array(dtype=wp.int32), binom: wp.array2d(dtype=wp.int32),
              pos_in: wp.array(dtype=wp.int32), out: wp.array(dtype=wp.int32)):
     t = wp.tid()
@@ -81,8 +85,9 @@ def _rank1_k(classes: wp.array(dtype=wp.uint32), offsets: wp.array(dtype=wp.uint
     blk = pos // T
     b = pos % T
     sbi = blk // S
-    r = sbrank[sbi]
-    obit = sboff[sbi]
+    a = sbi // K                              # two-level: int32 anchor + uint16 delta reconstruct the sample
+    r = rank_anchor[a] + int(rank_delta[sbi])
+    obit = off_anchor[a] + int(off_delta[sbi])
     j = sbi * S
     while j < blk:                            # sum the classes (and offset widths) of the in-superblock blocks
         cl = _classat(classes, j)
@@ -140,32 +145,50 @@ def rrr_encode(bits) -> dict:
                 classes=classes, sidx=sidx)
 
 
+def _two_level(cum, k: int = K):
+    """Split an int32 cumulative superblock sample into (int32 anchors every `k`, uint16 per-sample deltas).
+    The delta = sample − anchor is bounded by (k−1)·S·T (rank) / ·max-width (offset), both < 2^16 for k ≤ 64,
+    so the samples shrink from 4 B to ~2 B each while rank stays O(1) (one extra add). The standard succinct
+    two-level rank trick, done resident in VRAM."""
+    cum = np.asarray(cum, np.int64)
+    anchors = cum[:: k].astype(np.int32)                             # one anchor per k superblocks
+    delta = (cum - anchors[np.arange(cum.shape[0]) // k]).astype(np.int64)
+    assert delta.min() >= 0 and delta.max() < (1 << 16), f"two-level delta overflow ({delta.max()}); lower K"
+    return anchors, delta.astype(np.uint16)
+
+
 class GPURRR:
-    """RRR succinct bitvector resident on a Warp device; batched rank1 runs entirely on the GPU."""
+    """RRR succinct bitvector resident on a Warp device; batched rank1 runs entirely on the GPU. The superblock
+    samples use a **two-level** layout (int32 anchors + uint16 deltas) so the resident rank overhead is ~½ the
+    naive int32 samples — the win concentrates on skewed planes, where the samples are the largest slice."""
 
     def __init__(self, bits, device: str = "cuda:0"):
         self.n = int(np.asarray(bits).shape[0])
         self.device = device
         e = rrr_encode(bits)
         self._nblocks, self._class_bits, self._offset_bits = e["nblocks"], e["class_bits"], e["offset_bits"]
-        self._sb_bytes = e["sbrank"].nbytes + e["sboff"].nbytes
+        rank_a, rank_d = _two_level(e["sbrank"])
+        off_a, off_d = _two_level(e["sboff"])
+        self._sb_bytes = rank_a.nbytes + rank_d.nbytes + off_a.nbytes + off_d.nbytes
         self.classes = wp.array(e["cpk"], dtype=wp.uint32, device=device)
         self.offsets = wp.array(e["opk"], dtype=wp.uint32, device=device)
-        self.sbrank = wp.array(e["sbrank"], dtype=wp.int32, device=device)
-        self.sboff = wp.array(e["sboff"], dtype=wp.int32, device=device)
+        self.rank_anchor = wp.array(rank_a, dtype=wp.int32, device=device)
+        self.rank_delta = wp.array(rank_d, dtype=wp.uint16, device=device)
+        self.off_anchor = wp.array(off_a, dtype=wp.int32, device=device)
+        self.off_delta = wp.array(off_d, dtype=wp.uint16, device=device)
         self.width = wp.array(_WIDTH, dtype=wp.int32, device=device)
         self.binom = wp.array(_BINOM.astype(np.int32), dtype=wp.int32, device=device)
 
     def size_bits(self) -> int:
-        """Stored bits: class stream + offset stream + superblock samples (tables are tiny & shared)."""
+        """Stored bits: class stream + offset stream + two-level superblock samples (tables are tiny & shared)."""
         return self._class_bits + self._offset_bits + self._sb_bytes * 8
 
     def rank1(self, positions) -> np.ndarray:
         pos = wp.array(np.asarray(positions, np.int32), dtype=wp.int32, device=self.device)
         out = wp.zeros(pos.shape[0], dtype=wp.int32, device=self.device)
         wp.launch(_rank1_k, dim=pos.shape[0],
-                  inputs=[self.classes, self.offsets, self.sbrank, self.sboff, self.width, self.binom,
-                          pos, out], device=self.device)
+                  inputs=[self.classes, self.offsets, self.rank_anchor, self.rank_delta,
+                          self.off_anchor, self.off_delta, self.width, self.binom, pos, out], device=self.device)
         wp.synchronize_device(self.device)
         return out.numpy()
 
@@ -176,8 +199,8 @@ def _demo():
     dev = "cuda:0" if wp.get_cuda_device_count() > 0 else "cpu"
     rng = np.random.default_rng(0)
     n = 2_000_000
-    print(f"device={dev}   N={n:,}   block T={T}, superblock S={S}")
-    print(f"  {'density p':>10} {'H0(p)':>7} {'RRR b/bit':>10} {'packed':>7} {'vs packed':>10}  rank✓")
+    print(f"device={dev}   N={n:,}   block T={T}, superblock S={S}, anchor K={K}")
+    print(f"  {'density p':>10} {'H0(p)':>7} {'RRR b/bit':>10} {'sb (naive→2lvl)':>17} {'plane save':>10}  rank✓")
     for p in (0.5, 0.1, 0.03, 0.005):
         bits = (rng.random(n) < p).astype(np.uint8)
         rr = GPURRR(bits, device=dev)
@@ -188,11 +211,14 @@ def _demo():
         ok = np.array_equal(got, cum[qpos])
         h0 = -(p * math.log2(p) + (1 - p) * math.log2(1 - p)) if 0 < p < 1 else 0.0
         bpb = rr.size_bits() / n
-        print(f"  {p:>10.3f} {h0:>7.3f} {bpb:>10.3f} {1.0:>7.3f} {1.0/bpb:>9.2f}×  {'✓' if ok else 'FAIL'}")
-    print("=> skewed planes cost far below 1 bit/bit and approach H0 — while rank1 stays O(1) and runs on the "
-          "GPU (a per-thread superblock jump + one in-register combinatorial block decode). This is the lever\n"
-          "   that pulls the resident FM-index from packed (1 b/bit) toward the entropy Hk. Next: wire it under "
-          "the wavelet's _rank1 so the whole self-index is entropy-sized AND GPU-searchable.")
+        naive_sb = (rr._nblocks + S - 1) // S * 8                    # two int32 samples per superblock (v1)
+        naive_bpb = (rr._class_bits + rr._offset_bits + naive_sb * 8) / n
+        print(f"  {p:>10.3f} {h0:>7.3f} {bpb:>10.3f} {naive_sb//1024:>6}K→{rr._sb_bytes//1024:>3}K"
+              f"({naive_sb/rr._sb_bytes:>4.2f}×) {(1.0 - bpb/naive_bpb)*100:>8.1f}%  {'✓' if ok else 'FAIL'}")
+    print("=> two-level samples (int32 anchor every K superblocks + uint16 deltas) halve the resident rank "
+          "overhead with one extra add per query. Negligible on balanced planes (samples are a sliver of ~1\n"
+          "   b/bit) but real on the SKEWED planes the BWT/FM-index produces — there the samples are the biggest "
+          "slice, so a ~2× smaller sample table trims the whole plane. Next: wire under the wavelet's _rank1.")
 
 
 if __name__ == "__main__":
