@@ -33,8 +33,10 @@ All numbers from the reproducible records in `docs/` (hardware header in `bench_
 2. **Everything runs GPU-resident** (`bench_gpu_results.md`). Decode ~**400 M tok/s** (kernel); FM-index search
    `count`/`locate`/`predict` all in VRAM; delta/dedup/weight/KV/MoE reconstruction all on-GPU. The whole point
    is *never leaving the GPU* — the CPU round-trip is exactly what a streaming codec forces.
-3. **Search + generation in the compressed domain** (`gpu_fm_index`, `genome_compression_math.md`). The same
-   bytes are a substring index and an n-gram draft model. No decompressor can do this.
+3. **Search + generation in the compressed domain** (`gpu_fm_index`, `spec_decode.py`). The same bytes are a
+   substring index and an n-gram draft model. Demonstrated on a real model: the FM-index used as the **draft in
+   speculative decoding** cuts gpt2 forward passes **2.18×** on RAG-flavour text (48→22 passes), output
+   byte-identical to greedy — no extra model, no training. No decompressor can do this.
 
 And the ratio gap is now **small**: with the container's monotone index metadata delta-compressed (superblocks
 etc., which keeps random access), a real gpt2 int4 weight tensor is **cfold 1.30 b/val vs xz 1.14, gz 1.22** —
