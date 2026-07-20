@@ -70,13 +70,32 @@ class KVCacheStore:
         V = (L["V"].decode().reshape(L["Vshape"]).astype(np.float32) - L["zero"]) * L["Vs"]
         return K, V
 
-    def attention(self, l: int, Q, positions=None):
-        """Scaled-dot-product attention for layer `l`: (B, heads, q, d) query against the stored K,V. If
-        `positions` is given, only those cache rows are used (and, in a real kernel, only they are decoded)."""
-        K, V = self.reconstruct_layer(l)                       # (B, heads, seq, d)
-        if positions is not None:
-            K = K[:, :, positions, :]
-            V = V[:, :, positions, :]
+    def fetch_positions(self, l: int, positions):
+        """Decode ONLY the KV rows at `positions` (a subset of the seq axis), on the GPU, without touching the
+        rest of the cache — the sublinear random access the whole system exists for. Returns (K_sub, V_sub) of
+        shape (B, heads, len(positions), d). Cost is O(len(positions)), independent of the stored context length."""
+        L = self.layers[int(l)]
+        B, H, seq, d = L["Kshape"]
+        pos = np.asarray(positions, np.int64)
+        bh = np.arange(B * H)
+        flat = ((bh[:, None, None] * seq + pos[None, :, None]) * d + np.arange(d)[None, None, :]).ravel()
+        Kq = L["K"].fetch(flat.astype(np.int32)).reshape(B, H, pos.size, d).astype(np.float32)
+        Vq = L["V"].fetch(flat.astype(np.int32)).reshape(B, H, pos.size, d).astype(np.float32)
+        Ks = L["Ks"] if L["Ks"].shape[2] == 1 else L["Ks"][:, :, pos, :]     # per-channel-K broadcasts over seq
+        Vs = L["Vs"] if L["Vs"].shape[2] == 1 else L["Vs"][:, :, pos, :]     # per-token-V indexes the positions
+        return (Kq - L["zero"]) * Ks, (Vq - L["zero"]) * Vs
+
+    def attention(self, l: int, Q, positions=None, windowed: bool = False):
+        """Scaled-dot-product attention for layer `l`: (B, heads, q, d) query against the stored K,V. With
+        `positions` + ``windowed=True``, only those cache rows are DECODED (O(window), not O(context)); otherwise
+        the layer is reconstructed then sliced (the reference path)."""
+        if positions is not None and windowed:
+            K, V = self.fetch_positions(l, positions)          # decode only the attended window
+        else:
+            K, V = self.reconstruct_layer(l)                   # (B, heads, seq, d)
+            if positions is not None:
+                K = K[:, :, positions, :]
+                V = V[:, :, positions, :]
         d = Q.shape[-1]
         scores = np.einsum("bhqd,bhkd->bhqk", Q, K) / np.sqrt(d)
         return np.einsum("bhqk,bhkd->bhqd", _softmax(scores, -1), V)

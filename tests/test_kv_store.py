@@ -68,3 +68,18 @@ def test_windowed_attention_matches_full_on_that_window():
     sc = np.einsum("bhqd,bhkd->bhqk", Q, K[:, :, win, :]) / np.sqrt(d)
     ref = np.einsum("bhqk,bhkd->bhqd", _softmax(sc, -1), V[:, :, win, :])
     assert np.allclose(y_win, ref, atol=1e-5)
+
+
+def test_windowed_fetch_decodes_only_the_window_and_matches():
+    # GQA-shaped KV (few kv-heads); windowed=True must decode ONLY the requested rows and equal the full slice
+    pkv = _kv(layers=2, heads=2, seq=400, d=64, seed=7)
+    store = KVCacheStore(pkv, bits=2, device=_DEV)
+    Ksub, Vsub = store.fetch_positions(0, np.array([3, 199, 399, 128]))
+    K, V = store.reconstruct_layer(0)
+    assert np.allclose(Ksub, K[:, :, [3, 199, 399, 128], :], atol=1e-5)
+    assert np.allclose(Vsub, V[:, :, [3, 199, 399, 128], :], atol=1e-5)
+    Q = (np.random.default_rng(8).standard_normal((1, 2, 1, 64)) * 0.3).astype(np.float32)
+    pos = np.array([10, 50, 350, 399, 200])
+    y_win = store.attention(0, Q, positions=pos, windowed=True)     # O(window) decode path
+    y_ref = store.attention(0, Q, positions=pos, windowed=False)    # reconstruct-then-slice
+    assert np.allclose(y_win, y_ref, atol=1e-5)
