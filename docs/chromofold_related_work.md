@@ -79,9 +79,13 @@ borrow from (highest-leverage first).
    layer no KV method has** — via the block coder. (Honest correction to a v1 guess: per-axis improves
    *accuracy*, not compression; the compression comes from the entropy layer on top.) Next: RotateKV/QuIP#
    rotations to tame outliers before coding.
-4. **A lossless-BF16 mode, from DFloat11 / NeuZip.** Besides quantized ints, ChromoFold could entropy-code the
-   **float exponent** losslessly (weights *or* KV) for an "exact model, ~30% smaller" mode — with random access,
-   which DFloat11 lacks.
+4. **A lossless-BF16 mode, from DFloat11 / NeuZip — DONE (`lossless_float.py`).** `LosslessFloatStore` splits
+   each fp16/bf16 value into a low-entropy **exponent** (block-coded, GPU-decodable, **randomly addressable**)
+   and a raw **sign+mantissa** (bit-packed). Exact — no quantization. Measured on a real gpt2 tensor: **bf16 →
+   11.32 b/val = 1.41× (matching DFloat11's ~11-bit / ~30%)**, fp16 → 14.29 (5-bit exponent, less to squeeze) —
+   both lossless (exact bits back) *with* random access, which DFloat11 (whole-tensor decode) lacks. Needed a
+   **length-limited Huffman** (JPEG bl_count redistribution) in the block coder so a 256-symbol skewed exponent
+   fits the LUT — which also makes the block coder robust for int8 / any large skewed alphabet.
 5. **Better quantizers upstream (GPTQ/AWQ/QuIP#/SpQR/XFP).** v1 uses round-to-nearest; calibration makes low-bit
    *usable*, and SpQR/XFP **sparse outlier side-channels** compose naturally with our entropy layer.
 6. **Two-level succinct superblocks in VRAM.** v1 delta-compresses superblocks *on disk*; a resident two-level

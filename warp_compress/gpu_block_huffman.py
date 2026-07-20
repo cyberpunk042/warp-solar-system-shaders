@@ -53,6 +53,36 @@ def _huff_lengths(freq):
     return L
 
 
+def _limit_lengths(L, freq, limit):
+    """Length-limit Huffman code lengths to <= `limit` (JPEG C.3 bl_count redistribution), then reassign the
+    lengths to symbols by frequency (shortest to the most frequent). Keeps the code prefix-free."""
+    if max(L) <= limit:
+        return L
+    bl = [0] * (max(L) + 1)
+    for l in L:
+        if l:
+            bl[l] += 1
+    i = len(bl) - 1
+    while i > limit:
+        while bl[i] > 0:
+            j = i - 2
+            while bl[j] == 0:
+                j -= 1
+            bl[i] -= 2
+            bl[i - 1] += 1
+            bl[j] -= 1
+            bl[j + 1] += 2
+        i -= 1
+    lengths = []
+    for l in range(1, limit + 1):
+        lengths += [l] * bl[l]
+    present = sorted((s for s in range(len(L)) if L[s] > 0), key=lambda s: -int(freq[s]))
+    newL = [0] * len(L)
+    for s, l in zip(present, lengths):
+        newL[s] = l
+    return newL
+
+
 def _canonical(L):
     """Canonical MSB-first codes from lengths. Returns (maxlen, code_of[V])."""
     maxlen = max(L)
@@ -121,10 +151,8 @@ class BlockHuffmanArray:
         self.device = device
         V = int(v.max()) + 1 if self.n else 1
         freq = np.bincount(v, minlength=V)
-        L = _huff_lengths(freq)
+        L = _limit_lengths(_huff_lengths(freq), freq, _LUT_MAXLEN)   # cap code length -> bounded LUT
         self.maxlen, code_of = _canonical(L)
-        if self.maxlen > _LUT_MAXLEN:
-            raise ValueError(f"max code length {self.maxlen} > {_LUT_MAXLEN}; use the wavelet for this stream")
 
         Larr = np.asarray(L, np.int64)
         Carr = np.asarray(code_of, np.int64)

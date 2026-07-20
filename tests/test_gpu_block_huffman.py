@@ -45,6 +45,15 @@ def test_to_host_from_host_roundtrip():
     assert np.array_equal(bh2.decode(), vals)
 
 
+def test_length_limited_huffman_handles_256_symbol_skew():
+    # a very skewed 256-symbol stream (like a bf16 exponent field) -> natural Huffman would exceed the LUT cap;
+    # length-limiting must keep it decodable + lossless
+    rng = np.random.default_rng(8)
+    vals = np.where(rng.random(60000) < 0.02, rng.integers(0, 256, 60000), 128).astype(np.int64)
+    bh = BlockHuffmanArray(vals, block=64, device=_DEV)
+    assert bh.maxlen <= 16 and np.array_equal(bh.decode(), vals)
+
+
 def test_canonical_codes_prefix_free():
     L = _huff_lengths(np.array([100, 30, 10, 3, 1] + [0] * 11))
     maxlen, code_of = _canonical(L)
