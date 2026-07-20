@@ -46,6 +46,36 @@ def test_huffman_beats_fixed_class_on_skewed():
     assert rh.size_bits() < r4.size_bits()                 # Huffman class stream is smaller on a skewed plane
 
 
+def test_huffman_wavelet_access_reconstructs():
+    from warp_compress.gpu_rrr_huffman import RRRWaveletGPUHuff
+    rng = np.random.default_rng(5)
+    # very skewed values (like quantized weights): heavy near a center -> skewed low bitplanes
+    seq = np.clip(np.round(rng.standard_normal(40000) * 2), -7, 7).astype(np.int64) + 7
+    rh = RRRWaveletGPUHuff(seq, device=_DEV, bits=4)
+    pos = rng.integers(0, len(seq), 4000).astype(np.int32)
+    assert np.array_equal(rh.access(pos), seq[pos])
+
+
+def test_huffman_wavelet_beats_4bit_on_skewed_values():
+    from warp_compress.gpu_rrr_huffman import RRRWaveletGPUHuff
+    from warp_compress.gpu_rrr_wavelet import RRRWaveletGPU
+    rng = np.random.default_rng(6)
+    seq = np.clip(np.round(rng.standard_normal(60000) * 1.5), -7, 7).astype(np.int64) + 7
+    r4 = RRRWaveletGPU(seq, device=_DEV, bits=4)
+    rh = RRRWaveletGPUHuff(seq, device=_DEV, bits=4)
+    assert np.array_equal(rh.access(np.arange(len(seq))), seq)   # lossless
+    assert rh.index_bytes() < r4.index_bytes()                  # class-stream Huffman is smaller here
+
+
+def test_weight_store_huffman_is_lossless_and_smaller():
+    from warp_compress.weight_store import QuantizedWeightStore
+    W = (np.random.default_rng(7).standard_normal((512, 256)) / np.sqrt(256)).astype(np.float32)
+    base = QuantizedWeightStore(W, bits=4, device=_DEV)
+    huff = QuantizedWeightStore(W, bits=4, device=_DEV, huffman=True)
+    assert np.array_equal(huff.reconstruct(), base.reconstruct())   # same quantized values, still lossless
+    assert huff.bits_per_weight() <= base.bits_per_weight()
+
+
 def test_canonical_codes_are_prefix_free():
     L = _huff_lengths(np.array([50, 10, 3, 1] + [0] * 12))  # a skewed class histogram
     maxlen, first_code, cnt, fidx, syms, code_of = _canonical(L)

@@ -31,8 +31,9 @@ Entropy-coding quantized gpt2 weights (RRR wavelet) — bits/weight vs fixed qua
   floor; a canonical Huffman over the 16 class values (decoded in-kernel, GPU rank stays exact — verified)
   lifts it toward H0. Standalone: **1.84× smaller on very-skewed bitplanes**. On gpt2 int4 weights (per-plane
   size): **1.83 → 1.33 b/w, a further 1.37×**, right at the plane H0 (~1.2) — i.e. **~12× vs fp16 (24× vs
-  fp32)**. (The Huffman *bitvector* rank is validated on-GPU; wiring it under the full wavelet's rank kernel is
-  the mechanical next step — the number above is the achieved size.)
+  fp32)**. Now wired under the full wavelet (`RRRWaveletGPUHuff`) and the weight store
+  (`QuantizedWeightStore(..., huffman=True)`): **GPU access verified correct on every gpt2 int4 tensor** at
+  1.33 b/w, not just a size projection.
 - **Lossless on top of quantization.** `max|Δlogits| = 0.00` between the RRR-stored and plain-quantized model:
   the entropy layer recovers the *exact* quantized values. (The 18.19 quant-vs-fp32 gap is int4 quantization's
   own cost — a quantization concern, not ChromoFold's; use a gentler quantizer if that matters.)

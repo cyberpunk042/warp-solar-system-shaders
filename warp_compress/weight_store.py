@@ -23,9 +23,11 @@ from .gpu_rrr_wavelet import RRRWaveletGPU
 
 
 class QuantizedWeightStore:
-    """A weight tensor quantized to `bits` and entropy-coded with the RRR wavelet, GPU-addressable."""
+    """A weight tensor quantized to `bits` and entropy-coded with the RRR wavelet, GPU-addressable. With
+    ``huffman=True`` the class stream is Huffman-coded (near the plane H0 — best for the very skewed low bits
+    of quantized weights)."""
 
-    def __init__(self, W, bits: int = 4, device: str = "cuda:0"):
+    def __init__(self, W, bits: int = 4, device: str = "cuda:0", huffman: bool = False):
         W = np.asarray(W, np.float32)
         self.shape = W.shape
         self.bits = bits
@@ -35,7 +37,11 @@ class QuantizedWeightStore:
         q = np.clip(np.round(W.ravel() / self.scale), -lim, lim).astype(np.int64) + lim   # -> [0, 2*lim]
         self._zero = lim
         self.n = int(q.shape[0])
-        self.wm = RRRWaveletGPU(q, device=device, bits=bits)     # 2*lim+1 <= 2**bits distinct levels
+        if huffman:
+            from .gpu_rrr_huffman import RRRWaveletGPUHuff
+            self.wm = RRRWaveletGPUHuff(q, device=device, bits=bits)
+        else:
+            self.wm = RRRWaveletGPU(q, device=device, bits=bits)  # 2*lim+1 <= 2**bits distinct levels
 
     def size_bytes(self) -> int:
         return self.wm.index_bytes() + 8                         # entropy-coded values + the scale
@@ -60,18 +66,18 @@ def _demo():
     # Gaussian weights (like a real layer): peaky after quantization -> entropy coder wins
     W = (rng.standard_normal((2048, 512)) / np.sqrt(512)).astype(np.float32)
     print(f"device={dev}   synthetic weight tensor {W.shape} ({W.size:,} weights)\n")
-    print(f"  {'quant':>6} {'fixed b/w':>10} {'H0':>6} {'RRR b/w':>9} {'vs fixed':>9}  {'recon MSE':>10}")
+    print(f"  {'quant':>6} {'fixed':>6} {'H0':>6} {'RRR b/w':>9} {'RRR+huff b/w':>13} {'lossless':>9}")
     for bits in (4, 8):
         st = QuantizedWeightStore(W, bits=bits, device=dev)
+        sh = QuantizedWeightStore(W, bits=bits, device=dev, huffman=True)
         R = st.reconstruct()
         lim = (1 << (bits - 1)) - 1
         q = np.clip(np.round(W.ravel() / st.scale), -lim, lim) + lim
-        _, c = np.unique(q, return_counts=True); p = c / c.sum(); H0 = float(-(p * np.log2(p)).sum())
-        # bit-exact vs the plain-quantized dequant?
-        exact = np.allclose(R, ((q - lim).astype(np.float32) * st.scale).reshape(W.shape))
-        mse = float(np.mean((R - W) ** 2))
-        print(f"  int{bits:<3} {float(bits):>10.2f} {H0:>6.2f} {st.bits_per_weight():>9.2f} "
-              f"{bits / st.bits_per_weight():>7.2f}× {mse:>11.2e}  {'(lossless vs quant ✓)' if exact else 'FAIL'}")
+        _, c = np.unique(q, return_counts=True); pp = c / c.sum(); H0 = float(-(pp * np.log2(pp)).sum())
+        exact = np.allclose(R, ((q - lim).astype(np.float32) * st.scale).reshape(W.shape)) and \
+            np.array_equal(sh.reconstruct(), R)
+        print(f"  int{bits:<3} {float(bits):>6.2f} {H0:>6.2f} {st.bits_per_weight():>9.2f} "
+              f"{sh.bits_per_weight():>13.2f} {'✓' if exact else 'FAIL':>9}")
     print("\n=> entropy-code the QUANTIZED stream, LOSSLESSLY (bit-exact quantized values), with GPU random "
           "access. The win scales with histogram peakiness: a plain Gaussian is mild (int4 ~1.2×), REAL model\n"
           "   weights are far peakier (gpt2 int4 → ~1.8×; see bench_weights.py). int8's small/negative margin is "

@@ -209,6 +209,149 @@ class GPURRRHuff:
         return out.numpy()
 
 
+# ==================================================================================================
+# The Huffman class stream, wired UNDER the RRR wavelet: per-level Huffman tables stacked as 2-D arrays, so
+# access/rank (and the FM-index / weight-store built on them) inherit the ~H0 footprint with GPU rank.
+# ==================================================================================================
+
+@wp.func
+def _huff_decode_lvl(cs: wp.array(dtype=wp.uint32), fc: wp.array2d(dtype=wp.int32),
+                     cnt: wp.array2d(dtype=wp.int32), fidx: wp.array2d(dtype=wp.int32),
+                     syms: wp.array2d(dtype=wp.int32), maxlens: wp.array(dtype=wp.int32),
+                     lvl: int, cbit: int) -> int:
+    code = int(0)
+    ml = maxlens[lvl]
+    for l in range(1, ml + 1):
+        pos = cbit + l - 1
+        bit = int((cs[pos >> 5] >> wp.uint32(31 - (pos & 31))) & wp.uint32(1))
+        code = (code << 1) | bit
+        c = cnt[lvl, l]
+        if c > 0:
+            off = code - fc[lvl, l]
+            if off >= 0 and off < c:
+                return syms[lvl, fidx[lvl, l] + off] | (l << 5)
+    return 0
+
+
+@wp.func
+def _rank1_lvl_h(cwords: wp.array(dtype=wp.uint32), offsets: wp.array(dtype=wp.uint32),
+                 sbrank: wp.array2d(dtype=wp.int32), sboff: wp.array2d(dtype=wp.int32),
+                 sbclass: wp.array2d(dtype=wp.int32), cbase: wp.array(dtype=wp.int32),
+                 obase: wp.array(dtype=wp.int32), width: wp.array(dtype=wp.int32),
+                 binom: wp.array2d(dtype=wp.int32), fc: wp.array2d(dtype=wp.int32),
+                 cnt: wp.array2d(dtype=wp.int32), fidx: wp.array2d(dtype=wp.int32),
+                 syms: wp.array2d(dtype=wp.int32), maxlens: wp.array(dtype=wp.int32),
+                 lvl: int, pos: int) -> int:
+    blk = pos // T
+    b = pos % T
+    sbi = blk // S
+    r = sbrank[lvl, sbi]
+    obit = obase[lvl] + sboff[lvl, sbi]
+    cbit = cbase[lvl] + sbclass[lvl, sbi]
+    j = sbi * S
+    while j < blk:
+        dec = _huff_decode_lvl(cwords, fc, cnt, fidx, syms, maxlens, lvl, cbit)
+        cl = dec & 31
+        cbit = cbit + (dec >> 5)
+        r = r + cl
+        obit = obit + width[cl]
+        j = j + 1
+    if b > 0:
+        dec = _huff_decode_lvl(cwords, fc, cnt, fidx, syms, maxlens, lvl, cbit)
+        cl = dec & 31
+        o = _readbits(offsets, obit, width[cl])
+        word = _decode_word(binom, cl, o)
+        mask = (wp.uint32(1) << wp.uint32(b)) - wp.uint32(1)
+        r = r + _popcount(word & mask)
+    return r
+
+
+@wp.kernel
+def _access_kh(cwords: wp.array(dtype=wp.uint32), offsets: wp.array(dtype=wp.uint32),
+               sbrank: wp.array2d(dtype=wp.int32), sboff: wp.array2d(dtype=wp.int32),
+               sbclass: wp.array2d(dtype=wp.int32), cbase: wp.array(dtype=wp.int32),
+               obase: wp.array(dtype=wp.int32), zeros: wp.array(dtype=wp.int32),
+               width: wp.array(dtype=wp.int32), binom: wp.array2d(dtype=wp.int32),
+               fc: wp.array2d(dtype=wp.int32), cnt: wp.array2d(dtype=wp.int32),
+               fidx: wp.array2d(dtype=wp.int32), syms: wp.array2d(dtype=wp.int32),
+               maxlens: wp.array(dtype=wp.int32), pos_in: wp.array(dtype=wp.int32),
+               out: wp.array(dtype=wp.int32), bits: int):
+    t = wp.tid()
+    i = pos_in[t]
+    v = int(0)
+    for lvl in range(bits):
+        r0 = _rank1_lvl_h(cwords, offsets, sbrank, sboff, sbclass, cbase, obase, width, binom, fc, cnt, fidx,
+                          syms, maxlens, lvl, i)
+        r1 = _rank1_lvl_h(cwords, offsets, sbrank, sboff, sbclass, cbase, obase, width, binom, fc, cnt, fidx,
+                          syms, maxlens, lvl, i + 1)
+        if r1 - r0 == 1:
+            v = (v << 1) | 1
+            i = zeros[lvl] + r0
+        else:
+            v = v << 1
+            i = i - r0
+    out[t] = v
+
+
+class RRRWaveletGPUHuff:
+    """RRR wavelet whose every level's class stream is Huffman-coded (decoded in-kernel). access on the GPU."""
+
+    def __init__(self, seq, device: str = "cuda:0", bits: int | None = None):
+        seq = np.asarray(seq, np.int64)
+        self.n = int(seq.shape[0])
+        self.bits = int(bits) if bits is not None else max(1, int(seq.max()).bit_length())
+        self.device = device
+
+        cwl, opl, sbr, sbo, sbc, zeros, fcl, cntl, fdl, syl, mls = [], [], [], [], [], [], [], [], [], [], []
+        cbase, obase = [0], [0]
+        self._bits_stored = 0
+        cur = seq.copy()
+        for lvl in range(self.bits):
+            b = ((cur >> (self.bits - 1 - lvl)) & 1).astype(np.uint8)
+            e = rrr_encode_huff(b)
+            cwl.append(e["cwords"]); opl.append(e["opk"])
+            sbr.append(e["sbrank"]); sbo.append(e["sboff"]); sbc.append(e["sbclass"]); zeros.append(self.n - int(b.sum()))
+            fcl.append(e["first_code"]); cntl.append(e["cnt"]); fdl.append(e["fidx"]); syl.append(e["syms"])
+            mls.append(int(e["maxlen"]))
+            cbase.append(cbase[-1] + e["cwords"].shape[0]); obase.append(obase[-1] + e["opk"].shape[0])
+            self._bits_stored += e["class_bits"] + e["offset_bits"]
+            order = np.concatenate([np.flatnonzero(b == 0), np.flatnonzero(b == 1)])
+            cur = cur[order]
+
+        ML = max(mls)
+        pad = lambda a, L: np.pad(np.asarray(a, np.int32)[:L], (0, max(0, L - len(a))))
+        self.maxlen = ML
+        self._sb_bytes = np.stack(sbr).nbytes + np.stack(sbo).nbytes + np.stack(sbc).nbytes
+        self.cwords = wp.array(np.concatenate(cwl), dtype=wp.uint32, device=device)
+        self.offsets = wp.array(np.concatenate(opl), dtype=wp.uint32, device=device)
+        self.sbrank = wp.array(np.stack(sbr), dtype=wp.int32, device=device)
+        self.sboff = wp.array(np.stack(sbo), dtype=wp.int32, device=device)
+        self.sbclass = wp.array(np.stack(sbc), dtype=wp.int32, device=device)
+        self.cbase = wp.array(np.asarray(cbase[:-1], np.int32) * 32, dtype=wp.int32, device=device)
+        self.obase = wp.array(np.asarray(obase[:-1], np.int32) * 32, dtype=wp.int32, device=device)
+        self.zeros = wp.array(np.asarray(zeros, np.int32), dtype=wp.int32, device=device)
+        self.width = wp.array(_WIDTH, dtype=wp.int32, device=device)
+        self.binom = wp.array(_BINOM.astype(np.int32), dtype=wp.int32, device=device)
+        self.fc = wp.array(np.stack([pad(a, ML + 1) for a in fcl]), dtype=wp.int32, device=device)
+        self.cnt = wp.array(np.stack([pad(a, ML + 1) for a in cntl]), dtype=wp.int32, device=device)
+        self.fidx = wp.array(np.stack([pad(a, ML + 1) for a in fdl]), dtype=wp.int32, device=device)
+        self.syms = wp.array(np.stack([pad(a, 16) for a in syl]), dtype=wp.int32, device=device)
+        self.maxlens = wp.array(np.asarray(mls, np.int32), dtype=wp.int32, device=device)
+
+    def index_bytes(self) -> int:
+        return self._bits_stored // 8 + self._sb_bytes
+
+    def access(self, positions) -> np.ndarray:
+        pos = wp.array(np.asarray(positions, np.int32), dtype=wp.int32, device=self.device)
+        out = wp.zeros(pos.shape[0], dtype=wp.int32, device=self.device)
+        wp.launch(_access_kh, dim=pos.shape[0],
+                  inputs=[self.cwords, self.offsets, self.sbrank, self.sboff, self.sbclass, self.cbase,
+                          self.obase, self.zeros, self.width, self.binom, self.fc, self.cnt, self.fidx,
+                          self.syms, self.maxlens, pos, out, self.bits], device=self.device)
+        wp.synchronize_device(self.device)
+        return out.numpy()
+
+
 def _demo():
     import math
 
