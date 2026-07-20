@@ -53,6 +53,9 @@ class QuantizedWeightStore:
         if coder == "block":                                    # DFloat11-style LUT decode: fast whole-tensor path
             from .gpu_block_huffman import BlockHuffmanArray
             self.wm = BlockHuffmanArray(q, block=block, device=device)
+        elif coder == "rans":                                   # near-entropy coder — best for skewed low-bit data
+            from .gpu_rans import BlockRANSArray
+            self.wm = BlockRANSArray(q, block=block, device=device)
         elif huffman:
             from .gpu_rrr_huffman import RRRWaveletGPUHuff
             self.wm = RRRWaveletGPUHuff(q, device=device, bits=bits)
@@ -65,13 +68,13 @@ class QuantizedWeightStore:
         return np.repeat(self._scales, self.group_size)[: self.n]
 
     def _all_values(self):
-        return self.wm.decode() if self.coder == "block" else self.wm.access(np.arange(self.n, dtype=np.int64))
+        return self.wm.decode() if self.coder in ("block", "rans") else self.wm.access(np.arange(self.n, dtype=np.int64))
 
     def _values_at(self, idx):
-        return self.wm.fetch(idx) if self.coder == "block" else self.wm.access(idx)
+        return self.wm.fetch(idx) if self.coder in ("block", "rans") else self.wm.access(idx)
 
     def size_bytes(self) -> int:
-        base = self.wm.size_bits() // 8 if self.coder == "block" else self.wm.index_bytes()
+        base = self.wm.size_bits() // 8 if self.coder in ("block", "rans") else self.wm.index_bytes()
         return base + (self._scales.shape[0] * 2 if self._scales is not None else 8)   # fp16 scale side-channel
 
     def bits_per_weight(self) -> float:
@@ -99,12 +102,12 @@ class QuantizedWeightStore:
             params["scale"] = self.scale
         else:
             warrays = {**warrays, "_scales": self._scales.astype(np.float32)}
-        code = "block" if self.coder == "block" else ("huffman" if huff else "rrr")
+        code = self.coder if self.coder in ("block", "rans") else ("huffman" if huff else "rrr")
         config = {"quantize": f"int{self.bits}", "transform": "none",
                   "code": code, "group_size": self.group_size}
         # monotone index metadata (superblocks, word bases, block offsets) delta+zlib-compresses without
         # losing random access; the high-entropy bitstream stays raw.
-        monotone = {"sbrank", "sboff", "sbclass", "cbase", "obase", "offbase", "block_off"} & set(warrays)
+        monotone = {"sbrank", "sboff", "sbclass", "cbase", "obase", "offbase", "block_off", "byte_off"} & set(warrays)
         return fmt.pack("weight_store", config, params, warrays, compress=monotone)
 
     @classmethod
@@ -123,6 +126,9 @@ class QuantizedWeightStore:
         if self.coder == "block":
             from .gpu_block_huffman import BlockHuffmanArray
             self.wm = BlockHuffmanArray.from_host(p["wm"], warrays, device)
+        elif self.coder == "rans":
+            from .gpu_rans import BlockRANSArray
+            self.wm = BlockRANSArray.from_host(p["wm"], warrays, device)
         else:
             from .gpu_rrr_huffman import RRRWaveletGPUHuff
             wm_cls = RRRWaveletGPUHuff if p["huffman"] else RRRWaveletGPU

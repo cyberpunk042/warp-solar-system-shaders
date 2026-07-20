@@ -60,9 +60,16 @@ borrow from (highest-leverage first).
    972 M/s vs the wavelet's 65 M/s), and at block ≥ 64 it's *also smaller*; random access survives (decode
    within a block). Wired into `QuantizedWeightStore(coder="block")` (6× faster reconstruct on a real tensor,
    serialises + round-trips). The wavelet stays for *search* (FM-index) — two decode modes, choose per need.
-2. **rANS/ANS coder, from NeuZip / nvCOMP-gANS.** ANS is near-optimal (no Huffman up-to-1-bit overhead) and
-   GPU-fast; NeuZip uses it on exponents. It's sequential, so it fits the *archive / whole-decode* end while RRR
-   stays the *random-access* end — a hybrid per-section coder.
+2. **rANS/ANS coder, from NeuZip / nvCOMP-gANS — DONE (`gpu_rans.py`).** Built `BlockRANSArray`: 32-bit rANS
+   (ryg-style, 12-bit freq table, 8-bit renorm) cut into fixed-count blocks so decode stays one-thread-per-block
+   parallel and per-block random access survives — same shape as the Huffman coder. **Honest measured crossover:
+   rANS only wins on LOW-entropy + LARGE blocks.** On a very-skewed int4 stream (H0=0.45) at block=1024 it's
+   **0.546 vs Huffman's 1.21 b/val (2.2×)** — it breaks Huffman's 1-bit-per-symbol floor. But it carries a
+   fixed 32-bit state *per block*, so at small blocks or multi-bit streams (where Huffman is already near-H0) it
+   *loses*. So rANS is the coder for the skewed / bulk-decode regime, Huffman for small-block random access —
+   both wired as `QuantizedWeightStore(coder="rans"|"block")`. (Corrects a v1 assumption that rANS is a blanket
+   upgrade: it isn't — it's entropy-level, but its per-block overhead and Huffman's near-optimality on multi-bit
+   data mean it only pays on low-entropy streams.)
 3. **KIVI-style KV quantization, then entropy-code it — DONE (`kv_store.py`, `per_axis=True`).** Adopted
    KIVI/KVQuant's **per-channel Keys, per-token Values** (Keys have outlier channels). Measured on gpt2 KV: it
    **lowers attention error ~3.2× at int4 and ~1.8× at int2** (the gap is larger on models with pronounced
