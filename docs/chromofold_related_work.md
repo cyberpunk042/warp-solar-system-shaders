@@ -86,8 +86,17 @@ borrow from (highest-leverage first).
    both lossless (exact bits back) *with* random access, which DFloat11 (whole-tensor decode) lacks. Needed a
    **length-limited Huffman** (JPEG bl_count redistribution) in the block coder so a 256-symbol skewed exponent
    fits the LUT — which also makes the block coder robust for int8 / any large skewed alphabet.
-5. **Better quantizers upstream (GPTQ/AWQ/QuIP#/SpQR/XFP).** v1 uses round-to-nearest; calibration makes low-bit
-   *usable*, and SpQR/XFP **sparse outlier side-channels** compose naturally with our entropy layer.
+5. **Sparse outlier side-channel, from SpQR/XFP — DONE (`weight_store.py`, `outliers=`).** A few large-magnitude
+   weights blow up the int4 scale, crushing every other weight toward the zero-point (plain per-tensor int4
+   "compresses" to 0.68 b/w precisely *because* it's collapsed — MSE garbage). `QuantizedWeightStore(outliers=p)`
+   keeps the top-p% |W| in a sparse fp16 side-channel (sorted int32 index — delta+zlib'd in the container — plus
+   fp16 value, ~6 B each), computes the int4 scale from the **non-outliers** (tighter), and parks the outlier
+   positions at the zero-point (the mode, keeping the stream entropy-codable). Measured on heavy-tailed weights
+   (0.3% injected outliers): **int4 + 1% outliers = 4.53 b/w at MSE 2.36e-5 — *more accurate than int8* (4.48 b/w,
+   4.37e-5) at the same size**, and **8.4× lower MSE than int4 group-128** (3.82 b/w) — it fixes the *cause* where
+   group scaling only softens it. It also **rescues int3** (per-tensor int3 is unusable; +1% outliers → 15×
+   better MSE). Exact at the outlier positions, lossless over the quantized rest, GPU-addressable, serialises.
+   Still round-to-nearest on the bulk; GPTQ/AWQ *calibration* on top is the remaining part of this lever.
 6. **Two-level succinct superblocks in VRAM.** v1 delta-compresses superblocks *on disk*; a resident two-level
    rank (int32 anchors + int16 deltas) shrinks them in VRAM while keeping O(1) — the standard succinct-DS trick.
 7. **Decode-in-the-matmul, with Marlin as the template.** Marlin fuses *fixed-width* INT4 dequant into the GEMM

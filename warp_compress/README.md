@@ -33,6 +33,7 @@ CLI: `python -m warp_compress.cli inspect file.cfold | demo | modules`.
 | random access at scale vs decompress-all | **68–111×** faster (sparse reads, 4 M-token stream) |
 | speculative decoding (index as draft) | **2.18×** fewer gpt2 forward passes, output = greedy |
 | weights (int4 + class-Huffman) | ~1.33 b/w, ~12× vs fp16, lossless over quant |
+| weights + SpQR outlier side-channel | int4+1% outliers *beats int8's accuracy at int8's size* |
 | MoE expert bank | ~15× (hold all, decode only routed) |
 | KV cache (long context) | ~5×, attention lossless, attended-only decode |
 | LoRA / adapter library | 30×, byte-identical logits |

@@ -75,3 +75,39 @@ def test_group_size_accounts_scale_side_channel():
     st = QuantizedWeightStore(W, bits=4, huffman=True, device=_DEV, group_size=128)
     assert st._scales is not None and st._scales.shape[0] == (W.size + 127) // 128
     assert st.size_bytes() > st.wm.index_bytes()          # includes the per-group scales
+
+
+def _heavy_tailed(shape=(512, 256), frac=0.003, seed=0):
+    # Gaussian bulk + a few large outliers (the SpQR regime: channels that blow the int4 scale)
+    rng = np.random.default_rng(seed)
+    W = (rng.standard_normal(shape) / np.sqrt(shape[1])).astype(np.float32)
+    oi = rng.choice(W.size, int(frac * W.size), replace=False)
+    W.ravel()[oi] = (rng.standard_normal(oi.size) * 12 / np.sqrt(shape[1])).astype(np.float32)
+    return W
+
+
+def test_outliers_beat_plain_and_group_int4_on_accuracy():
+    W = _heavy_tailed(seed=12)
+    plain = QuantizedWeightStore(W, bits=4, huffman=True, device=_DEV)
+    grp = QuantizedWeightStore(W, bits=4, huffman=True, device=_DEV, group_size=128)
+    out = QuantizedWeightStore(W, bits=4, huffman=True, device=_DEV, outliers=0.01)
+    m = lambda st: np.mean((st.reconstruct() - W) ** 2)
+    assert m(out) < m(grp) < m(plain)                     # the outlier side-channel fixes the cause -> best MSE
+    assert out._out_idx is not None and out._out_idx.shape[0] == int(0.01 * W.size)
+
+
+def test_outliers_are_exact_and_lossless_over_the_rest():
+    W = _heavy_tailed(seed=13)
+    st = QuantizedWeightStore(W, bits=4, huffman=True, device=_DEV, outliers=0.01)
+    R = st.reconstruct()
+    assert np.array_equal(R.ravel()[st._out_idx], W.ravel()[st._out_idx].astype(np.float16).astype(np.float32))
+    idx = np.random.default_rng(14).integers(0, st.n, 800)   # fetch (incl. outlier positions) == reconstruct
+    assert np.allclose(st.fetch(idx), R.ravel()[idx])
+
+
+def test_outliers_serialise_and_round_trip():
+    W = _heavy_tailed(seed=15)
+    st = QuantizedWeightStore(W, bits=4, huffman=True, device=_DEV, outliers=0.01)
+    st2 = QuantizedWeightStore.load(st.save(), device=_DEV)
+    assert np.array_equal(st.reconstruct(), st2.reconstruct())
+    assert st2._out_idx is not None and np.array_equal(st._out_idx, st2._out_idx)

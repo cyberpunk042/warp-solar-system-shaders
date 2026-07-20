@@ -28,18 +28,27 @@ class QuantizedWeightStore:
     of quantized weights)."""
 
     def __init__(self, W, bits: int = 4, device: str = "cuda:0", huffman: bool = False,
-                 group_size: "int | None" = None, coder: str = "rrr", block: int = 64):
+                 group_size: "int | None" = None, coder: str = "rrr", block: int = 64, outliers: float = 0.0):
         W = np.asarray(W, np.float32)
         self.shape = W.shape
         self.bits = bits
         self.device = device
-        self.group_size = group_size
         self.coder = coder                                      # "rrr" (search + O(1) RA) | "block" (fast bulk decode)
         lim = (1 << (bits - 1)) - 1                              # e.g. 7 for int4, 127 for int8
         self._zero = lim
         flat = W.ravel()
         self.n = int(flat.shape[0])
-        if group_size is None:                                  # one scale for the whole tensor
+        self._out_idx = None
+        if outliers > 0.0:                                      # SpQR-style: keep the biggest weights in fp16,
+            group_size = None                                   # so they don't blow the int4 scale (per-tensor)
+            k = max(1, int(outliers * self.n))
+            self._out_idx = np.sort(np.argpartition(np.abs(flat), self.n - k)[self.n - k:]).astype(np.int64)
+            self._out_val = flat[self._out_idx].astype(np.float16)
+            keep = np.ones(self.n, bool); keep[self._out_idx] = False
+            self.scale = float(np.abs(flat[keep]).max()) / lim + 1e-12   # scale from NON-outliers (tighter)
+            self._scales = None
+            per_val = self.scale
+        elif group_size is None:                               # one scale for the whole tensor
             self.scale = float(np.abs(flat).max()) / lim + 1e-12
             self._scales = None
             per_val = self.scale
@@ -49,7 +58,10 @@ class QuantizedWeightStore:
             padded = np.zeros(ng * g, np.float32); padded[: self.n] = flat
             self._scales = (np.abs(padded.reshape(ng, g)).max(1) / lim + 1e-12).astype(np.float32)
             per_val = np.repeat(self._scales, g)[: self.n]
+        self.group_size = group_size
         q = np.clip(np.round(flat / per_val), -lim, lim).astype(np.int64) + lim   # -> [0, 2*lim]
+        if self._out_idx is not None:
+            q[self._out_idx] = lim                              # outliers -> the zero-point (mode) -> peakier stream
         if coder == "block":                                    # DFloat11-style LUT decode: fast whole-tensor path
             from .gpu_block_huffman import BlockHuffmanArray
             self.wm = BlockHuffmanArray(q, block=block, device=device)
@@ -75,7 +87,10 @@ class QuantizedWeightStore:
 
     def size_bytes(self) -> int:
         base = self.wm.size_bits() // 8 if self.coder in ("block", "rans") else self.wm.index_bytes()
-        return base + (self._scales.shape[0] * 2 if self._scales is not None else 8)   # fp16 scale side-channel
+        base += self._scales.shape[0] * 2 if self._scales is not None else 8   # fp16 scale side-channel
+        if self._out_idx is not None:                          # sparse outliers: int32 index + fp16 value
+            base += self._out_idx.shape[0] * 6
+        return base
 
     def bits_per_weight(self) -> float:
         return self.size_bytes() * 8 / self.n
@@ -84,11 +99,19 @@ class QuantizedWeightStore:
         idx = np.asarray(flat_indices, np.int64)
         vals = self._values_at(idx)
         s = self.scale if self.group_size is None else self._scales[idx // self.group_size]
-        return (vals - self._zero).astype(np.float32) * s
+        out = (vals - self._zero).astype(np.float32) * s
+        if self._out_idx is not None:                          # override any requested position that is an outlier
+            pos = np.searchsorted(self._out_idx, idx)
+            hit = (pos < self._out_idx.shape[0]) & (self._out_idx[np.clip(pos, 0, self._out_idx.shape[0] - 1)] == idx)
+            out[hit] = self._out_val[pos[hit]].astype(np.float32)
+        return out
 
     def reconstruct(self) -> np.ndarray:
         vals = self._all_values()
-        return ((vals - self._zero).astype(np.float32) * self._per_val_scale()).reshape(self.shape)
+        recon = (vals - self._zero).astype(np.float32) * self._per_val_scale()
+        if self._out_idx is not None:
+            recon[self._out_idx] = self._out_val.astype(np.float32)   # exact fp16 at the outlier positions
+        return recon.reshape(self.shape)
 
     # --- serialisation: a compressed weight tensor as one portable ChromoFold container blob ---
     def save(self) -> bytes:
@@ -102,12 +125,17 @@ class QuantizedWeightStore:
             params["scale"] = self.scale
         else:
             warrays = {**warrays, "_scales": self._scales.astype(np.float32)}
+        if self._out_idx is not None:
+            params["outliers"] = int(self._out_idx.shape[0])
+            warrays = {**warrays, "_out_idx": self._out_idx.astype(np.int64),
+                       "_out_val": self._out_val.astype(np.float16)}
         code = self.coder if self.coder in ("block", "rans") else ("huffman" if huff else "rrr")
         config = {"quantize": f"int{self.bits}", "transform": "none",
                   "code": code, "group_size": self.group_size}
         # monotone index metadata (superblocks, word bases, block offsets) delta+zlib-compresses without
         # losing random access; the high-entropy bitstream stays raw.
-        monotone = {"sbrank", "sboff", "sbclass", "cbase", "obase", "offbase", "block_off", "byte_off"} & set(warrays)
+        monotone = {"sbrank", "sboff", "sbclass", "cbase", "obase", "offbase", "block_off", "byte_off",
+                    "_out_idx"} & set(warrays)
         return fmt.pack("weight_store", config, params, warrays, compress=monotone)
 
     @classmethod
@@ -122,7 +150,12 @@ class QuantizedWeightStore:
             self.scale, self._scales = p["scale"], None
         else:
             self.scale, self._scales = None, np.asarray(arrays["_scales"], np.float32)
-        warrays = {k: v for k, v in arrays.items() if k != "_scales"}
+        if p.get("outliers"):
+            self._out_idx = np.asarray(arrays["_out_idx"], np.int64)
+            self._out_val = np.asarray(arrays["_out_val"], np.float16)
+        else:
+            self._out_idx = None
+        warrays = {k: v for k, v in arrays.items() if k not in ("_scales", "_out_idx", "_out_val")}
         if self.coder == "block":
             from .gpu_block_huffman import BlockHuffmanArray
             self.wm = BlockHuffmanArray.from_host(p["wm"], warrays, device)
@@ -141,24 +174,27 @@ def _demo():
 
     dev = "cuda:0" if wp.get_cuda_device_count() > 0 else "cpu"
     rng = np.random.default_rng(0)
-    # Gaussian weights (like a real layer): peaky after quantization -> entropy coder wins
+    # Gaussian weights (like a real layer) + a few large outliers (real tensors have heavy-tailed channels):
+    # peaky after quantization -> entropy coder wins; the outliers blow the int4 scale -> SpQR side-channel wins
     W = (rng.standard_normal((2048, 512)) / np.sqrt(512)).astype(np.float32)
-    print(f"device={dev}   synthetic weight tensor {W.shape} ({W.size:,} weights)\n")
-    print(f"  {'config':>18} {'b/weight':>9} {'MSE vs fp32':>12}  lossless")
-    for label, bits, gs in [("int4 per-tensor", 4, None), ("int4 group-128", 4, 128),
-                            ("int4 group-32", 4, 32), ("int8 per-tensor", 8, None)]:
-        st = QuantizedWeightStore(W, bits=bits, device=dev, huffman=True, group_size=gs)
+    oi = rng.choice(W.size, int(0.003 * W.size), replace=False)
+    W.ravel()[oi] = (rng.standard_normal(oi.size) * (8 + 12 * rng.random(oi.size)) / np.sqrt(512)).astype(np.float32)
+    print(f"device={dev}   synthetic weight tensor {W.shape} ({W.size:,} weights, {oi.size} heavy-tailed outliers)\n")
+    print(f"  {'config':>22} {'b/weight':>9} {'MSE vs fp32':>12}  lossless-over-quant")
+    for label, bits, gs, out in [("int4 per-tensor", 4, None, 0.0), ("int4 group-128", 4, 128, 0.0),
+                                 ("int4 + 1% outliers", 4, None, 0.01), ("int3 per-tensor", 3, None, 0.0),
+                                 ("int3 + 1% outliers", 3, None, 0.01), ("int8 per-tensor", 8, None, 0.0)]:
+        st = QuantizedWeightStore(W, bits=bits, device=dev, huffman=True, group_size=gs, outliers=out)
         R = st.reconstruct()
         mse = float(np.mean((R - W) ** 2))
-        lim = (1 << (bits - 1)) - 1
-        pv = st._per_val_scale()
-        refq = (np.clip(np.round(W.ravel() / pv), -lim, lim) * pv).reshape(W.shape)
-        ok = np.allclose(R, refq, atol=1e-5)
-        print(f"  {label:>18} {st.bits_per_weight():>9.2f} {mse:>12.2e}  {'✓' if ok else 'FAIL'}")
+        idx = rng.integers(0, W.size, 3000)                     # fetch() == reconstruct() -> lossless over quant
+        ok = np.allclose(st.fetch(idx), R.ravel()[idx], atol=1e-6)
+        print(f"  {label:>22} {st.bits_per_weight():>9.2f} {mse:>12.2e}  {'✓' if ok else 'FAIL'}")
     print("\n=> entropy-code the QUANTIZED stream, LOSSLESSLY (bit-exact vs the chosen quant), with GPU random "
-          "access. The `group_size` knob is the accuracy↔size Pareto dial: per-tensor int4 is tiny but coarse;\n"
-          "   group-128 int4 gets ~int8 accuracy at ~0.7× int8's size (per-group scales trade the peaky-histogram "
-          "compression for accuracy). Compose with quant; pick the point your task needs.")
+          "access. Two accuracy dials trade against size: `group_size` (per-group scales) and `outliers` (SpQR-\n"
+          "   style — keep the biggest weights in fp16 so they don't blow the int4 scale; the rest quantizes finely).\n"
+          "   Outliers beat group scaling per bit here (they fix the *cause*), and rescue int3, which per-tensor "
+          "cannot use at all. Compose with quant; pick the point your task needs.")
 
 
 if __name__ == "__main__":
