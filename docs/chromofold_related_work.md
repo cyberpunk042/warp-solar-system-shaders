@@ -52,11 +52,14 @@ tensor-agnostic, with a documented container format. That combination is the v1 
 ChromoFold is v1; the measured gaps point straight at the next levers, each with a **verified** prior art to
 borrow from (highest-leverage first).
 
-1. **LUT-based GPU Huffman decode, from DFloat11.** DFloat11 decodes Huffman with **hierarchical 256-entry LUTs
-   in SRAM** + a two-phase kernel (per-thread count → prefix-sum → parallel write), and reports **20.97× faster
-   decode than nvCOMP**. Our `gpu_rrr_huffman` decodes bit-by-bit inside the rank scan (great for *random
-   access*, slow for *whole-tensor* decode). Adopt DFloat11's LUT+two-phase as the **fast whole-decode path**,
-   keep the rank-scan for random access — two decode modes over the same bytes.
+1. **LUT-based GPU Huffman decode, from DFloat11 — DONE (`gpu_block_huffman.py`).** DFloat11 decodes Huffman
+   with SRAM lookup tables + a parallel kernel (20.97× faster than nvCOMP). We built `BlockHuffmanArray`: values
+   in fixed-count blocks, canonical Huffman, a `2^maxlen` decode LUT, **one GPU thread per block** so the whole
+   array reconstructs in parallel — no prefix-sum needed (fixed values/block ⇒ known output positions). Measured
+   on 4 M peaky int4 values: **12–21× faster whole-tensor decode than the wavelet** (e.g. block=64: 3.62 b/val,
+   972 M/s vs the wavelet's 65 M/s), and at block ≥ 64 it's *also smaller*; random access survives (decode
+   within a block). Wired into `QuantizedWeightStore(coder="block")` (6× faster reconstruct on a real tensor,
+   serialises + round-trips). The wavelet stays for *search* (FM-index) — two decode modes, choose per need.
 2. **rANS/ANS coder, from NeuZip / nvCOMP-gANS.** ANS is near-optimal (no Huffman up-to-1-bit overhead) and
    GPU-fast; NeuZip uses it on exponents. It's sequential, so it fits the *archive / whole-decode* end while RRR
    stays the *random-access* end — a hybrid per-section coder.

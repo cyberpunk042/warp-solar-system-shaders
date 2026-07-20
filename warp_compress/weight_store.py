@@ -28,12 +28,13 @@ class QuantizedWeightStore:
     of quantized weights)."""
 
     def __init__(self, W, bits: int = 4, device: str = "cuda:0", huffman: bool = False,
-                 group_size: "int | None" = None):
+                 group_size: "int | None" = None, coder: str = "rrr", block: int = 64):
         W = np.asarray(W, np.float32)
         self.shape = W.shape
         self.bits = bits
         self.device = device
         self.group_size = group_size
+        self.coder = coder                                      # "rrr" (search + O(1) RA) | "block" (fast bulk decode)
         lim = (1 << (bits - 1)) - 1                              # e.g. 7 for int4, 127 for int8
         self._zero = lim
         flat = W.ravel()
@@ -49,7 +50,10 @@ class QuantizedWeightStore:
             self._scales = (np.abs(padded.reshape(ng, g)).max(1) / lim + 1e-12).astype(np.float32)
             per_val = np.repeat(self._scales, g)[: self.n]
         q = np.clip(np.round(flat / per_val), -lim, lim).astype(np.int64) + lim   # -> [0, 2*lim]
-        if huffman:
+        if coder == "block":                                    # DFloat11-style LUT decode: fast whole-tensor path
+            from .gpu_block_huffman import BlockHuffmanArray
+            self.wm = BlockHuffmanArray(q, block=block, device=device)
+        elif huffman:
             from .gpu_rrr_huffman import RRRWaveletGPUHuff
             self.wm = RRRWaveletGPUHuff(q, device=device, bits=bits)
         else:
@@ -60,8 +64,14 @@ class QuantizedWeightStore:
             return self.scale
         return np.repeat(self._scales, self.group_size)[: self.n]
 
+    def _all_values(self):
+        return self.wm.decode() if self.coder == "block" else self.wm.access(np.arange(self.n, dtype=np.int64))
+
+    def _values_at(self, idx):
+        return self.wm.fetch(idx) if self.coder == "block" else self.wm.access(idx)
+
     def size_bytes(self) -> int:
-        base = self.wm.index_bytes()
+        base = self.wm.size_bits() // 8 if self.coder == "block" else self.wm.index_bytes()
         return base + (self._scales.shape[0] * 2 if self._scales is not None else 8)   # fp16 scale side-channel
 
     def bits_per_weight(self) -> float:
@@ -69,12 +79,12 @@ class QuantizedWeightStore:
 
     def fetch(self, flat_indices) -> np.ndarray:
         idx = np.asarray(flat_indices, np.int64)
-        vals = self.wm.access(idx)
+        vals = self._values_at(idx)
         s = self.scale if self.group_size is None else self._scales[idx // self.group_size]
         return (vals - self._zero).astype(np.float32) * s
 
     def reconstruct(self) -> np.ndarray:
-        vals = self.wm.access(np.arange(self.n, dtype=np.int64))
+        vals = self._all_values()
         return ((vals - self._zero).astype(np.float32) * self._per_val_scale()).reshape(self.shape)
 
     # --- serialisation: a compressed weight tensor as one portable ChromoFold container blob ---
@@ -84,34 +94,39 @@ class QuantizedWeightStore:
         huff = isinstance(self.wm, RRRWaveletGPUHuff)
         wparams, warrays = self.wm.to_host()
         params = {"bits": self.bits, "shape": list(self.shape), "zero": self._zero, "n": self.n,
-                  "group_size": self.group_size, "huffman": huff, "wm": wparams}
+                  "group_size": self.group_size, "huffman": huff, "coder": self.coder, "wm": wparams}
         if self.group_size is None:
             params["scale"] = self.scale
         else:
             warrays = {**warrays, "_scales": self._scales.astype(np.float32)}
+        code = "block" if self.coder == "block" else ("huffman" if huff else "rrr")
         config = {"quantize": f"int{self.bits}", "transform": "none",
-                  "code": "huffman" if huff else "rrr", "group_size": self.group_size}
-        # the monotone index metadata (superblocks, word bases) delta+zlib-compresses without losing random
-        # access; the high-entropy RRR/Huffman bitstreams stay raw.
-        monotone = {"sbrank", "sboff", "sbclass", "cbase", "obase", "offbase"} & set(warrays)
+                  "code": code, "group_size": self.group_size}
+        # monotone index metadata (superblocks, word bases, block offsets) delta+zlib-compresses without
+        # losing random access; the high-entropy bitstream stays raw.
+        monotone = {"sbrank", "sboff", "sbclass", "cbase", "obase", "offbase", "block_off"} & set(warrays)
         return fmt.pack("weight_store", config, params, warrays, compress=monotone)
 
     @classmethod
     def load(cls, data: bytes, device: str = "cuda:0"):
         from . import format as fmt
-        from .gpu_rrr_huffman import RRRWaveletGPUHuff
         header, arrays = fmt.unpack(data)
         p = header["params"]
         self = cls.__new__(cls)
         self.shape, self.bits, self._zero, self.n = tuple(p["shape"]), p["bits"], p["zero"], p["n"]
-        self.group_size, self.device = p["group_size"], device
+        self.group_size, self.device, self.coder = p["group_size"], device, p.get("coder", "rrr")
         if p["group_size"] is None:
             self.scale, self._scales = p["scale"], None
         else:
             self.scale, self._scales = None, np.asarray(arrays["_scales"], np.float32)
-        wm_cls = RRRWaveletGPUHuff if p["huffman"] else RRRWaveletGPU
         warrays = {k: v for k, v in arrays.items() if k != "_scales"}
-        self.wm = wm_cls.from_host(p["wm"], warrays, device)
+        if self.coder == "block":
+            from .gpu_block_huffman import BlockHuffmanArray
+            self.wm = BlockHuffmanArray.from_host(p["wm"], warrays, device)
+        else:
+            from .gpu_rrr_huffman import RRRWaveletGPUHuff
+            wm_cls = RRRWaveletGPUHuff if p["huffman"] else RRRWaveletGPU
+            self.wm = wm_cls.from_host(p["wm"], warrays, device)
         return self
 
 

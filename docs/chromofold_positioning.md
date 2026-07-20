@@ -32,7 +32,9 @@ All numbers from the reproducible records in `docs/` (hardware header in `bench_
    any single value costs a full-stream inflate.
 2. **Everything runs GPU-resident** (`bench_gpu_results.md`). Decode ~**400 M tok/s** (kernel); FM-index search
    `count`/`locate`/`predict` all in VRAM; delta/dedup/weight/KV/MoE reconstruction all on-GPU. The whole point
-   is *never leaving the GPU* — the CPU round-trip is exactly what a streaming codec forces.
+   is *never leaving the GPU* — the CPU round-trip is exactly what a streaming codec forces. For bulk decode a
+   DFloat11-style **LUT block coder** (`gpu_block_huffman.py`, `coder="block"`) reconstructs **12–21× faster
+   than the wavelet** while staying randomly-addressable — two decode modes over the same data (bulk vs search).
 3. **Search + generation in the compressed domain** (`gpu_fm_index`, `spec_decode.py`). The same bytes are a
    substring index and an n-gram draft model. Demonstrated on a real model: the FM-index used as the **draft in
    speculative decoding** cuts gpt2 forward passes **2.18×** on RAG-flavour text (48→22 passes), output
