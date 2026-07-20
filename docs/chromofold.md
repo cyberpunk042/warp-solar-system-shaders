@@ -184,6 +184,14 @@ The "fit it all on one GPU" claim is the **sum of these**, not magic on dense ma
 honest, buildable version — and it's still a big deal, because the idle strata (cold experts, KV history,
 adapter library, embedding tables) are often the majority of the footprint.
 
+**Capstone — the whole model, compressed, still generating** (`model_store.py`): ChromoFold-compress *every*
+large 2-D tensor of gpt2 and generate from the reconstruction. int8 → **92.7 MB, 2.7× vs fp16, coherent**
+output; int4 → 23.7 MB (10.5×) but visibly degraded — and that degradation is **int4 quantization's** cost, not
+ChromoFold's (the entropy layer is byte-lossless over the quantized values). Honest reading: a dense small
+model at a *safe* bit-width is a modest whole-model win (int8 2.7×); the big multipliers come from the idle
+strata (MoE ~15×, LoRA ~30×) and from making low-bit usable via per-channel / mixed-precision quantization —
+the accuracy lever, where usable int4 (~10×) whole-model compression lives.
+
 ---
 
 ## 5. Training, LoRA, and better context
