@@ -135,6 +135,7 @@ The point of naming all of these: *nothing is fixed*. If BWT is too hungry for a
 | **RAG / retrieval context** | random-access chunks; search-in-place; coarse→fine | `bwt`+hier | reuse `lm_memory` |
 | **tokenized datasets** | random minibatch sampling; **near-dup dedup** for training | `bwt`+`merge` | **measured** (`dedup.py`) |
 | **speculative decoding** | draft buffers; the index itself is a free draft model (`predict_next`) | `bwt` | reuse `generate()` |
+| **MoE experts** | many experts, few active; hold all compressed, decode routed | `weights`+`huffman` | **measured** (`moe_store.py`) |
 | **KV-cache metadata / sparse KV** | masks + indices compress hard; partial unfold of attended entries | `rrr`+`delta` | roadmap |
 
 The common thread: **you rarely need the whole thing at once** — you need a slice, a resume point, a routed
@@ -161,7 +162,11 @@ compresses, because dense weights *after* quantization are near-incompressible l
   quant × a lossless entropy layer at ~H0, GPU-addressable.
 - **MoE experts** — many experts, few active per token. Keep cold experts **ChromoFolded in VRAM**, unfold the
   routed expert on demand. Random access is the entire win; this is where "fit the whole model" gets real,
-  because most of an MoE is idle at any step.
+  because most of an MoE is idle at any step. **Measured** (`moe_store.py`): a 32-expert bank (gate/up/down)
+  quantized int4 + class-stream Huffman is **1.07 b/weight — 14.9× smaller than the dense fp16 bank** (113 MB →
+  7.6 MB); the top-k MoE forward decodes **only the routed experts** and its output is byte-identical to the
+  plain-quantized MoE. (These experts share a seed so ~1.1 b/w is optimistic; independently-trained experts run
+  ~1.3–1.5 b/w → ~10–12×.) That is how a much bigger MoE fits on one GPU — capacity + sparse decode.
 - **Sparse / structured-sparse layers** — masks compress enormously (RRR on the bitvector → ~its entropy with
   O(1) rank), values compress on top, and you get O(1) access to the nonzeros.
 - **Embedding & LM-head tables** — large, Zipfian, addressed by token id. Positional ChromoFold gives O(1)
