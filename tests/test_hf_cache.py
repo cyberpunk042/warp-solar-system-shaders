@@ -97,3 +97,30 @@ def test_crop_within_residual_ok_and_raises_into_prefix():
     assert L.get_seq_length() == 58
     with pytest.raises(NotImplementedError):
         L.crop(L._settled - 1)                                     # cropping into the compressed prefix is refused
+
+
+def test_lossless_over_quantization_exact():
+    # ChromoFold's entropy + memoization layer adds ZERO error beyond the KIVI quantization: the reassembled
+    # settled prefix equals, bit-for-bit, a standalone KIVI-quantized KV of the same tokens.
+    from warp_compress.kv_store import KVCacheStore
+    cache = make_cache(residual=8, bits=8, device=_DEV)
+    torch.manual_seed(11)
+    Kin = torch.randn(1, 4, 100, 64) * 0.3
+    Vin = torch.randn(1, 4, 100, 64) * 0.3
+    cache.update(Kin, Vin, 0)
+    L = cache.layers[0]
+    ref = KVCacheStore([(Kin[:, :, :L._settled, :].numpy(), Vin[:, :, :L._settled, :].numpy())],
+                       bits=8, device=_DEV, per_axis=True)
+    Kref, Vref = ref.reconstruct_layer(0)
+    assert np.max(np.abs(L._prefix_k.numpy() - Kref)) == 0.0     # exact — no entropy-layer error
+    assert np.max(np.abs(L._prefix_v.numpy() - Vref)) == 0.0
+
+
+def test_shape_agnostic_mha_and_gqa():
+    # works for many-head MHA (gpt2-like: 12 heads) and few-head GQA (2 kv-heads)
+    for heads in (12, 2):
+        cache = make_cache(residual=8, bits=4, device=_DEV)
+        torch.manual_seed(heads)
+        for _ in range(40):
+            K, V = cache.update(torch.randn(1, heads, 1, 64) * 0.3, torch.randn(1, heads, 1, 64) * 0.3, 0)
+        assert K.shape[1] == heads and K.shape[-2] == 40 and torch.isfinite(K).all()
