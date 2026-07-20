@@ -77,9 +77,13 @@ whole-stream and token-blind. ChromoFold is designed for the **other four terms*
 - **Searchable while compressed.** The FM-index answers `count`/`locate`/`predict_next` without
   materialising the sequence — dedup and retrieval happen *in the compressed domain*.
 
-Ratio is the tie-breaker, not the game. **Measured, and honest** (`docs/bench_frontier_results.md`): on real
-gpt2 token streams, gzip/zstd *beat* the FM-index self-index on ratio (they copy long exact repeats it does
-not) — ChromoFold is **not a compression-ratio product**. But on a 4M-token stream a sparse random read (q ≤
+Ratio is the tie-breaker, not the game. **Measured, and honest** (`docs/bench_frontier_results.md`,
+`docs/bench_stack_results.md`): on real gpt2 token streams *and* on quantized weights, gzip/zstd/**xz** *beat*
+the ChromoFold blob on ratio (xz is the ratio winner everywhere) — ChromoFold is **not a compression-ratio
+product**. Its edge is random access + search, which none of them have. Stacking is a *choice, not a chain*:
+`cfold→xz` even recovers ratio (the container's superblocks/tables compress) but kills random access, so it's
+cold-archive only — and there xz-direct is smaller and simpler. cfold is the **terminal** coder: use it when
+you need GPU random-access/search, xz when you need max cold ratio. But on a 4M-token stream a sparse random read (q ≤
 16K) is **68–111× faster than a zstd whole-stream decompress**, the cost scales with q while decompress-all is
 fixed, and only ChromoFold answers `count`/`locate`/`predict_next` in the compressed domain. The niche is
 large, GPU-resident stores with *sparse random reads + search* (KV/context memory, RAG, prompt-cache span
