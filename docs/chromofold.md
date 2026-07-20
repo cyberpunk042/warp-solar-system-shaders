@@ -136,7 +136,7 @@ The point of naming all of these: *nothing is fixed*. If BWT is too hungry for a
 | **tokenized datasets** | random minibatch sampling; **near-dup dedup** for training | `bwt`+`merge` | **measured** (`dedup.py`) |
 | **speculative decoding** | draft buffers; the index itself is a free draft model (`predict_next`) | `bwt` | reuse `generate()` |
 | **MoE experts** | many experts, few active; hold all compressed, decode routed | `weights`+`huffman` | **measured** (`moe_store.py`) |
-| **KV-cache metadata / sparse KV** | masks + indices compress hard; partial unfold of attended entries | `rrr`+`delta` | roadmap |
+| **KV cache (long context)** | quantize + entropy-code; unfold only attended positions | `weights`+`huffman` | **measured** (`kv_store.py`) |
 
 The common thread: **you rarely need the whole thing at once** — you need a slice, a resume point, a routed
 expert, an attended entry. That is precisely what gzip is worst at and ChromoFold is built for.
@@ -171,9 +171,12 @@ compresses, because dense weights *after* quantization are near-incompressible l
   O(1) rank), values compress on top, and you get O(1) access to the nonzeros.
 - **Embedding & LM-head tables** — large, Zipfian, addressed by token id. Positional ChromoFold gives O(1)
   fetch of a row without inflating the table.
-- **KV cache** — quantize + delta across time + compress attention-cold entries; unfold only attended
-  positions. Grows with context, so this is the strata that most often decides whether a long-context request
-  fits.
+- **KV cache** — quantize + entropy-code + unfold only attended positions. Grows with context, so this is the
+  strata that most often decides whether a long-context request fits. **Measured** (`kv_store.py`): a gpt2 KV
+  cache quantized int4 + class-stream Huffman is **~5× smaller than the dense fp16 KV** (3.28 b/val, per-tensor
+  scales; V compresses far harder than K — 1.20 vs 1.96 b/val — and per-token scales would push it toward
+  ~10×), attention output **byte-identical to the quantized-KV attention**, and windowed/sparse attention
+  decodes only the attended positions. ⇒ a longer context fits per VRAM budget.
 - **LoRA / adapters / deltas** — low-rank *and* sparse: the reference-delta tree is native. Store a *library*
   of adapters as deltas off the base and hot-swap them for ~free (§6).
 
