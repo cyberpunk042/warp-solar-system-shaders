@@ -159,7 +159,9 @@ compresses, because dense weights *after* quantization are near-incompressible l
   Composed with int4 (4× vs fp16) that's ~7× vs fp16. And the **class-stream Huffman** (`gpu_rrr_huffman.py`,
   the next lever, now built at the bitvector level with in-kernel GPU decode) pushes int4 further — **1.83 →
   1.33 b/w, another 1.37×, right at the plane H0 (~1.2) → ~12× vs fp16** — while GPU rank stays exact. Net:
-  quant × a lossless entropy layer at ~H0, GPU-addressable.
+  quant × a lossless entropy layer at ~H0, GPU-addressable. A `group_size` knob (per-group quant scales)
+  exposes the **accuracy↔size Pareto**: int4 group-128 reaches ~int8 accuracy (MSE 3.9e-4 vs 1.1e-4) at ~0.7×
+  int8's size — trading the peaky-histogram compression for accuracy; every point stays lossless vs its quant.
 - **MoE experts** — many experts, few active per token. Keep cold experts **ChromoFolded in VRAM**, unfold the
   routed expert on demand. Random access is the entire win; this is where "fit the whole model" gets real,
   because most of an MoE is idle at any step. **Measured** (`moe_store.py`): a 32-expert bank (gate/up/down)

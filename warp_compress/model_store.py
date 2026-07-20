@@ -21,15 +21,16 @@ from .weight_store import QuantizedWeightStore
 
 
 def compress_model(model, bits: int = 8, huffman: bool = True, min_numel: int = 100_000,
-                   device: str = "cuda:0"):
-    """ChromoFold-compress every large 2-D weight tensor; return (stores, compressed_bytes, kept_fp16_bytes)."""
+                   device: str = "cuda:0", group_size: "int | None" = None):
+    """ChromoFold-compress every large 2-D weight tensor; return (stores, compressed_bytes, kept_fp16_bytes).
+    ``group_size`` (e.g. 128) uses per-group quant scales — the accuracy lever that makes low-bit usable."""
     import torch  # noqa: F401
 
     stores, comp, kept, big_params = {}, 0, 0, 0
     for n, p in model.named_parameters():
         if p.ndim == 2 and p.numel() >= min_numel:
             st = QuantizedWeightStore(p.detach().numpy().astype(np.float32), bits=bits, huffman=huffman,
-                                      device=device)
+                                      device=device, group_size=group_size)
             stores[n] = st
             comp += st.size_bytes()
             big_params += p.numel()

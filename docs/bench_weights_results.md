@@ -41,6 +41,27 @@ Entropy-coding quantized gpt2 weights (RRR wavelet) — bits/weight vs fixed qua
   eats most of the entropy savings. Compressing the class stream is the identified next lever; it would lift
   int8 and push int4 toward its H0 (≈1.2 b/w on the peakiest tensors).
 
+## The accuracy↔size Pareto dial (`group_size`)
+
+Per-tensor quantization lets one outlier channel force a coarse scale — great for the entropy coder (very
+peaky), bad for accuracy. Per-group scales (`QuantizedWeightStore(..., group_size=128)`) trade that peakiness
+for accuracy. Measured on a real gpt2 MLP tensor (all rows **lossless vs their own quant**):
+
+```
+  config              b/weight   MSE vs fp32
+  int4 per-tensor        0.83     1.67e-02     (tiny, but coarse)
+  int4 group-128         3.90     3.88e-04     (~43× better accuracy than per-tensor)
+  int4 group-32          4.61     2.34e-04
+  int8 per-tensor        5.35     1.09e-04
+```
+
+So **int4 group-128 reaches near-int8 accuracy at ~0.7× int8's size** — a genuine Pareto point the knob
+exposes. Honest whole-model consequence (`model_store.py`): naive per-tensor int4 breaks gpt2 (commas); int4
+group-128 + int8 embeddings generates coherently ("the Earth is a flat…") but a *small dense* model is
+**embedding-bound at ~3× vs fp16** — the big multipliers stay in the idle strata (MoE ~15×, LoRA ~30×), and
+production-grade usable int4 needs calibration-based quant (GPTQ/AWQ), which ChromoFold would then entropy-code
+and address on top.
+
 ## The weights stratum of "fit more on one GPU"
 
 This is the concrete, measured version of docs/chromofold.md §4/§5: quantization × a lossless entropy layer,

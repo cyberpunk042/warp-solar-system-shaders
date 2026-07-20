@@ -27,35 +27,55 @@ class QuantizedWeightStore:
     ``huffman=True`` the class stream is Huffman-coded (near the plane H0 — best for the very skewed low bits
     of quantized weights)."""
 
-    def __init__(self, W, bits: int = 4, device: str = "cuda:0", huffman: bool = False):
+    def __init__(self, W, bits: int = 4, device: str = "cuda:0", huffman: bool = False,
+                 group_size: "int | None" = None):
         W = np.asarray(W, np.float32)
         self.shape = W.shape
         self.bits = bits
         self.device = device
+        self.group_size = group_size
         lim = (1 << (bits - 1)) - 1                              # e.g. 7 for int4, 127 for int8
-        self.scale = float(np.abs(W).max()) / lim + 1e-12
-        q = np.clip(np.round(W.ravel() / self.scale), -lim, lim).astype(np.int64) + lim   # -> [0, 2*lim]
         self._zero = lim
-        self.n = int(q.shape[0])
+        flat = W.ravel()
+        self.n = int(flat.shape[0])
+        if group_size is None:                                  # one scale for the whole tensor
+            self.scale = float(np.abs(flat).max()) / lim + 1e-12
+            self._scales = None
+            per_val = self.scale
+        else:                                                   # a scale per group of `group_size` values
+            g = int(group_size)
+            ng = (self.n + g - 1) // g
+            padded = np.zeros(ng * g, np.float32); padded[: self.n] = flat
+            self._scales = (np.abs(padded.reshape(ng, g)).max(1) / lim + 1e-12).astype(np.float32)
+            per_val = np.repeat(self._scales, g)[: self.n]
+        q = np.clip(np.round(flat / per_val), -lim, lim).astype(np.int64) + lim   # -> [0, 2*lim]
         if huffman:
             from .gpu_rrr_huffman import RRRWaveletGPUHuff
             self.wm = RRRWaveletGPUHuff(q, device=device, bits=bits)
         else:
             self.wm = RRRWaveletGPU(q, device=device, bits=bits)  # 2*lim+1 <= 2**bits distinct levels
 
+    def _per_val_scale(self):
+        if self.group_size is None:
+            return self.scale
+        return np.repeat(self._scales, self.group_size)[: self.n]
+
     def size_bytes(self) -> int:
-        return self.wm.index_bytes() + 8                         # entropy-coded values + the scale
+        base = self.wm.index_bytes()
+        return base + (self._scales.shape[0] * 2 if self._scales is not None else 8)   # fp16 scale side-channel
 
     def bits_per_weight(self) -> float:
         return self.size_bytes() * 8 / self.n
 
     def fetch(self, flat_indices) -> np.ndarray:
-        vals = self.wm.access(np.asarray(flat_indices, np.int64))
-        return ((vals - self._zero).astype(np.float32)) * self.scale
+        idx = np.asarray(flat_indices, np.int64)
+        vals = self.wm.access(idx)
+        s = self.scale if self.group_size is None else self._scales[idx // self.group_size]
+        return (vals - self._zero).astype(np.float32) * s
 
     def reconstruct(self) -> np.ndarray:
         vals = self.wm.access(np.arange(self.n, dtype=np.int64))
-        return ((vals - self._zero).astype(np.float32) * self.scale).reshape(self.shape)
+        return ((vals - self._zero).astype(np.float32) * self._per_val_scale()).reshape(self.shape)
 
 
 def _demo():
@@ -66,22 +86,21 @@ def _demo():
     # Gaussian weights (like a real layer): peaky after quantization -> entropy coder wins
     W = (rng.standard_normal((2048, 512)) / np.sqrt(512)).astype(np.float32)
     print(f"device={dev}   synthetic weight tensor {W.shape} ({W.size:,} weights)\n")
-    print(f"  {'quant':>6} {'fixed':>6} {'H0':>6} {'RRR b/w':>9} {'RRR+huff b/w':>13} {'lossless':>9}")
-    for bits in (4, 8):
-        st = QuantizedWeightStore(W, bits=bits, device=dev)
-        sh = QuantizedWeightStore(W, bits=bits, device=dev, huffman=True)
+    print(f"  {'config':>18} {'b/weight':>9} {'MSE vs fp32':>12}  lossless")
+    for label, bits, gs in [("int4 per-tensor", 4, None), ("int4 group-128", 4, 128),
+                            ("int4 group-32", 4, 32), ("int8 per-tensor", 8, None)]:
+        st = QuantizedWeightStore(W, bits=bits, device=dev, huffman=True, group_size=gs)
         R = st.reconstruct()
+        mse = float(np.mean((R - W) ** 2))
         lim = (1 << (bits - 1)) - 1
-        q = np.clip(np.round(W.ravel() / st.scale), -lim, lim) + lim
-        _, c = np.unique(q, return_counts=True); pp = c / c.sum(); H0 = float(-(pp * np.log2(pp)).sum())
-        exact = np.allclose(R, ((q - lim).astype(np.float32) * st.scale).reshape(W.shape)) and \
-            np.array_equal(sh.reconstruct(), R)
-        print(f"  int{bits:<3} {float(bits):>6.2f} {H0:>6.2f} {st.bits_per_weight():>9.2f} "
-              f"{sh.bits_per_weight():>13.2f} {'✓' if exact else 'FAIL':>9}")
-    print("\n=> entropy-code the QUANTIZED stream, LOSSLESSLY (bit-exact quantized values), with GPU random "
-          "access. The win scales with histogram peakiness: a plain Gaussian is mild (int4 ~1.2×), REAL model\n"
-          "   weights are far peakier (gpt2 int4 → ~1.8×; see bench_weights.py). int8's small/negative margin is "
-          "the RRR class-stream floor (~0.27 b/bit × planes) — the next lever to lift. Compose with quant.")
+        pv = st._per_val_scale()
+        refq = (np.clip(np.round(W.ravel() / pv), -lim, lim) * pv).reshape(W.shape)
+        ok = np.allclose(R, refq, atol=1e-5)
+        print(f"  {label:>18} {st.bits_per_weight():>9.2f} {mse:>12.2e}  {'✓' if ok else 'FAIL'}")
+    print("\n=> entropy-code the QUANTIZED stream, LOSSLESSLY (bit-exact vs the chosen quant), with GPU random "
+          "access. The `group_size` knob is the accuracy↔size Pareto dial: per-tensor int4 is tiny but coarse;\n"
+          "   group-128 int4 gets ~int8 accuracy at ~0.7× int8's size (per-group scales trade the peaky-histogram "
+          "compression for accuracy). Compose with quant; pick the point your task needs.")
 
 
 if __name__ == "__main__":
