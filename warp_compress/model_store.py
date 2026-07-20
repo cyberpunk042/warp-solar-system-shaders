@@ -48,6 +48,47 @@ def reconstruct_into(model, stores):
                 p.copy_(torch.from_numpy(stores[n].reconstruct()))
 
 
+def save_model(model, stores) -> bytes:
+    """Serialise a whole ChromoFold-compressed model to ONE container: each compressed tensor as a nested
+    weight_store blob, the small fp16-kept tensors alongside. A portable `.cfold` model file."""
+    from . import format as fmt
+    import numpy as _np
+    arrays, manifest = {}, []
+    for name, st in stores.items():
+        arrays["S:" + name] = _np.frombuffer(st.save(), dtype=_np.uint8)
+        manifest.append({"name": name, "kind": "store"})
+    for n, p in model.named_parameters():
+        if n not in stores:
+            a = p.detach().numpy().astype(_np.float16)
+            arrays["T:" + n] = a
+            manifest.append({"name": n, "kind": "tensor", "shape": list(a.shape)})
+    return fmt.pack("model", {"tensors": len(manifest)}, {"manifest": manifest}, arrays)
+
+
+def load_model(data: bytes, device: str = "cuda:0") -> dict:
+    """Load a `.cfold` model file into {name: QuantizedWeightStore | fp16 ndarray}."""
+    from . import format as fmt
+    header, arrays = fmt.unpack(data)
+    out = {}
+    for m in header["params"]["manifest"]:
+        if m["kind"] == "store":
+            out[m["name"]] = QuantizedWeightStore.load(arrays["S:" + m["name"]].tobytes(), device)
+        else:
+            out[m["name"]] = arrays["T:" + m["name"]].reshape(m["shape"])
+    return out
+
+
+def apply_model(model, loaded):
+    """Write a loaded {name: store|tensor} back into a live model, in place (stores are reconstructed)."""
+    import torch
+    with torch.no_grad():
+        for n, p in model.named_parameters():
+            if n in loaded:
+                obj = loaded[n]
+                p.copy_(torch.from_numpy(obj.reconstruct() if hasattr(obj, "reconstruct")
+                                         else np.asarray(obj, np.float32)))
+
+
 def _demo():
     import warnings
     warnings.filterwarnings("ignore")

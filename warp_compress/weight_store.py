@@ -77,6 +77,40 @@ class QuantizedWeightStore:
         vals = self.wm.access(np.arange(self.n, dtype=np.int64))
         return ((vals - self._zero).astype(np.float32) * self._per_val_scale()).reshape(self.shape)
 
+    # --- serialisation: a compressed weight tensor as one portable ChromoFold container blob ---
+    def save(self) -> bytes:
+        from . import format as fmt
+        from .gpu_rrr_huffman import RRRWaveletGPUHuff
+        huff = isinstance(self.wm, RRRWaveletGPUHuff)
+        wparams, warrays = self.wm.to_host()
+        params = {"bits": self.bits, "shape": list(self.shape), "zero": self._zero, "n": self.n,
+                  "group_size": self.group_size, "huffman": huff, "wm": wparams}
+        if self.group_size is None:
+            params["scale"] = self.scale
+        else:
+            warrays = {**warrays, "_scales": self._scales.astype(np.float32)}
+        config = {"quantize": f"int{self.bits}", "transform": "none",
+                  "code": "huffman" if huff else "rrr", "group_size": self.group_size}
+        return fmt.pack("weight_store", config, params, warrays)
+
+    @classmethod
+    def load(cls, data: bytes, device: str = "cuda:0"):
+        from . import format as fmt
+        from .gpu_rrr_huffman import RRRWaveletGPUHuff
+        header, arrays = fmt.unpack(data)
+        p = header["params"]
+        self = cls.__new__(cls)
+        self.shape, self.bits, self._zero, self.n = tuple(p["shape"]), p["bits"], p["zero"], p["n"]
+        self.group_size, self.device = p["group_size"], device
+        if p["group_size"] is None:
+            self.scale, self._scales = p["scale"], None
+        else:
+            self.scale, self._scales = None, np.asarray(arrays["_scales"], np.float32)
+        wm_cls = RRRWaveletGPUHuff if p["huffman"] else RRRWaveletGPU
+        warrays = {k: v for k, v in arrays.items() if k != "_scales"}
+        self.wm = wm_cls.from_host(p["wm"], warrays, device)
+        return self
+
 
 def _demo():
     import warp as wp

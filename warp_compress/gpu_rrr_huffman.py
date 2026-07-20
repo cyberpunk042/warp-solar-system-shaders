@@ -341,6 +341,28 @@ class RRRWaveletGPUHuff:
     def index_bytes(self) -> int:
         return self._bits_stored // 8 + self._sb_bytes
 
+    def to_host(self):
+        """(params, {name: host array}) for serialisation. `width`/`binom` are constants, not stored."""
+        params = {"n": self.n, "bits": self.bits, "maxlen": int(self.maxlen),
+                  "bits_stored": self._bits_stored, "sb_bytes": self._sb_bytes}
+        arrays = {k: getattr(self, k).numpy() for k in
+                  ("cwords", "offsets", "sbrank", "sboff", "sbclass", "cbase", "obase", "zeros",
+                   "fc", "cnt", "fidx", "syms", "maxlens")}
+        return params, arrays
+
+    @classmethod
+    def from_host(cls, params, arrays, device="cuda:0"):
+        self = cls.__new__(cls)
+        self.n, self.bits, self.device = params["n"], params["bits"], device
+        self.maxlen, self._bits_stored, self._sb_bytes = params["maxlen"], params["bits_stored"], params["sb_bytes"]
+        self.cwords = wp.array(arrays["cwords"], dtype=wp.uint32, device=device)
+        self.offsets = wp.array(arrays["offsets"], dtype=wp.uint32, device=device)
+        for k in ("sbrank", "sboff", "sbclass", "cbase", "obase", "zeros", "fc", "cnt", "fidx", "syms", "maxlens"):
+            setattr(self, k, wp.array(arrays[k], dtype=wp.int32, device=device))
+        self.width = wp.array(_WIDTH, dtype=wp.int32, device=device)
+        self.binom = wp.array(_BINOM.astype(np.int32), dtype=wp.int32, device=device)
+        return self
+
     def access(self, positions) -> np.ndarray:
         pos = wp.array(np.asarray(positions, np.int32), dtype=wp.int32, device=self.device)
         out = wp.zeros(pos.shape[0], dtype=wp.int32, device=self.device)

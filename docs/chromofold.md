@@ -7,6 +7,11 @@ GPU, at lower latency, by never leaving the GPU to decompress and never unfoldin
 
 This is the first roll. Everything here is a knob, not a commitment.
 
+**On-disk format & protocol:** a ChromoFold-compressed object serialises to one self-describing, versioned blob
+(`warp_compress/format.py`; a compressed weight tensor via `QuantizedWeightStore.save/load`, a whole model via
+`model_store.save_model/load_model`). The full byte-level schema, section registry, versioning rules, and the
+encode/decode algorithm are specified in **[`docs/chromofold_format.md`](chromofold_format.md)**.
+
 ---
 
 ## 0. Honest preface — metaphor vs. mechanism

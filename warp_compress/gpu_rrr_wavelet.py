@@ -150,6 +150,26 @@ class RRRWaveletGPU:
         """Resident footprint: RRR class + offset streams (all levels) + superblock samples."""
         return self._bits_stored // 8 + self._sb_bytes
 
+    def to_host(self):
+        """(params, {name: host array}) for serialisation. `width`/`binom` are constants, not stored."""
+        params = {"n": self.n, "bits": self.bits, "bits_stored": self._bits_stored, "sb_bytes": self._sb_bytes}
+        arrays = {k: getattr(self, k).numpy() for k in
+                  ("classes", "offsets", "sbrank", "sboff", "offbase", "zeros")}
+        return params, arrays
+
+    @classmethod
+    def from_host(cls, params, arrays, device="cuda:0"):
+        self = cls.__new__(cls)
+        self.n, self.bits, self.device = params["n"], params["bits"], device
+        self._bits_stored, self._sb_bytes = params["bits_stored"], params["sb_bytes"]
+        self.classes = wp.array(arrays["classes"], dtype=wp.uint32, device=device)
+        self.offsets = wp.array(arrays["offsets"], dtype=wp.uint32, device=device)
+        for k in ("sbrank", "sboff", "offbase", "zeros"):
+            setattr(self, k, wp.array(arrays[k], dtype=wp.int32, device=device))
+        self.width = wp.array(_WIDTH, dtype=wp.int32, device=device)
+        self.binom = wp.array(_BINOM.astype(np.int32), dtype=wp.int32, device=device)
+        return self
+
     def _args(self):
         return [self.classes, self.offsets, self.sbrank, self.sboff, self.offbase, self.zeros,
                 self.width, self.binom]
