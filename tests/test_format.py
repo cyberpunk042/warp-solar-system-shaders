@@ -20,6 +20,22 @@ def test_pack_unpack_round_trips_arrays_and_header():
         assert back[k].dtype == np.ascontiguousarray(v).dtype and np.array_equal(back[k], v)
 
 
+def test_compressed_sections_round_trip_and_shrink_monotone():
+    # a monotone int array (like an RRR superblock) delta+zlib-compresses and reconstructs exactly
+    mono = np.cumsum(np.random.default_rng(0).integers(0, 5, (4, 2000))).reshape(4, 2000).astype(np.int32)
+    payload = np.random.default_rng(1).integers(0, 2**32, 3000, dtype=np.uint32)   # high-entropy, left raw
+    plain = fmt.pack("x", {}, {}, {"sb": mono, "p": payload})
+    comp = fmt.pack("x", {}, {}, {"sb": mono, "p": payload}, compress={"sb"})
+    _, a_plain = fmt.unpack(plain)
+    _, a_comp = fmt.unpack(comp)
+    assert np.array_equal(a_comp["sb"], mono) and np.array_equal(a_comp["p"], payload)   # lossless
+    assert len(comp) < len(plain)                                    # the monotone section shrank
+    # the compressed-section metadata records the codec
+    header, _ = fmt.unpack(comp)
+    sb = next(s for s in header["sections"] if s["name"] == "sb")
+    assert sb["codec"] == "delta+zlib"
+
+
 def test_bad_magic_is_rejected():
     try:
         fmt.unpack(b"NOTACHROMOFOLD" + b"\x00" * 40)

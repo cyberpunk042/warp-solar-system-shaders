@@ -43,6 +43,9 @@ TOKEN STREAM (gpt2-tokenized source)     (n=60,000 values)
    (cfold ingests raw values/tokens, not bytes); *after* it, it recovers a little ratio but defeats the purpose.
    So the "stack" is a **choice, not a chain**: **cfold when you need GPU random access / search, xz when you
    need max cold-archive ratio** — not both.
-4. **Optimization lead surfaced by this comparison:** the ~0.4 b/val that xz recovers from the cfold blob is
-   compressible index metadata (superblocks especially). **Delta-coding the superblocks would close most of the
-   cfold↔xz ratio gap while keeping random access** — a real next lever.
+4. **Optimization lead surfaced by this comparison — now implemented.** The ~0.4 b/val that xz recovered from
+   the cfold blob is compressible index metadata (monotone superblocks / word bases). The container now
+   delta+zlib-compresses those sections on serialization (they still decode to the same int32 arrays in VRAM,
+   so **random access is untouched**): the gpt2 int4 weight blob dropped **1.601 → 1.295 b/val** — now within
+   ~13% of xz (1.14) and below gz (1.22), *while keeping O(1) GPU random access*. ChromoFold isn't chasing that
+   last 13%; it's buying the random access and search xz can't offer. See `docs/chromofold_positioning.md`.

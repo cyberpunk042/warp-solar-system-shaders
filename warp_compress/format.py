@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import json
 import struct
+import zlib
 
 import numpy as np
 
@@ -32,13 +33,26 @@ MAGIC = b"CHROMOF\x01"          # 7 ASCII bytes + container-format version byte 
 VERSION = [1, 0]               # [major, minor] of the schema
 
 
-def pack(object_type: str, config: dict, params: dict, arrays: dict) -> bytes:
-    """Serialise a ChromoFold object into one container blob. `arrays` maps section name -> numpy array."""
+def pack(object_type: str, config: dict, params: dict, arrays: dict, compress=()) -> bytes:
+    """Serialise a ChromoFold object into one container blob. `arrays` maps section name -> numpy array.
+
+    Sections named in `compress` are stored **delta+zlib** — the RRR index metadata (superblocks, word bases)
+    is monotone, so this shrinks the blob toward a stream compressor's ratio WITHOUT touching the resident
+    (int32, O(1)-rank) form: they decode back to the same arrays on load. The high-entropy payload
+    (RRR/Huffman bitstreams) is left raw. Losslessly reversible (delta→cumsum)."""
+    compress = set(compress)
     sections, blobs = [], []
     for name, arr in arrays.items():
         a = np.ascontiguousarray(arr)
-        sections.append({"name": name, "dtype": a.dtype.str, "shape": list(a.shape), "nbytes": int(a.nbytes)})
-        blobs.append(a.tobytes())
+        if name in compress and np.issubdtype(a.dtype, np.integer):
+            delta = np.diff(a, axis=-1, prepend=0).astype(a.dtype)   # keep dtype (prepend=0 else upcasts)
+            payload = zlib.compress(np.ascontiguousarray(delta).tobytes(), 9)
+            sections.append({"name": name, "dtype": a.dtype.str, "shape": list(a.shape),
+                             "nbytes": len(payload), "codec": "delta+zlib"})
+            blobs.append(payload)
+        else:
+            sections.append({"name": name, "dtype": a.dtype.str, "shape": list(a.shape), "nbytes": int(a.nbytes)})
+            blobs.append(a.tobytes())
     header = {"format": "chromofold", "version": VERSION, "object": object_type,
               "config": config, "params": params, "sections": sections}
     hb = json.dumps(header, separators=(",", ":")).encode("utf-8")
@@ -57,8 +71,14 @@ def unpack(data: bytes):
     arrays = {}
     for s in header["sections"]:
         n = int(s["nbytes"])
-        arrays[s["name"]] = np.frombuffer(data[off:off + n], dtype=np.dtype(s["dtype"])).reshape(s["shape"])
+        raw = data[off:off + n]
         off += n
+        dt = np.dtype(s["dtype"])
+        if s.get("codec") == "delta+zlib":
+            d = np.frombuffer(zlib.decompress(raw), dtype=dt).reshape(s["shape"])
+            arrays[s["name"]] = np.cumsum(d, axis=-1).astype(dt)
+        else:
+            arrays[s["name"]] = np.frombuffer(raw, dtype=dt).reshape(s["shape"])
     return header, arrays
 
 

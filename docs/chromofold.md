@@ -7,6 +7,10 @@ GPU, at lower latency, by never leaving the GPU to decompress and never unfoldin
 
 This is the first roll. Everything here is a knob, not a commitment.
 
+**Where it fits (read first):** [`docs/chromofold_positioning.md`](chromofold_positioning.md) — ChromoFold is a
+GPU-resident, random-access, *searchable* entropy code for LLM-shaped data; it competes with a KV cache / raw
+weights / an index, **not** with gzip/xz. Placement, the three advantages with evidence, and a decision guide.
+
 **On-disk format & protocol:** a ChromoFold-compressed object serialises to one self-describing, versioned blob
 (`warp_compress/format.py`; a compressed weight tensor via `QuantizedWeightStore.save/load`, a whole model via
 `model_store.save_model/load_model`). The full byte-level schema, section registry, versioning rules, and the

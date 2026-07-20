@@ -91,7 +91,10 @@ class QuantizedWeightStore:
             warrays = {**warrays, "_scales": self._scales.astype(np.float32)}
         config = {"quantize": f"int{self.bits}", "transform": "none",
                   "code": "huffman" if huff else "rrr", "group_size": self.group_size}
-        return fmt.pack("weight_store", config, params, warrays)
+        # the monotone index metadata (superblocks, word bases) delta+zlib-compresses without losing random
+        # access; the high-entropy RRR/Huffman bitstreams stay raw.
+        monotone = {"sbrank", "sboff", "sbclass", "cbase", "obase", "offbase"} & set(warrays)
+        return fmt.pack("weight_store", config, params, warrays, compress=monotone)
 
     @classmethod
     def load(cls, data: bytes, device: str = "cuda:0"):
