@@ -134,8 +134,8 @@ class QuantizedWeightStore:
                   "code": code, "group_size": self.group_size}
         # monotone index metadata (superblocks, word bases, block offsets) delta+zlib-compresses without
         # losing random access; the high-entropy bitstream stays raw.
-        monotone = {"sbrank", "sboff", "sbclass", "cbase", "obase", "offbase", "block_off", "byte_off",
-                    "_out_idx"} & set(warrays)
+        monotone = {"sbrank", "sboff", "sbclass", "rank_a", "off_a", "cbase", "obase", "offbase",
+                    "block_off", "byte_off", "_out_idx"} & set(warrays)
         return fmt.pack("weight_store", config, params, warrays, compress=monotone)
 
     @classmethod

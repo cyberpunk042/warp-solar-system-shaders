@@ -73,3 +73,17 @@ def test_rrr_fm_absent_pattern_is_zero():
     seq, V = _markov(n=15000, V=16, seed=5)
     gfm = GPURRRFMIndex(seq, device=_DEV)
     assert gfm.count([[V + 2, V + 3]])[0] == 0
+
+
+def test_two_level_samples_are_uint16_and_serialise():
+    seq, _ = _markov(seed=6)
+    s = np.concatenate([seq + 1, [0]])
+    bwt = s[(suffix_array(s) - 1) % s.shape[0]]
+    rrw = RRRWaveletGPU(bwt, device=_DEV)
+    assert rrw.rank_d.dtype == wp.uint16 and rrw.off_d.dtype == wp.uint16   # deltas are half-width
+    assert rrw.rank_a.shape[1] < rrw.rank_d.shape[1]                        # anchors sparser than the samples
+    p, a = rrw.to_host()                                                    # two-level survives round-trip...
+    rrw2 = RRRWaveletGPU.from_host(p, a, _DEV)
+    rng = np.random.default_rng(7)
+    pos = rng.integers(0, bwt.shape[0], 3000).astype(np.int32)
+    assert np.array_equal(rrw2.access(pos), bwt[pos])                       # ...with access still exact

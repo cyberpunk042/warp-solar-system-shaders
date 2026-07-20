@@ -157,6 +157,16 @@ def _two_level(cum, k: int = K):
     return anchors, delta.astype(np.uint16)
 
 
+def _two_level_2d(cum2d, k: int = K):
+    """Row-wise `_two_level` for the wavelet's per-level 2-D samples `[level, nsb+1]` → (int32 anchors
+    `[level, ⌈·/k⌉]`, uint16 deltas `[level, nsb+1]`)."""
+    cum2d = np.asarray(cum2d, np.int64)
+    anchors = cum2d[:, :: k].astype(np.int32)                        # (level, n_anchor)
+    delta = (cum2d - anchors[:, np.arange(cum2d.shape[1]) // k]).astype(np.int64)
+    assert delta.min() >= 0 and delta.max() < (1 << 16), f"two-level delta overflow ({delta.max()}); lower K"
+    return anchors, delta.astype(np.uint16)
+
+
 class GPURRR:
     """RRR succinct bitvector resident on a Warp device; batched rank1 runs entirely on the GPU. The superblock
     samples use a **two-level** layout (int32 anchors + uint16 deltas) so the resident rank overhead is ~½ the

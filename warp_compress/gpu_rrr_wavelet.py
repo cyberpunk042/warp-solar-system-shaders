@@ -15,7 +15,7 @@ from __future__ import annotations
 import numpy as np
 import warp as wp
 
-from .gpu_rrr import S, T, _BINOM, _WIDTH, _decode_word, rrr_encode
+from .gpu_rrr import K, S, T, _BINOM, _WIDTH, _decode_word, _two_level_2d, rrr_encode
 from .gpu_wavelet import _popcount
 
 
@@ -40,15 +40,18 @@ def _readbits2(off: wp.array(dtype=wp.uint32), bitpos: int, width: int) -> int:
 
 @wp.func
 def _rank1_lvl(classes: wp.array2d(dtype=wp.uint32), offsets: wp.array(dtype=wp.uint32),
-               sbrank: wp.array2d(dtype=wp.int32), sboff: wp.array2d(dtype=wp.int32),
+               rank_a: wp.array2d(dtype=wp.int32), rank_d: wp.array2d(dtype=wp.uint16),
+               off_a: wp.array2d(dtype=wp.int32), off_d: wp.array2d(dtype=wp.uint16),
                offbase: wp.array(dtype=wp.int32), width: wp.array(dtype=wp.int32),
                binom: wp.array2d(dtype=wp.int32), lvl: int, pos: int) -> int:
-    """RRR rank1 for one wavelet level: superblock jump + in-block class scan + one register block decode."""
+    """RRR rank1 for one wavelet level: superblock jump + in-block class scan + one register block decode.
+    The superblock samples are two-level (int32 anchor per K superblocks + uint16 delta)."""
     blk = pos // T
     b = pos % T
     sbi = blk // S
-    r = sbrank[lvl, sbi]
-    obit = sboff[lvl, sbi]
+    a = sbi // K
+    r = rank_a[lvl, a] + int(rank_d[lvl, sbi])
+    obit = off_a[lvl, a] + int(off_d[lvl, sbi])
     j = sbi * S
     while j < blk:
         cl = _classat2(classes, lvl, j)
@@ -66,7 +69,8 @@ def _rank1_lvl(classes: wp.array2d(dtype=wp.uint32), offsets: wp.array(dtype=wp.
 
 @wp.kernel
 def _access_k(classes: wp.array2d(dtype=wp.uint32), offsets: wp.array(dtype=wp.uint32),
-              sbrank: wp.array2d(dtype=wp.int32), sboff: wp.array2d(dtype=wp.int32),
+              rank_a: wp.array2d(dtype=wp.int32), rank_d: wp.array2d(dtype=wp.uint16),
+              off_a: wp.array2d(dtype=wp.int32), off_d: wp.array2d(dtype=wp.uint16),
               offbase: wp.array(dtype=wp.int32), zeros: wp.array(dtype=wp.int32),
               width: wp.array(dtype=wp.int32), binom: wp.array2d(dtype=wp.int32),
               pos_in: wp.array(dtype=wp.int32), tok_out: wp.array(dtype=wp.int32), bits: int):
@@ -74,8 +78,8 @@ def _access_k(classes: wp.array2d(dtype=wp.uint32), offsets: wp.array(dtype=wp.u
     i = pos_in[t]
     v = int(0)
     for lvl in range(bits):
-        r0 = _rank1_lvl(classes, offsets, sbrank, sboff, offbase, width, binom, lvl, i)
-        r1 = _rank1_lvl(classes, offsets, sbrank, sboff, offbase, width, binom, lvl, i + 1)
+        r0 = _rank1_lvl(classes, offsets, rank_a, rank_d, off_a, off_d, offbase, width, binom, lvl, i)
+        r1 = _rank1_lvl(classes, offsets, rank_a, rank_d, off_a, off_d, offbase, width, binom, lvl, i + 1)
         if r1 - r0 == 1:
             v = (v << 1) | 1
             i = zeros[lvl] + r0
@@ -87,7 +91,8 @@ def _access_k(classes: wp.array2d(dtype=wp.uint32), offsets: wp.array(dtype=wp.u
 
 @wp.kernel
 def _rank_k(classes: wp.array2d(dtype=wp.uint32), offsets: wp.array(dtype=wp.uint32),
-            sbrank: wp.array2d(dtype=wp.int32), sboff: wp.array2d(dtype=wp.int32),
+            rank_a: wp.array2d(dtype=wp.int32), rank_d: wp.array2d(dtype=wp.uint16),
+            off_a: wp.array2d(dtype=wp.int32), off_d: wp.array2d(dtype=wp.uint16),
             offbase: wp.array(dtype=wp.int32), zeros: wp.array(dtype=wp.int32),
             width: wp.array(dtype=wp.int32), binom: wp.array2d(dtype=wp.int32),
             c_in: wp.array(dtype=wp.int32), i_in: wp.array(dtype=wp.int32),
@@ -98,8 +103,8 @@ def _rank_k(classes: wp.array2d(dtype=wp.uint32), offsets: wp.array(dtype=wp.uin
     q = i_in[t]
     for lvl in range(bits):
         bitc = (c >> (bits - 1 - lvl)) & 1
-        rp = _rank1_lvl(classes, offsets, sbrank, sboff, offbase, width, binom, lvl, p)
-        rq = _rank1_lvl(classes, offsets, sbrank, sboff, offbase, width, binom, lvl, q)
+        rp = _rank1_lvl(classes, offsets, rank_a, rank_d, off_a, off_d, offbase, width, binom, lvl, p)
+        rq = _rank1_lvl(classes, offsets, rank_a, rank_d, off_a, off_d, offbase, width, binom, lvl, q)
         if bitc == 1:
             p = zeros[lvl] + rp
             q = zeros[lvl] + rq
@@ -136,11 +141,15 @@ class RRRWaveletGPU:
         sbrank = np.stack(sbranks)                                   # (bits, nsb+1)
         sboff = np.stack(sboffs)
         offsets = np.concatenate(opks)                               # flat, per-level word base in `offbase`
-        self._sb_bytes = sbrank.nbytes + sboff.nbytes
+        rank_a, rank_d = _two_level_2d(sbrank)                       # two-level samples: int32 anchor + uint16 delta
+        off_a, off_d = _two_level_2d(sboff)
+        self._sb_bytes = rank_a.nbytes + rank_d.nbytes + off_a.nbytes + off_d.nbytes
         self.classes = wp.array(classes, dtype=wp.uint32, device=device)
         self.offsets = wp.array(offsets, dtype=wp.uint32, device=device)
-        self.sbrank = wp.array(sbrank, dtype=wp.int32, device=device)
-        self.sboff = wp.array(sboff, dtype=wp.int32, device=device)
+        self.rank_a = wp.array(rank_a, dtype=wp.int32, device=device)
+        self.rank_d = wp.array(rank_d, dtype=wp.uint16, device=device)
+        self.off_a = wp.array(off_a, dtype=wp.int32, device=device)
+        self.off_d = wp.array(off_d, dtype=wp.uint16, device=device)
         self.offbase = wp.array(np.asarray(offbase[:-1], np.int32) * 32, dtype=wp.int32, device=device)
         self.zeros = wp.array(np.asarray(zeros, np.int32), dtype=wp.int32, device=device)
         self.width = wp.array(_WIDTH, dtype=wp.int32, device=device)
@@ -154,7 +163,7 @@ class RRRWaveletGPU:
         """(params, {name: host array}) for serialisation. `width`/`binom` are constants, not stored."""
         params = {"n": self.n, "bits": self.bits, "bits_stored": self._bits_stored, "sb_bytes": self._sb_bytes}
         arrays = {k: getattr(self, k).numpy() for k in
-                  ("classes", "offsets", "sbrank", "sboff", "offbase", "zeros")}
+                  ("classes", "offsets", "rank_a", "rank_d", "off_a", "off_d", "offbase", "zeros")}
         return params, arrays
 
     @classmethod
@@ -164,15 +173,17 @@ class RRRWaveletGPU:
         self._bits_stored, self._sb_bytes = params["bits_stored"], params["sb_bytes"]
         self.classes = wp.array(arrays["classes"], dtype=wp.uint32, device=device)
         self.offsets = wp.array(arrays["offsets"], dtype=wp.uint32, device=device)
-        for k in ("sbrank", "sboff", "offbase", "zeros"):
+        self.rank_d = wp.array(arrays["rank_d"], dtype=wp.uint16, device=device)
+        self.off_d = wp.array(arrays["off_d"], dtype=wp.uint16, device=device)
+        for k in ("rank_a", "off_a", "offbase", "zeros"):
             setattr(self, k, wp.array(arrays[k], dtype=wp.int32, device=device))
         self.width = wp.array(_WIDTH, dtype=wp.int32, device=device)
         self.binom = wp.array(_BINOM.astype(np.int32), dtype=wp.int32, device=device)
         return self
 
     def _args(self):
-        return [self.classes, self.offsets, self.sbrank, self.sboff, self.offbase, self.zeros,
-                self.width, self.binom]
+        return [self.classes, self.offsets, self.rank_a, self.rank_d, self.off_a, self.off_d,
+                self.offbase, self.zeros, self.width, self.binom]
 
     def access(self, positions) -> np.ndarray:
         pos = wp.array(np.asarray(positions, np.int32), dtype=wp.int32, device=self.device)
@@ -192,7 +203,8 @@ class RRRWaveletGPU:
 
 @wp.func
 def _wrank_rrr(classes: wp.array2d(dtype=wp.uint32), offsets: wp.array(dtype=wp.uint32),
-               sbrank: wp.array2d(dtype=wp.int32), sboff: wp.array2d(dtype=wp.int32),
+               rank_a: wp.array2d(dtype=wp.int32), rank_d: wp.array2d(dtype=wp.uint16),
+               off_a: wp.array2d(dtype=wp.int32), off_d: wp.array2d(dtype=wp.uint16),
                offbase: wp.array(dtype=wp.int32), zeros: wp.array(dtype=wp.int32),
                width: wp.array(dtype=wp.int32), binom: wp.array2d(dtype=wp.int32),
                c: int, i: int, bits: int) -> int:
@@ -201,8 +213,8 @@ def _wrank_rrr(classes: wp.array2d(dtype=wp.uint32), offsets: wp.array(dtype=wp.
     q = i
     for lvl in range(bits):
         bitc = (c >> (bits - 1 - lvl)) & 1
-        rp = _rank1_lvl(classes, offsets, sbrank, sboff, offbase, width, binom, lvl, p)
-        rq = _rank1_lvl(classes, offsets, sbrank, sboff, offbase, width, binom, lvl, q)
+        rp = _rank1_lvl(classes, offsets, rank_a, rank_d, off_a, off_d, offbase, width, binom, lvl, p)
+        rq = _rank1_lvl(classes, offsets, rank_a, rank_d, off_a, off_d, offbase, width, binom, lvl, q)
         if bitc == 1:
             p = zeros[lvl] + rp
             q = zeros[lvl] + rq
@@ -214,7 +226,8 @@ def _wrank_rrr(classes: wp.array2d(dtype=wp.uint32), offsets: wp.array(dtype=wp.
 
 @wp.kernel
 def _bw_rrr_k(classes: wp.array2d(dtype=wp.uint32), offsets: wp.array(dtype=wp.uint32),
-              sbrank: wp.array2d(dtype=wp.int32), sboff: wp.array2d(dtype=wp.int32),
+              rank_a: wp.array2d(dtype=wp.int32), rank_d: wp.array2d(dtype=wp.uint16),
+              off_a: wp.array2d(dtype=wp.int32), off_d: wp.array2d(dtype=wp.uint16),
               offbase: wp.array(dtype=wp.int32), zeros: wp.array(dtype=wp.int32),
               width: wp.array(dtype=wp.int32), binom: wp.array2d(dtype=wp.int32),
               C: wp.array(dtype=wp.int32), pat: wp.array(dtype=wp.int32),
@@ -229,8 +242,8 @@ def _bw_rrr_k(classes: wp.array2d(dtype=wp.uint32), offsets: wp.array(dtype=wp.u
         c = pat[st + L - 1 - k]
         if c < sigma:
             if lo < hi:
-                lo = C[c] + _wrank_rrr(classes, offsets, sbrank, sboff, offbase, zeros, width, binom, c, lo, bits)
-                hi = C[c] + _wrank_rrr(classes, offsets, sbrank, sboff, offbase, zeros, width, binom, c, hi, bits)
+                lo = C[c] + _wrank_rrr(classes, offsets, rank_a, rank_d, off_a, off_d, offbase, zeros, width, binom, c, lo, bits)
+                hi = C[c] + _wrank_rrr(classes, offsets, rank_a, rank_d, off_a, off_d, offbase, zeros, width, binom, c, hi, bits)
         else:
             lo = int(0)
             hi = int(0)

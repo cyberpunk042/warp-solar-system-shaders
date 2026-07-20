@@ -104,9 +104,13 @@ borrow from (highest-leverage first).
    a 2 M-bit plane) with one extra add per query and rank still bit-exact. Honest regime dependence: **negligible
    on balanced planes** (samples are a sliver of ~1 b/bit → 2.7% off the plane) but **real on the skewed planes
    the BWT/FM-index produces** — there the samples are the biggest slice, so it trims **up to ~8.8%** off the
-   whole plane (p=0.005). Built standalone in `GPURRR` (matching the RRR-first-then-wire pattern); wiring the
-   two-level layout under the full wavelet's per-level `_rank1` is the mechanical follow-up so the FM-index /
-   weight-store inherit it.
+   whole plane (p=0.005). Built standalone in `GPURRR`, then **wired under the full RRR wavelet**
+   (`gpu_rrr_wavelet.py`, `_two_level_2d`): every level's per-level samples are two-level 2-D arrays, so
+   `access`/`rank` and everything on them — the **FM-index** (`GPURRRFMIndex`) and `weight_store(coder="rrr")` —
+   inherit it automatically. Measured on a real Markov BWT the FM-index dropped **6.02 → 5.80 b/tok**, now
+   *below* the BWT's H₀ (5.96) that the int32-sample version sat above; access/rank/count/predict_next still
+   exact, save/load round-trips. (Applying the same split to the Huffman-class wavelet `RRRWaveletGPUHuff` — the
+   `huffman=True` weight-store default — is the remaining mechanical step.)
 7. **Decode-in-the-matmul, with Marlin as the template.** Marlin fuses *fixed-width* INT4 dequant into the GEMM
    (~4× to batch 16–32). Fusing ChromoFold's *variable-length* entropy decode into the GEMM is the hard open
    problem and the real "bigger model resident during compute" endgame; a LUT-decode-then-Marlin two-stage is
