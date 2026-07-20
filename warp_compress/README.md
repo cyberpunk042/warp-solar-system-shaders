@@ -30,6 +30,7 @@ CLI: `python -m warp_compress.cli inspect file.cfold | demo | modules`.
 |---|---|
 | decode / rank / access, GPU-resident | ~400 M tok/s, ~1.1 B/tok index (≈ H₀; BWT ≈ Hₖ) |
 | search in the compressed domain | `count` / `locate` / `predict_next` in VRAM |
+| build the index on the GPU too | suffix array by prefix-doubling, **17–32×** vs CPU, bit-identical |
 | random access at scale vs decompress-all | **68–111×** faster (sparse reads, 4 M-token stream) |
 | speculative decoding (index as draft) | **2.18×** fewer gpt2 forward passes, output = greedy |
 | weights (int4 + class-Huffman) | ~1.33 b/w, ~12× vs fp16, lossless over quant |

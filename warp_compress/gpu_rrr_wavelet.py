@@ -253,13 +253,17 @@ def _bw_rrr_k(classes: wp.array2d(dtype=wp.uint32), offsets: wp.array(dtype=wp.u
 class GPURRRFMIndex:
     """An FM-index whose BWT wavelet is RRR-compressed AND GPU-searchable: entropy-sized count/predict_next."""
 
-    def __init__(self, seq, device: str = "cuda:0"):
-        from .fm_index import suffix_array
-
+    def __init__(self, seq, device: str = "cuda:0", build: str = "cpu"):
         seq = np.asarray(seq, np.int64) + 1
         self.n = int(seq.shape[0]) + 1
         s = np.concatenate([seq, [0]])
-        bwt = s[(suffix_array(s) - 1) % self.n]
+        if build == "gpu":                                    # construct the suffix array on the GPU too
+            from .gpu_suffix import gpu_suffix_array
+            sa = gpu_suffix_array(s, device=device)
+        else:
+            from .fm_index import suffix_array
+            sa = suffix_array(s)
+        bwt = s[(sa - 1) % self.n]
         self.sigma = int(s.max()) + 1
         self.device = device
         self.wm = RRRWaveletGPU(bwt, device=device, bits=max(1, (self.sigma - 1).bit_length()))

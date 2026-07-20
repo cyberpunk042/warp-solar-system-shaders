@@ -115,7 +115,14 @@ borrow from (highest-leverage first).
    (~4× to batch 16–32). Fusing ChromoFold's *variable-length* entropy decode into the GEMM is the hard open
    problem and the real "bigger model resident during compute" endgame; a LUT-decode-then-Marlin two-stage is
    the pragmatic first step.
-8. **On-GPU BWT construction** (genomics has it) so the FM-index *build* is GPU-resident, not just queries.
+8. **On-GPU BWT construction — DONE (`gpu_suffix.py`).** Genomics aligners build their FM-index on the GPU; the
+   one CPU-bound piece left here was the suffix array (`fm_index.suffix_array`, numpy argsort). `gpu_suffix_array`
+   does the same prefix-doubling on the device — each round a 64-bit composite key `(rank[i]<<32)|(rank[i+k]+1)`
+   built in a kernel, a `wp.utils.radix_sort_pairs`, then `wp.utils.array_scan` over adjacent-key-difference
+   flags to re-rank — **bit-identical to the CPU builder** across random / Markov / repetitive / DNA-like inputs,
+   and **17–32× faster** (DNA-like V=4, n=400 K: 262 → 8.1 ms). Wired as `GPURRRFMIndex(build="gpu")`, so a token
+   stream now goes raw → searchable self-index **without leaving the GPU** (build *and* query resident). Speedup
+   grows with n and alphabet; tiny/degenerate inputs favour the CPU.
 
 ---
 
