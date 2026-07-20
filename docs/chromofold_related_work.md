@@ -111,10 +111,17 @@ borrow from (highest-leverage first).
    *below* the BWT's H₀ (5.96) that the int32-sample version sat above; access/rank/count/predict_next still
    exact, save/load round-trips. (Applying the same split to the Huffman-class wavelet `RRRWaveletGPUHuff` — the
    `huffman=True` weight-store default — is the remaining mechanical step.)
-7. **Decode-in-the-matmul, with Marlin as the template.** Marlin fuses *fixed-width* INT4 dequant into the GEMM
-   (~4× to batch 16–32). Fusing ChromoFold's *variable-length* entropy decode into the GEMM is the hard open
-   problem and the real "bigger model resident during compute" endgame; a LUT-decode-then-Marlin two-stage is
-   the pragmatic first step.
+7. **Decode-in-the-matmul, with Marlin as the template — DONE as a Warp proof-of-concept (`gpu_fused_matmul.py`).**
+   Marlin fuses *fixed-width* INT4 dequant into the GEMM (~4× to batch 16–32); fusing ChromoFold's *variable-
+   length* entropy decode is the hard part, and the **fixed-COUNT block layout is what makes it tractable** — the
+   bitstream is contiguous, so a thread seeks to any weight row's bit offset (`block_off`) and decodes that row
+   *inline* as it multiplies. `FusedDecodeMatmul.matmul(x)` computes `y = x·Wᵀ` reading the block-Huffman int4
+   weights straight from the compressed stream, so **the dequantized (M×K) matrix is never materialised in VRAM**
+   — measured **10.6× less resident memory during compute** (2048×2048 int4: 1.58 MB compressed vs 16.78 MB
+   dense), result rel-error 1.4e-6 (lossless over the quantization). Honest scope: this Warp kernel *re-decodes*
+   W per GEMM (one thread per output column) — a real **compute-for-memory** trade at ~4 GFLOP/s, a proof-of-
+   concept, **not** a tensor-core Marlin-class fused kernel (that, and a LUT-decode-to-SRAM-tile-then-Marlin
+   two-stage, remain the production endgame).
 8. **On-GPU BWT construction — DONE (`gpu_suffix.py`).** Genomics aligners build their FM-index on the GPU; the
    one CPU-bound piece left here was the suffix array (`fm_index.suffix_array`, numpy argsort). `gpu_suffix_array`
    does the same prefix-doubling on the device — each round a 64-bit composite key `(rank[i]<<32)|(rank[i+k]+1)`
@@ -134,3 +141,10 @@ borrow from (highest-leverage first).
   (not FLOPs) is the bottleneck.
 - v1 proves the unification end-to-end and measures it honestly. The improvements above are real and mostly
   borrowable; there is a lot of headroom, and none of it requires the core framing to change.
+- **v2 status: all eight borrow-leads are now built and measured** (LUT block decode, block rANS, KIVI per-axis
+  KV, lossless bf16, SpQR outlier side-channel, two-level resident superblocks — wired under the RRR wavelet,
+  on-GPU suffix-array/BWT build, and fused decode-in-the-matmul). Each confirmed the same shape: the mechanism is
+  borrowed and known, and ChromoFold's distinctive move (GPU-resident + random-access + searchable, across every
+  stratum, over quantized/entropy-coded values) survives each one. The honestly-remaining work is *engineering
+  depth*, not new levers: calibration quantizers (GPTQ/AWQ) upstream of the outlier channel, the two-level split
+  under the Huffman-class wavelet too, and a tensor-core Marlin-class version of the fused decode-GEMM.

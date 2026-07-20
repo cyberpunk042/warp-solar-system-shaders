@@ -41,6 +41,7 @@ CLI: `python -m warp_compress.cli inspect file.cfold | demo | modules`.
 | prompt cache (shared prefix) | 30×; mixed prompts 21× (N seed chromosomes) |
 | whole gpt2, compressed, generating | int8 → 92.9 MB `.cfold` (vs fp16 249 MB) |
 | **lossless** bf16 (exponent coded) | 1.41× (~11.3 b/val), exact bits, random access |
+| decode-in-the-matmul (fused) | weights decoded in-GEMM, **10.6× less VRAM** held vs dense W |
 
 **Not a ratio play:** xz beats cfold on bytes everywhere (that's fine — different job). With cfold's own index
 metadata delta-compressed, a gpt2 int4 tensor is ~1.30 b/val vs xz 1.14 — within ~13% *while keeping O(1) GPU
