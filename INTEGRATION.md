@@ -85,9 +85,17 @@ services, no telemetry.**
   export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1     # never phone home; use local weights only
   ```
 
-- **Air-gap install:** build a wheel where you have connectivity (`python -m build`), vendor it, and
-  `pip install --no-index chromofold-0.1.0-py3-none-any.whl` on the sovereign host. Dependencies (`numpy`,
-  `warp-lang`, optionally `torch`/`transformers`) are standard wheels you can mirror.
+- **Air-gap install:** build a wheel where you have connectivity (`python -m build`), vendor it +
+  its dependency wheels (`numpy`, `warp-lang`, optionally `torch`/`transformers` — standard wheels you can
+  mirror), and on the sovereign host:
+
+  ```bash
+  pip install --no-index --find-links ./wheels chromofold        # or chromofold[torch]
+  chromofold selftest      # validates the install with a compress -> reconstruct round-trip, fully offline
+  ```
+
+  `chromofold selftest` is the post-deploy check: it prints PASS/FAIL for a real compress → random-access →
+  save/load round-trip, so you confirm the air-gapped install works before wiring it into a serving loop.
 
 ### Data sovereignty
 - Compressed data stays **resident on your GPU / host**. Random access, search (FM-index `count`/`locate`),

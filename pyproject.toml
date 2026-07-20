@@ -32,6 +32,9 @@ dependencies = [
 torch = ["torch>=2.0", "transformers>=4.40"]
 dev = ["pytest>=7"]
 
+[project.scripts]
+chromofold = "chromofold.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/cyberpunk042/warp-solar-system-shaders"
 Source = "https://github.com/cyberpunk042/warp-solar-system-shaders"

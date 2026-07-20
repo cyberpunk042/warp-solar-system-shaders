@@ -4,6 +4,12 @@ __pycache__/
 .venv/
 venv/
 
+# Python packaging build artifacts
+/build/
+/dist/
+*.egg-info/
+.eggs/
+
 # Warp kernel cache
 .warp/
 

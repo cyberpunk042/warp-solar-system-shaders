@@ -43,6 +43,17 @@ cache.memory_bytes()                                     # resident KV footprint
   size; whole models still generate (int8 near-lossless).
 - **Search in the compressed domain** — FM-index `count`/`locate`/`predict_next` in VRAM (n-gram draft model).
 
+## CLI
+
+```bash
+chromofold info        # version, offline guarantee, GPU availability
+chromofold selftest    # compress -> reconstruct round-trip — run this to validate an install / air-gap deploy
+chromofold inspect model.cfold
+```
+
+Runnable examples in [`examples/`](../examples/): `compress_weights.py` (offline, no torch) and
+`serve_compressed_kv.py` (long-context generation through the compressed KV cache).
+
 ## Honest scope
 
 Quantization is the lossy lever; ChromoFold's entropy + index layer is **lossless over the chosen quantization**
