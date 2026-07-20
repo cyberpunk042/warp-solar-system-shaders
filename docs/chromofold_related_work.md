@@ -2,8 +2,8 @@
 
 *This is the intellectually-honest companion to the positioning doc. ChromoFold (v1) reuses a lot of known
 ideas; being clear about that is a feature — it means the direction is validated, and it points at where the
-real room for improvement is. Citations here are named to the best of memory; verify exact references before
-publishing.*
+real room for improvement is. **Citations below were web-verified (July 2026)** with arXiv IDs and reported
+numbers; the improvement leads each name a concrete method to borrow.*
 
 ---
 
@@ -21,23 +21,27 @@ GPU and next to a KV cache, not on a disk next to a tarball.
 
 ---
 
-## Prior art — every ingredient has a lineage
+## Prior art — every ingredient has a lineage (web-verified, July 2026)
 
-| ChromoFold piece | Prior art it descends from | How ours differs / overlaps |
+| ChromoFold piece | Prior art (verified) | How ours differs / overlaps |
 |---|---|---|
-| GPU-resident (de)compression | **nvCOMP** (LZ4, Snappy, GDeflate, **rANS/ANS**, bitcomp, cascaded) | nvCOMP is streaming/block; ours adds per-element **random access + search**, token/tensor-aware |
-| entropy-coding quantized weights | **Deep Compression** (Han et al. 2016: prune→quantize→Huffman); **DFloat11**, **NeuZip** (lossless entropy code + GPU decode) | same lineage; ours is one substrate (RRR/Huffman wavelet) shared with the index/KV/MoE paths |
-| the lossy quantizer we compose with | **GPTQ**, **AWQ**, **bitsandbytes / QLoRA NF4**, **SmoothQuant**, **SpQR** | we don't quantize better; we entropy-code + address the quantized stream losslessly |
-| KV-cache shrink | **KVQuant**, **KIVI**, **H2O**; **PagedAttention/vLLM** (memory mgmt, not compression) | ours: quantize + entropy-code + **attended-only decode** in one format |
-| the self-index (rank/select) | **FM-index** (Ferragina–Manzini), **wavelet trees** (Grossi–Gupta–Vitter; Claude–Navarro), **RRR** bitvectors | textbook succinct structures, put on the GPU over token streams |
-| GPU FM-index / BWT | genomics read aligners: **nvBIO**, **SOAP3-dp**, **CUSHAW**, **BarraCUDA** | same machinery, retargeted from DNA reads to LLM tokens |
-| n-gram LM from a suffix index | **infini-gram** (Liu et al. 2024); classic suffix-array LMs | we rebuilt this independently (`predict_next`) before naming it |
-| reference/delta clusters | delta/dictionary compression, VCF-style variant encoding, grammar-compressed indexes | ours keeps GPU O(depth) random access to any member |
-| entropy coder | **Huffman**; **rANS/ANS** (Duda 2013, used in zstd-FSE, nvCOMP) | v1 uses RRR + canonical Huffman; rANS is an obvious v2 |
+| GPU-resident (de)compression | **nvCOMP** (GDeflate 32-way parallel; **gANS** ~7× throughput; bitcomp, cascaded) | nvCOMP is streaming/block; ours adds per-element **random access + search**, token/tensor-aware |
+| entropy-coding weights + GPU decode | **DFloat11** (arXiv 2504.11651, NeurIPS'25): Huffman-code the **BF16 exponent** (~2.6 bits real info), ~70% size / "11-bit", 100% acc, SRAM LUT decode, **20.97× faster decode than nvCOMP**. **NeuZip** (arXiv 2410.20650, NeurIPS'24): **ANS** on exponents; Llama-3-8B train 31→<16 GB. **Deep Compression** (Han 2016) | **DFloat11 is the closest — and confirms our distinctiveness: it decodes WHOLE tensors (no random access), WEIGHTS-only, and is lossless-on-BF16 (not on quantized ints).** Ours is random-access, all-strata, over quantized values |
+| the lossy quantizer we compose with | **GPTQ**, **AWQ**, **QuIP#**, **bitsandbytes NF4/QLoRA**, **SpQR** (sparse outliers), **XFP** (codebook + outlier separation) | we don't quantize better; we entropy-code + address the quantized stream losslessly |
+| KV-cache shrink | **KIVI** (ICML'24, arXiv 2402.02750): **per-channel Keys, per-token Values**, 2-bit, 2.6× mem, 2.35–3.47× throughput. **KVQuant** (Hooper 2024): per-channel-K outlier-aware, 10M ctx. **RotateKV** (2501.16383). **H2O**; vLLM PagedAttention (mgmt) | **none of them entropy-code the quantized KV — they quantize/evict only.** Ours adds the lossless entropy layer + attended-only decode (should adopt KIVI's per-channel-K/per-token-V) |
+| the self-index (rank/select) | **FM-index** (Ferragina–Manzini), **wavelet trees** (Claude–Navarro), **RRR** | textbook succinct structures, on the GPU over token streams |
+| GPU FM-index / BWT · device-resident RA decode | genomics aligners **nvBIO / SOAP3-dp / CUSHAW**; **2026 "Compressed-Resident Genomics"** (arXiv 2606.18900, 2606.24531): device-resident GPU LZ77+entropy decode with **position-invariant random access** | closest to our random-access-in-VRAM claim — but genomics (LZ77), not LLM entropy-coded quantized data |
+| n-gram LM / retrieval speculative decoding | **infini-gram** (Liu 2024); **Prompt-Lookup Decoding**; **REST** (retrieval + datastore); n-gram drafts ~1.1–2.9× | we rebuilt the suffix-index LM independently; our `spec_decode` (2.18×) is the PLD/REST family, drafting from the *compressed self-index* |
+| entropy coder | **Huffman**; **rANS/ANS** (Duda 2013; zstd-FSE, nvCOMP gANS, NeuZip) | v1 uses RRR + canonical Huffman; **rANS is the v2 coder** |
+| decode-during-compute | **Marlin** (IST-DASLab): FP16×INT4 **fused dequant in the GEMM**, ~4× to batch 16–32, group-128 reshuffled layout | Marlin fuses *fixed-width* dequant; fusing *variable-length entropy* decode into the GEMM is the hard open problem |
 
-**Honest summary:** no single technique here is novel. FM-index = genomics; Huffman-coded quantized weights =
-Deep Compression / DFloat11; the suffix-index LM = infini-gram; GPU codecs = nvCOMP. What is uncommon is the
-**unification**: one GPU-resident, random-access, *searchable* succinct substrate applied across **every** LLM
+**Honest summary (verified):** no single technique is novel. The closest single system is **DFloat11** — and
+checking it *confirmed* our distinctiveness rather than undercutting it: DFloat11 decodes **whole tensors**
+(not random access), covers **weights only**, and is lossless on **BF16 floats** (not on quantized ints). The
+KV works quantize/evict but **don't entropy-code**. The genomics 2026 papers do device-resident random-access
+decode but for LZ77 genomics, not LLM data. So the specific combination — **GPU-resident + random-access +
+searchable, over quantized values, across *every* LLM stratum** — appears unoccupied, while every mechanism it
+uses is established. What is uncommon is the **unification**: one succinct substrate applied across **every** LLM
 stratum — weights, KV, MoE experts, LoRA libraries, prompt caches, context self-index, datasets — token- and
 tensor-agnostic, with a documented container format. That combination is the v1 contribution, not any one part.
 
@@ -45,23 +49,33 @@ tensor-agnostic, with a documented container format. That combination is the v1 
 
 ## Where the room for improvement is (v1 → v2), and what to borrow
 
-ChromoFold is v1; the measured gaps point straight at the next levers, and most have a prior art to borrow from.
+ChromoFold is v1; the measured gaps point straight at the next levers, each with a **verified** prior art to
+borrow from (highest-leverage first).
 
-1. **rANS/ANS instead of (or beside) RRR+Huffman.** ANS is near-optimal and streams fast; nvCOMP already has a
-   GPU ANS. It would tighten the entropy stage — at some cost to O(1) random access (ANS is sequential), so it
-   fits the *archive* end, RRR the *random-access* end. A hybrid per-section coder is the honest design.
-2. **Two-level succinct structures.** v1 stores int32 superblocks (compressed on disk, §format). A proper
-   two-level rank (int32 anchors + int16 in-block deltas) shrinks them **in VRAM too** while keeping O(1) — the
-   standard succinct-DS trick we haven't yet applied resident.
-3. **Better quantizers upstream.** GPTQ/AWQ/SpQR calibration makes low-bit *usable* (v1 uses round-to-nearest);
-   ChromoFold entropy-codes whatever they emit. SpQR-style outlier side-channels compose naturally.
-4. **Learned / context-mixing entropy models** for the id stream (the "compression is prediction" view), where
-   the FM-index already gives a predictor — a bridge between the index and the coder.
-5. **Product / vector quantization** for weights and KV (share a codebook across a tensor), which changes what
-   the entropy layer sees.
-6. **On-GPU BWT construction** (genomics has it) so the FM-index build itself is GPU-resident, not just queries.
-7. **A live decode-in-the-matmul path** — fuse dequant+entropy-decode into the GEMM so the resident footprint
-   stays compressed *during* compute, not just at rest (the real "fit a bigger model" endgame).
+1. **LUT-based GPU Huffman decode, from DFloat11.** DFloat11 decodes Huffman with **hierarchical 256-entry LUTs
+   in SRAM** + a two-phase kernel (per-thread count → prefix-sum → parallel write), and reports **20.97× faster
+   decode than nvCOMP**. Our `gpu_rrr_huffman` decodes bit-by-bit inside the rank scan (great for *random
+   access*, slow for *whole-tensor* decode). Adopt DFloat11's LUT+two-phase as the **fast whole-decode path**,
+   keep the rank-scan for random access — two decode modes over the same bytes.
+2. **rANS/ANS coder, from NeuZip / nvCOMP-gANS.** ANS is near-optimal (no Huffman up-to-1-bit overhead) and
+   GPU-fast; NeuZip uses it on exponents. It's sequential, so it fits the *archive / whole-decode* end while RRR
+   stays the *random-access* end — a hybrid per-section coder.
+3. **KIVI-style KV quantization, then entropy-code it.** `kv_store` v1 uses a per-tensor scale; adopt KIVI/
+   KVQuant's **per-channel Keys, per-token Values** (Keys have outlier channels) — this both improves accuracy
+   *and* makes the quantized KV peakier, so ChromoFold's entropy layer (which no KV method has) gains. Add
+   RotateKV/QuIP#-style rotations to tame outliers before coding.
+4. **A lossless-BF16 mode, from DFloat11 / NeuZip.** Besides quantized ints, ChromoFold could entropy-code the
+   **float exponent** losslessly (weights *or* KV) for an "exact model, ~30% smaller" mode — with random access,
+   which DFloat11 lacks.
+5. **Better quantizers upstream (GPTQ/AWQ/QuIP#/SpQR/XFP).** v1 uses round-to-nearest; calibration makes low-bit
+   *usable*, and SpQR/XFP **sparse outlier side-channels** compose naturally with our entropy layer.
+6. **Two-level succinct superblocks in VRAM.** v1 delta-compresses superblocks *on disk*; a resident two-level
+   rank (int32 anchors + int16 deltas) shrinks them in VRAM while keeping O(1) — the standard succinct-DS trick.
+7. **Decode-in-the-matmul, with Marlin as the template.** Marlin fuses *fixed-width* INT4 dequant into the GEMM
+   (~4× to batch 16–32). Fusing ChromoFold's *variable-length* entropy decode into the GEMM is the hard open
+   problem and the real "bigger model resident during compute" endgame; a LUT-decode-then-Marlin two-stage is
+   the pragmatic first step.
+8. **On-GPU BWT construction** (genomics has it) so the FM-index *build* is GPU-resident, not just queries.
 
 ---
 
