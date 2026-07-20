@@ -1,0 +1,8 @@
+gradio>=4.0
+numpy>=1.23
+matplotlib>=3.6
+warp-lang>=1.0
+# chromofold provides the compression. Until it is on PyPI, install from the repo, e.g.:
+#   chromofold @ git+https://github.com/cyberpunk042/warp-solar-system-shaders
+# or copy the `chromofold/` and `warp_compress/` packages into this Space repo.
+chromofold
