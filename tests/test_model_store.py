@@ -48,6 +48,20 @@ def test_compressed_smaller_than_fp16():
     assert br["compressed"] * 8 / br["big_params"] < 6.0
 
 
+def test_protect_quantizes_named_tensors_at_higher_precision():
+    from warp_compress.model_store import compress_model
+    m = _tiny_model()
+    # "0.weight" is the first Linear; protect it at int8 while the rest go int4
+    stores, _ = compress_model(m, bits=4, min_numel=50_000, device=_DEV, protect=("0.",), protect_bits=8)
+    assert stores["0.weight"].bits == 8                    # protected tensor kept at higher precision
+    assert stores["2.weight"].bits == 4 and stores["4.weight"].bits == 4
+    # mixed precision is bigger than all-int4 but smaller than all-int8
+    all4 = compress_model(m, bits=4, min_numel=50_000, device=_DEV)[1]["compressed"]
+    all8 = compress_model(m, bits=8, min_numel=50_000, device=_DEV)[1]["compressed"]
+    mixed = compress_model(m, bits=4, min_numel=50_000, device=_DEV, protect=("0.",), protect_bits=8)[1]["compressed"]
+    assert all4 < mixed < all8
+
+
 def test_forward_changes_but_stays_finite_after_compression():
     import torch
     from warp_compress.model_store import compress_model, reconstruct_into

@@ -39,8 +39,8 @@ CLI: `python -m warp_compress.cli inspect file.cfold | demo | modules`.
 | KV cache (long context) | ~5×, attention lossless, attended-only decode |
 | LoRA / adapter library | 30×, byte-identical logits |
 | prompt cache (shared prefix) | 30×; mixed prompts 21× (N seed chromosomes) |
-| whole gpt2, compressed, generating | int8 → 92.9 MB `.cfold` (vs fp16 249 MB) |
-| int4 made *usable* on gpt2 (measured) | **group-128 int4 PPL 30.86 vs fp32 26.62** (per-tensor int4 breaks) |
+| whole gpt2 → one `.cfold`, generating + addressable | int8 86.9 MB (2.9×), PPL 52.8 vs fp32 47.9 (near-lossless) |
+| int4 whole-model (measured, honest) | needs group-128 **and** int8 embedding; int4-everything breaks (PPL ~4700) |
 | **lossless** bf16 (exponent coded) | 1.41× (~11.3 b/val), exact bits, random access |
 | decode-in-the-matmul (fused) | weights decoded in-GEMM, **10.6× less VRAM** held vs dense W |
 
