@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chromofold"
+version = "0.1.0"
+description = "GPU-resident, random-access, searchable compression for LLM data (KV cache, weights, token streams)."
+readme = "chromofold/README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Cyberpunk 042", email = "jfm.devops.expert@gmail.com" }]
+keywords = [
+    "llm", "kv-cache", "compression", "gpu", "cuda", "warp",
+    "wavelet-tree", "fm-index", "rrr", "succinct", "quantization", "transformers", "inference",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Archiving :: Compression",
+]
+dependencies = [
+    "numpy>=1.23",
+    "warp-lang>=1.0",
+]
+
+[project.optional-dependencies]
+torch = ["torch>=2.0", "transformers>=4.40"]
+dev = ["pytest>=7"]
+
+[project.urls]
+Homepage = "https://github.com/cyberpunk042/warp-solar-system-shaders"
+Source = "https://github.com/cyberpunk042/warp-solar-system-shaders"
+
+# Ship the clean `chromofold` public API + the `warp_compress` reference implementation it wraps.
+# The visualization code (warp_shaders, thread.py, ...) is intentionally excluded from the wheel.
+[tool.setuptools]
+packages = ["chromofold", "warp_compress"]
+
+[tool.setuptools.package-data]
+chromofold = ["py.typed"]

@@ -36,6 +36,21 @@ runs export `HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1`. Real-model benchmarks are
 - **Benchmarks:** `bench_*.py` (weights, KV scaling, frontier, stack, dataset dedup, AWQ).
 - **Docs:** `docs/chromofold*.md`, `docs/_PDFs/ChromoFold_Research_Brief.pdf`.
 
+## Package / distribute
+
+This repo ships an installable **`chromofold`** package (`pyproject.toml` + the `chromofold/` public-API shim
+over `warp_compress`) for Hugging Face + sovereign / on-prem use:
+
+```sh
+pip install -e .            # or  pip install chromofold  /  chromofold[torch]
+python -c "import chromofold as cf; print(cf.__version__)"   # offline, torch-free
+```
+
+`import chromofold` does **no network I/O** and does not import torch (the transformers KV cache loads lazily).
+The public surface is `compress` / `Artifact` / `QuantizedWeightStore` / `KVCacheStore` / `MoEExpertStore` /
+`ChromoFoldCache`. See [`INTEGRATION.md`](INTEGRATION.md) for the HF and air-gapped-deployment guides. The
+visualization code is excluded from the wheel; `warp_compress` remains the internal reference implementation.
+
 ## Discipline (shared with the native engine)
 
 - **Measured, not asserted.** Every claim carries its numbers + an honest baseline. **Report negatives** (e.g.
