@@ -99,7 +99,31 @@ the model-gated experiment.
 
 ---
 
-## How the three compose
+## Lever 4 — low-rank factorization as a codec (`lowrank_store.py`)
+
+Low-rank was absent as a *storage* codec — it only appeared via LoRA *deltas* — though attention/MLP weights
+carry real low-rank structure. This factors W ≈ A·B (truncated SVD, fp16 thin factors) and hands the residual
+R = W − A·B to an *element* codec (`vq_store` PQ or `weight_store` int). A **two-stage codec**: low-rank
+captures the correlated structure, the residual mops up the rest; rows decode addressably (`A[row]·B +
+residual[row]`).
+
+Measured (`python -m warp_compress.lowrank_store`, synthetic rank-16 + full-rank noise, 2048×512):
+
+| config | b/weight | MSE vs fp32 | output error |
+|---|---|---|---|
+| int4 per-tensor | 2.92 | 2.04e-4 | 1.04e-1 |
+| low-rank r16 only | **0.62** | 1.88e-3 | 9.57e-1 |
+| low-rank r16 + PQ residual | 2.88 | 1.82e-4 | 9.25e-2 |
+| low-rank r16 + int4 residual | 3.70 | 7.67e-5 | 3.89e-2 |
+
+**Honest read** (5-seed sweep): low-rank *alone* is an ultra-cheap 0.62 b/weight but drops the noise, so its
+output error is **worse** than int4 — structure-only is an extreme operating point, not a quality win.
+Composed at matched bits (~2.9), low-rank + PQ-residual is **competitive** with int4 (roughly tied, usually a
+touch better on output error) — not a blanket win. Its distinctive value is separating the tensor into an
+**addressable low-rank base** (shareable across a model family — the LoRA insight generalized) + a residual,
+and owning the **sub-1-bit structure-only** regime.
+
+## How the levers compose
 
 ```
 embeddings / KV / weights
