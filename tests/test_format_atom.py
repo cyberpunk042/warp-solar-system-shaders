@@ -60,6 +60,54 @@ def test_atom_params_recorded_in_header():
     assert arrays["atom"].dtype == np.uint8 and arrays["atom"].nbytes == len(atom)
 
 
+def test_multi_atom_store_roundtrips_and_random_access():
+    # a store of many folded layers (grouped_delta) + a super_elastic adapter, all in one container
+    groups = {f"layer.{i}": _correlated_group(seed=10 + i) for i in range(6)}
+    atoms = {name: gd.to_bytes(gd.compress(g, mode="centroid")) for name, g in groups.items()}
+    atoms["adapter"] = se.to_bytes(se.compress(_correlated_group(seed=99), layers=3, rank=4,
+                                               mode="centroid", final_residual=True))
+    store = fmt.pack_atoms("weight_store", atoms, config={"kind": "folded-layer-store"})
+    assert store[:8] == fmt.MAGIC
+
+    # random access: pull one layer by name, header-only slice, byte-exact vs the others
+    for name in ("layer.0", "layer.3", "layer.5", "adapter"):
+        assert fmt.read_atom(store, name) == atoms[name], f"random-access read_atom({name}) not byte-exact"
+
+    # full unpack returns every atom byte-exact; each reconstructs through its own codec
+    obj_type, back = fmt.unpack_atoms(store)
+    assert obj_type == "weight_store"
+    assert set(back) == set(atoms) and all(back[k] == atoms[k] for k in atoms)
+    for name, g in groups.items():
+        assert np.array_equal(gd.decompress(gd.from_bytes(back[name])), g)
+    assert np.array_equal(se.decompress(se.from_bytes(back["adapter"])), _correlated_group(seed=99))
+
+    # manifest records each atom's codec magic + order without decoding
+    header, _ = fmt.unpack(store)
+    man = header["params"]["atom_manifest"]
+    assert header["params"]["atom_count"] == len(atoms)
+    assert man["layer.0"]["magic"] == "GDLT1" and man["adapter"]["magic"] == "SELA1"
+
+
+def test_read_atom_missing_name_raises():
+    store = fmt.pack_atoms("weight_store", {"a": gd.to_bytes(gd.compress(_correlated_group(seed=4), mode="centroid"))})
+    try:
+        fmt.read_atom(store, "nope")
+    except KeyError:
+        pass
+    else:
+        raise AssertionError("read_atom should raise KeyError for an unknown atom name")
+
+
+def test_pack_atoms_rejects_empty_and_unpack_atoms_rejects_plain():
+    plain = fmt.pack("weight_store", {}, {}, {"values": np.arange(8, dtype=np.uint32)})
+    try:
+        fmt.unpack_atoms(plain)
+    except ValueError as e:
+        assert "atom" in str(e)
+    else:
+        raise AssertionError("unpack_atoms should reject a container with no atom sections")
+
+
 def test_unpack_atom_rejects_non_atom_container():
     plain = fmt.pack("weight_store", {}, {}, {"values": np.arange(8, dtype=np.uint32)})
     try:
@@ -74,5 +122,8 @@ if __name__ == "__main__":
     test_grouped_delta_atom_roundtrips_through_container()
     test_super_elastic_atom_roundtrips_through_container()
     test_atom_params_recorded_in_header()
+    test_multi_atom_store_roundtrips_and_random_access()
+    test_read_atom_missing_name_raises()
+    test_pack_atoms_rejects_empty_and_unpack_atoms_rejects_plain()
     test_unpack_atom_rejects_non_atom_container()
     print("ALL PASSED")

@@ -106,6 +106,60 @@ def unpack_atom(data: bytes):
     return header["object"], arrays["atom"].tobytes()
 
 
+_ATOM_PREFIX = "atom:"          # section-name prefix for a named atom in a multi-atom store
+
+
+def pack_atoms(object_type: str, atoms: dict, config: dict | None = None,
+               params: dict | None = None) -> bytes:
+    """Pack a **named set** of codec atoms into one ``.cfold`` container — the substrate for a real
+    ``.cfold``-embedded weight / adapter store that holds many folded layers.
+
+    Each ``name -> atom_bytes`` becomes a raw ``uint8`` section ``atom:<name>``; a ``manifest`` in the header
+    records each atom's codec magic + byte length + section order, so :func:`read_atom` can pull one atom by
+    name via offset arithmetic alone — no decode of the others (the random-access payoff)."""
+    arrays, manifest = {}, {}
+    off = 0
+    for name, ab in atoms.items():
+        if _ATOM_PREFIX + name in arrays:
+            raise ValueError(f"duplicate atom name {name!r}")
+        arrays[_ATOM_PREFIX + name] = np.frombuffer(ab, dtype=np.uint8)
+        manifest[name] = {"magic": ab[:5].decode("ascii", "replace"), "nbytes": len(ab), "order": len(manifest)}
+        off += len(ab)
+    p = dict(params or {})
+    p["atom_manifest"] = manifest
+    p["atom_count"] = len(atoms)
+    return pack(object_type, config or {}, p, arrays)
+
+
+def unpack_atoms(data: bytes):
+    """Inverse of :func:`pack_atoms`: return ``(object_type, {name: atom_bytes})`` for every atom in the store."""
+    header, arrays = unpack(data)
+    out = {k[len(_ATOM_PREFIX):]: v.tobytes() for k, v in arrays.items() if k.startswith(_ATOM_PREFIX)}
+    if not out:
+        raise ValueError("container holds no atoms (not a multi-atom store)")
+    return header["object"], out
+
+
+def read_atom(data: bytes, name: str) -> bytes:
+    """Random-access read of a single atom by name from a multi-atom store — parses only the header, then slices
+    that one section's bytes. Cost is O(sections) offset arithmetic, independent of the other atoms' sizes: you
+    do not pay to materialise a 100-layer store to pull one layer."""
+    if data[:8] != MAGIC:
+        raise ValueError("not a ChromoFold container (bad magic)")
+    (hlen,) = struct.unpack("<I", data[8:12])
+    header = json.loads(data[12:12 + hlen].decode("utf-8"))
+    target = _ATOM_PREFIX + name
+    off = 12 + hlen
+    for s in header["sections"]:
+        n = int(s["nbytes"])
+        if s["name"] == target:
+            if s.get("codec"):
+                raise ValueError(f"atom section {name!r} unexpectedly codec-wrapped ({s['codec']})")
+            return data[off:off + n]
+        off += n
+    raise KeyError(f"no atom named {name!r} in this container")
+
+
 def summary(data: bytes) -> str:
     """One-line human summary of a container without materialising the arrays."""
     header, _ = unpack(data)
@@ -140,6 +194,17 @@ def _demo():
     print("atom container:", summary(ablob))
     print(f"  object={obj_type}  atom byte-exact through container: {atom_back == atom}  "
           f"lossless reconstruct: {np.array_equal(recon, group)}")
+
+    # multi-atom store: many folded layers in one container, one pulled by name without decoding the rest
+    layers = {f"layer.{i}": gd.to_bytes(gd.compress(
+        np.stack([base + rng.integers(-2, 3, size=base.shape) for _ in range(8)]), mode="centroid"))
+        for i in range(6)}
+    store = pack_atoms("weight_store", layers)
+    one = read_atom(store, "layer.3")                       # random access: header-only slice
+    _, all_back = unpack_atoms(store)
+    print("multi-atom store:", summary(store))
+    print(f"  {len(layers)} layers  random-access read_atom('layer.3') byte-exact: {one == layers['layer.3']}  "
+          f"full unpack all byte-exact: {all(all_back[k] == v for k, v in layers.items())}")
 
 
 if __name__ == "__main__":
