@@ -78,6 +78,15 @@ def _lowrank(W, rank=16, residual="int", **kw):
     return st.reconstruct().reshape(W.shape), st.bits_per_weight()
 
 
+def _hadamard(W, bits=4, **kw):
+    from .hadamard_store import HadamardQuantStore    # incoherence: seeded Hadamard rotation, then int-quantize
+    if W.ndim != 2:
+        raise LeverIncompatible("hadamard-quant needs a 2-D weight")
+    st = HadamardQuantStore(np.asarray(W, np.float32), bits=bits, device=kw.get("device", "cpu"),
+                            seed=kw.get("seed", 0))
+    return st.reconstruct().reshape(W.shape), st.bits_per_weight()
+
+
 def _subspace_pq(W, subdim=4, codebook_bits=8, **kw):
     from .pq_subspace import SubspacePQWeightStore
     if W.ndim != 2:
@@ -100,6 +109,7 @@ LEVERS = {
     "rvq":           (_rvq,         dict(subdim=4, codebook_bits=4, stages=2)),
     "lowrank":       (_lowrank,     dict(rank=32, residual="int")),
     "subspace_pq":   (_subspace_pq, dict(subdim=4, codebook_bits=8)),
+    "hadamard":      (_hadamard,    dict(bits=4)),
 }
 
 

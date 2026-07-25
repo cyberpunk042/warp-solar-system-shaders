@@ -224,17 +224,45 @@ Honest scope: this is a correctness + memory PoC that re-decodes `W` per GEMM (e
 `gpu_fused_matmul` PoC). The **throughput** win — the whole point of a fused kernel — needs a GPU and a
 tensor-core-class kernel; it is not measurable on CPU. RVQ generalizes it (sum the per-stage codebook lookups).
 
+## Lever 7 — incoherence processing: randomized-Hadamard quant (`hadamard_store.py`)
+
+Scalar quant spends its levels on the tensor's **dynamic range**, so a few outlier weights blow the scale and
+every other weight pays for them — which is why `weight_store` carries an fp16 outlier side-channel. The QuIP /
+QuIP# line removes outliers a different way: rotate the weight matrix by a **random orthogonal transform first**.
+A randomized Hadamard transform (a random sign flip + a Walsh–Hadamard transform, applied per column block) is
+orthogonal — it preserves the matmul — but **spreads every outlier across its block**, so the rotated matrix is
+*incoherent* (near-Gaussian, no spikes) and quantizes with less error at the **same** bit width. The transform is
+a **structured random** map: fully determined by its seed, so the "codebook" costs **zero bytes** — only a 4-byte
+seed. The rotated codes live in the same `RRRWaveletGPU` self-index; lossless over the int quant of the *rotated*
+weights.
+
+Measured (`python -m warp_compress.hadamard_store`, 2048×512, CPU):
+
+| weights | bits | direct MSE | hadamard MSE | direct out-err | hadamard out-err | gain |
+|---|---|---|---|---|---|---|
+| outlier-heavy | 4 | 2.44e-3 | **1.52e-3** | 1.24e+0 | **7.76e-1** | **1.60×** |
+| outlier-heavy | 3 | 4.57e-3 | 6.22e-3 | 2.33e+0 | 3.15e+0 | 0.73× |
+| near-Gaussian | 4 | 7.90e-5 | 8.02e-5 | 3.99e-2 | 4.08e-2 | 0.98× |
+
+**Where it wins:** int4 on **outlier-heavy** weights — the rotation cuts output error ~1.6× (more on peakier
+tensors) for the *same* rate and a free seed. **Honest negatives, both reported:** on already-Gaussian weights
+there is nothing to spread, so the gain is ~none; and at **int3** the spreading also fattens the bulk, so it goes
+*negative* here. **Honest cost of incoherence:** a single weight is no longer independently addressable — the
+rotation mixes each block — so reconstruction is **row/block-wise** (recover a row's block, read the element out),
+like the fused-matmul decode path, not single-weight random access. It composes with everything downstream (the
+rotated codes are just int levels in the index) and is the natural front-end for the sub-4-bit weight levers.
+
 ## The model-eval harness (`bench_levers.py`)
 
 Every lever above carries a *synthetic* rate–distortion number (bits vs MSE on Gaussian / low-rank-plus-noise
 toys). The question a deployer actually asks is different: **at a real model, which lever costs the least
-perplexity per bit saved?** `bench_levers.py` is that harness — it puts all seven weight levers through a real
+perplexity per bit saved?** `bench_levers.py` is that harness — it puts all eight weight levers through a real
 transformer and reports **perplexity vs measured bits/weight**, side by side.
 
 It is split by dependency so the correctness core runs anywhere:
 
 - **`apply_lever(W, name, **kw) → (reconstruction, bits/weight)`** — **torch-free**. It reuses the exact stores
-  shipped here (`int8`, `int4`, `int4_outliers`, `pq`, `rvq`, `lowrank`, `subspace_pq`) and returns the lossy
+  shipped here (`int8`, `int4`, `int4_outliers`, `pq`, `rvq`, `lowrank`, `subspace_pq`, `hadamard`) and the lossy
   reconstruction plus the *measured* store rate (entropy-coded index + fp16 codebooks — not the nominal width).
   A lever that can't take a shape (PQ needs `size % subdim == 0`; subspace/low-rank need 2-D with
   `in % subdim == 0`) raises `LeverIncompatible`, so the model loop **skips that layer** for that lever instead
@@ -279,6 +307,8 @@ deployment. It is correct and ready; it just declines to fabricate numbers it ca
 ```
 embeddings / KV / weights
         │
+   (optional front-end: hadamard_store — a free seeded rotation that spreads outliers before quantizing)
+        │
    ┌────┴─────────────────────────────────────────────┐
    │ lossy lever (pick one, bounded/known distortion)  │
    │   • vq_store          fixed-RATE  (bit budget)    │
@@ -308,5 +338,5 @@ application that consumes an addressable+searchable id stream.
 ## Cross-references
 
 - [Research 44 — warp compression](44-warp-compression.md) · [Research 45 — simulation & compression](45-simulation-and-compression.md)
-- Code: `warp_compress/{vq_store,semantic_merge,context_memory,lowrank_store,rvq_store,sparse_store,lever_select,pq_subspace,pq_matmul,bench_levers}.py` · matching tests under `tests/`
+- Code: `warp_compress/{vq_store,semantic_merge,context_memory,lowrank_store,rvq_store,sparse_store,lever_select,pq_subspace,pq_matmul,hadamard_store,bench_levers}.py` · matching tests under `tests/`
 - Reused seams: `weight_store.py`, `gpu_rrr_wavelet.py`, `token_chromosome.py`, `fm_index.py`
