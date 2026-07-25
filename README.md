@@ -582,10 +582,13 @@ metaphase X meets a folded acrocentric **Y** and the two recurse into a **super-
 
 ![the metaphase X and a folded Y recursing into a super-chromosome](docs/engine/genome_super.gif)
 
-And the same ladder **one stage at a time** — the individual per-stage scenes below (the full eight-stage
-finale is the one-take above; see the [gallery](docs/gallery.md) for every stage still):
+> ⚠️ **OLD — superseded per-stage scenes.** Everything below this line is the **original one-scene-per-stage
+> approach** (`warp_tokenize`, `warp_basepair`, `warp_helix`, `warp_nucleosome`, …), kept only for reference.
+> It is **superseded by the one-take engine above** (`warp_genome_thread` → `genome_chain.gif`), which folds
+> the *same* thread through all eight stages continuously and ends on the conserving metaphase X. Look up
+> there for the current compression; the animations below are the old separate scenes.
 
-**C3 — genome, stage 1 · tokenize** (`warp_tokenize`): the **real board** is turned into **tokens** —
+**C3 — genome, stage 1 · tokenize** (`warp_tokenize`, *old scene*): the **real board** is turned into **tokens** —
 every occupied bit of the card becomes a token (45718 voxels × 8 = **365744 tokens**, coloured by
 merge-codec type). Rendered with a Warp z-buffered splat (all ~366k at once), the tokens lift and spread
 into a **cloud of tokens floating in the air**. A conserving transform — the tokens are the card's own
@@ -593,14 +596,14 @@ matter, nothing spawned. (Engine library `warp_shaders/genome`.)
 
 ![the card lifting and fraying into a cloud of coloured tokens](docs/engine/warp_tokenize.gif)
 
-**C3 — genome, stage 2 · base pairs** (`warp_basepair`): a separate process binds the floating tokens
+**C3 — genome, stage 2 · base pairs** (`warp_basepair`, *old scene*): a separate process binds the floating tokens
 **in twos** — 365744 tokens become **182872 base pairs** (A-T / G-C rungs). Every token joins exactly one
 pair (nothing spawned); the pairs drift, continuously, into an ordered field of vertical rungs — an
 **unwound ladder**, order emerging from the token cloud.
 
 ![the floating tokens streaming into an ordered field of base-pair rungs](docs/engine/warp_basepair.gif)
 
-**C3 — genome, stage 3 · double helices** (`warp_helix`): this process **chains from Process 2's actual
+**C3 — genome, stage 3 · double helices** (`warp_helix`, *old scene*): this process **chains from Process 2's actual
 output** — it takes the ordered base-pair field (every pair's two tokens on a rung) and physically winds
 it. A double helix holds only **~100 base pairs**, so the 182872 pairs are grouped (110 each) into **1663
 short helices**, not one giant one: each group gathers into its own **ladder**, then **twists** into a
@@ -612,7 +615,7 @@ helices — is in frame and the entire winding is visible.
 
 ![the whole base-pair field gathering into ladders and twisting into a field of double helices](docs/engine/warp_helix.gif)
 
-**C3 — genome, stage 4 · nucleosomes** (`warp_nucleosome`): this process **chains from Process 3's actual
+**C3 — genome, stage 4 · nucleosomes** (`warp_nucleosome`, *old scene*): this process **chains from Process 3's actual
 wound helices** and wraps them into **"beads on a string."** A nucleosome is ~one double helix's worth of
 DNA (~150 bp) coiled ~1.75 turns around a histone core, with **linker** DNA to the next bead — so the 1663
 helices become **1663 beads on a string** (count barely changes; the win is spatial, ~6× smaller). Every

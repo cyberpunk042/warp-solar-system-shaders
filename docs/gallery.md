@@ -150,7 +150,12 @@ compression metaphor made visual, one rung up.
 
 ![the metaphase X and a folded Y recursing into a super-chromosome](engine/genome_super.gif)
 
-**C3 — genome, process 1 · tokenize** (`warp_tokenize`): the **real board** is turned into **tokens** —
+> ⚠️ **OLD — superseded per-stage scenes.** Processes 1–7 below are the **original one-scene-per-stage**
+> approach, kept for reference. They are **superseded by the one-take engine above**
+> (`warp_genome_thread` → `genome_chain.gif` / the metaphase X), which folds the *same* thread through
+> all eight stages continuously. The current compression is the two takes at the top of this section.
+
+**C3 — genome, process 1 · tokenize** (`warp_tokenize`, *old scene*): the **real board** is turned into **tokens** —
 every occupied bit of the card becomes a token (45718 voxels × 8 = **365744 tokens**, coloured by
 merge-codec type so identical pieces of the card share a hue). Rendered with a Warp z-buffered splat
 (all ~366k at once). Over time the tokens lift and spread from their home voxels into a **cloud of
@@ -161,7 +166,7 @@ are the card's own matter, nothing spawned, the count constant. (Engine library 
 
 ![the card lifting and fraying into a cloud of coloured tokens](engine/warp_tokenize.gif)
 
-**C3 — genome, process 2 · base pairs** (`warp_basepair`): a separate process takes the floating token
+**C3 — genome, process 2 · base pairs** (`warp_basepair`, *old scene*): a separate process takes the floating token
 cloud and binds the tokens **in twos** — 365744 tokens become **182872 base pairs** (A-T / G-C coloured
 rungs). Every token joins exactly one pair (nothing spawned); partners are chosen by spatial adjacency,
 and the pairs drift, continuously, into an ordered field of vertical rungs — an **unwound ladder**,
@@ -171,7 +176,7 @@ order emerging from the token cloud.
 
 ![the floating tokens streaming into an ordered field of base-pair rungs](engine/warp_basepair.gif)
 
-**C3 — genome, process 3 · double helices** (`warp_helix`): this process **chains from Process 2's actual
+**C3 — genome, process 3 · double helices** (`warp_helix`, *old scene*): this process **chains from Process 2's actual
 output** — it takes the ordered base-pair field (every pair's two tokens on a rung) and physically winds
 it. A double helix only holds **~100 base pairs**, so the 182872 pairs are grouped in sequence (110 each)
 into **1663 short helices** — not one giant one. Each group's rungs gather into their own straight
@@ -186,7 +191,7 @@ the whole way and the entire winding is visible.
 
 ![the whole base-pair field gathering into ladders and twisting into a field of double helices](engine/warp_helix.gif)
 
-**C3 — genome, process 4 · nucleosomes** (`warp_nucleosome`): this process **chains from Process 3's actual
+**C3 — genome, process 4 · nucleosomes** (`warp_nucleosome`, *old scene*): this process **chains from Process 3's actual
 wound helices** and wraps them into **"beads on a string."** A nucleosome is ~one double helix's worth of
 DNA (~150 base pairs) coiled ~1.75 turns around a **histone core** (drawn as the protein bead the DNA
 wraps), with **linker** DNA reaching to the next bead. The beads are threaded on a **serpentine** path so
@@ -200,7 +205,7 @@ the string of beads — the whole field, the whole wrap, in frame.
 
 ![the field of double helices wrapping down into beads on a string](engine/warp_nucleosome.gif)
 
-**C3 — genome, process 5 · the 30 nm fibre** (`warp_fibre`): this process **chains from Process 4's actual
+**C3 — genome, process 5 · the 30 nm fibre** (`warp_fibre`, *old scene*): this process **chains from Process 4's actual
 beads** and coils them tightly into **30 nm solenoid fibres** — ~6 nucleosomes per turn. A long run of
 beads makes one rope, so the 1663 beads **funnel into ~two dozen fibres** that stand up into a **forest of
 thick coiled ropes** (thin threads → flat beads → coiled ropes). Conserving: each bead is **rigid-moved**
@@ -212,7 +217,7 @@ biology so the ~6 beads fit around each turn and neighbouring ropes never touch 
 
 ![the bead carpet gathering and standing up into a forest of coiled 30 nm ropes](engine/warp_fibre.gif)
 
-**C3 — genome, process 6 · telomeres** (`warp_telomere`): this process **chains from Process 5's fibre**.
+**C3 — genome, process 6 · telomeres** (`warp_telomere`, *old scene*): this process **chains from Process 5's fibre**.
 A linear strand has exactly **two** ends, so exactly two telomeres: each terminal stretch of **bare DNA**
 leaves the fibre along a short outward stem (away from the packed forest, so it never threads the ropes)
 and lassoes a protective **t-loop** — the free 3′ tip tucking back into the duplex. Conserving: only the
