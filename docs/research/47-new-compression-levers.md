@@ -224,6 +224,56 @@ Honest scope: this is a correctness + memory PoC that re-decodes `W` per GEMM (e
 `gpu_fused_matmul` PoC). The **throughput** win — the whole point of a fused kernel — needs a GPU and a
 tensor-core-class kernel; it is not measurable on CPU. RVQ generalizes it (sum the per-stage codebook lookups).
 
+## The model-eval harness (`bench_levers.py`)
+
+Every lever above carries a *synthetic* rate–distortion number (bits vs MSE on Gaussian / low-rank-plus-noise
+toys). The question a deployer actually asks is different: **at a real model, which lever costs the least
+perplexity per bit saved?** `bench_levers.py` is that harness — it puts all seven weight levers through a real
+transformer and reports **perplexity vs measured bits/weight**, side by side.
+
+It is split by dependency so the correctness core runs anywhere:
+
+- **`apply_lever(W, name, **kw) → (reconstruction, bits/weight)`** — **torch-free**. It reuses the exact stores
+  shipped here (`int8`, `int4`, `int4_outliers`, `pq`, `rvq`, `lowrank`, `subspace_pq`) and returns the lossy
+  reconstruction plus the *measured* store rate (entropy-coded index + fp16 codebooks — not the nominal width).
+  A lever that can't take a shape (PQ needs `size % subdim == 0`; subspace/low-rank need 2-D with
+  `in % subdim == 0`) raises `LeverIncompatible`, so the model loop **skips that layer** for that lever instead
+  of crashing, and the reported rate averages only over layers the lever could actually encode.
+- **`main()`** — **torch-gated**. It loads a cached HF model (gpt2 / Qwen2.5), swaps each `nn.Linear` (and gpt2
+  `Conv1D`) weight for its lever reconstruction, and prints a per-lever `ppl / Δppl% / bits-per-weight / layers`
+  table against the fp32 baseline. gpt2's `Conv1D` stores weights `(in, out)`; the harness transposes to `(out,
+  in)` to encode and writes back in the module's native layout, so the forward pass is unchanged apart from the
+  lossy values. Weights are restored to fp32 between levers.
+
+Honesty contract (repo doctrine): the harness prints whatever perplexity comes out, **including regressions** — a
+lever that saves bits but wrecks perplexity is a reported negative. The `bits/weight` and `layers-encoded` columns
+are read together: a lever that skips many shape-incompatible layers shows an optimistically low rate.
+
+What runs **here**: the torch-free core, verified on every lever —
+
+```
+$ python -m warp_compress.bench_levers --selftest        # (numpy + warp only)
+  lever            bits/wt   recon NMSE   shape-ok
+  int8                7.84     9.58e-05   OK
+  int4                3.28     3.16e-02   OK
+  int4_outliers       4.41     1.11e-02   OK
+  pq                  2.77     8.69e-02   OK
+  rvq                 2.34     1.21e-01   OK
+  lowrank             9.23     1.45e-02   OK
+  subspace_pq        19.27     4.34e-08   OK   (256×128 — codebook tax on a narrow matrix; ~2 b/w when wide)
+  incompatible shape (7, 5): correctly skipped ['pq', 'rvq', 'subspace_pq']
+```
+
+What needs **the model box** (no torch here; the model hosts are proxy-blocked in this sandbox, so `main()` skips
+with a clear message and prints **no numbers**): the perplexity table itself —
+
+```
+$ python -m warp_compress.bench_levers --model gpt2 --levers int4,pq,subspace_pq --tokens 4096
+```
+
+The harness closes the loop between the synthetic RD curves in this doc and the one metric that decides a
+deployment. It is correct and ready; it just declines to fabricate numbers it cannot measure in this container.
+
 ## How the levers compose
 
 ```
@@ -250,7 +300,7 @@ application that consumes an addressable+searchable id stream.
 
 | Verified in this container (CPU, synthetic) | Follow-up (needs the model box) |
 |---|---|
-| Rate–distortion curves (bits vs MSE / output error / attn error) | Perplexity vs bits/weight on a real model (PQ) |
+| Rate–distortion curves (bits vs MSE / output error / attn error) | Perplexity vs bits/weight on a real model (harness ready: `bench_levers.py`) |
 | Lossless over the lossy lever; `fetch == reconstruct` | Attention quality vs the full KV cache (semantic merge) |
 | GPU-addressable codes; FM search == brute force | LM utility of navigating the context memory vs full context |
 | Per-row distortion bound (semantic tier) | Fused decode-GEMM from a PQ codebook (a Marlin-class kernel) |
@@ -258,5 +308,5 @@ application that consumes an addressable+searchable id stream.
 ## Cross-references
 
 - [Research 44 — warp compression](44-warp-compression.md) · [Research 45 — simulation & compression](45-simulation-and-compression.md)
-- Code: `warp_compress/{vq_store,semantic_merge,context_memory}.py` · tests `tests/test_{vq_store,semantic_merge,context_memory}.py`
+- Code: `warp_compress/{vq_store,semantic_merge,context_memory,lowrank_store,rvq_store,sparse_store,lever_select,pq_subspace,pq_matmul,bench_levers}.py` · matching tests under `tests/`
 - Reused seams: `weight_store.py`, `gpu_rrr_wavelet.py`, `token_chromosome.py`, `fm_index.py`
