@@ -306,6 +306,29 @@ real only when attention is long-range. Eviction is inherently lossy on the drop
 here); the guarantees are **exact attention over the kept set** and **addressable, quantizable survivors**.
 Composed with int4 quant it reaches ~0.8 effective bits per original value at a 4× token reduction.
 
+## Lever 10 — incoherence × error-feedback, composed: the QuIP recipe (`quip_store.py`)
+
+Levers 7 and 8 are the two halves of QuIP (Chee et al. 2023). This module asks the obvious research question —
+**do they stack?** — and the answer, measured, is *yes, super-additively*. It rotates the weights incoherent
+(Lever 7), then runs GPTQ (Lever 8) **in the rotated basis** against the rotated calibration activations, then
+rotates back.
+
+Measured (`python -m warp_compress.quip_store`, W 512×256, calib 4096×256, **outlier-heavy**, CPU):
+
+| bits | RTN | Hadamard | GPTQ | QuIP (both) | QuIP vs RTN |
+|---|---|---|---|---|---|
+| 4 | 31.5 | 10.7 | **31.3** | **3.83** | **8.22×** |
+| 3 | 37.7 | 42.3 | 37.7 | **20.9** | 1.81× |
+| 2 | 89.3 | 112 | 88.8 | 79.9 | 1.12× |
+
+**The finding:** on outlier-heavy weights **GPTQ alone barely helps** (31.3 vs RTN 31.5) — the outliers blow the
+per-tensor scale, so the int grid is too coarse for error-feedback to exploit. Rotating *first* spreads the
+outliers, tightens the scale, and **unlocks** GPTQ, so the pair compounds far beyond either alone (~8× at int4).
+At int3 QuIP still wins even though **Hadamard alone regresses** (42.3 > 37.7 — spreading fattens the bulk) — the
+error-feedback recovers it. This is exactly why QuIP pairs the two. The codes are plain ints in the RRR self-
+index; the rotation costs only its seed. **Honest costs, inherited from both parents:** calibration-time (needs
+`X`) and **row/block-wise** reconstruction (the rotation mixes each block), not single-weight random access.
+
 ## The model-eval harness (`bench_levers.py`)
 
 Every lever above carries a *synthetic* rate–distortion number (bits vs MSE on Gaussian / low-rank-plus-noise
@@ -389,10 +412,11 @@ application that consumes an addressable+searchable id stream.
 | GPU-addressable codes; FM search == brute force | LM utility of navigating the context memory vs full context |
 | Per-row distortion bound (semantic tier) | Fused decode-GEMM from a PQ codebook (a Marlin-class kernel) |
 | GPTQ output-error win on synthetic calibration (~3× vs RTN at int4) | GPTQ on real per-layer activations + wiring into the harness (activation capture) |
+| QuIP (incoherence × GPTQ) stacks super-additively on outlier-heavy weights (~8× at int4) | QuIP on a real model — perplexity at 2-3 bits vs the QuIP# paper |
 | KV eviction: exact attention over kept set; importance-keep ≫ recency when attention reaches back | KV eviction quality on a real model's attention (long-context perplexity vs budget) |
 
 ## Cross-references
 
 - [Research 44 — warp compression](44-warp-compression.md) · [Research 45 — simulation & compression](45-simulation-and-compression.md)
-- Code: `warp_compress/{vq_store,semantic_merge,context_memory,lowrank_store,rvq_store,sparse_store,lever_select,pq_subspace,pq_matmul,hadamard_store,gptq_store,kv_evict,bench_levers}.py` · matching tests under `tests/`
+- Code: `warp_compress/{vq_store,semantic_merge,context_memory,lowrank_store,rvq_store,sparse_store,lever_select,pq_subspace,pq_matmul,hadamard_store,gptq_store,quip_store,kv_evict,bench_levers}.py` · matching tests under `tests/`
 - Reused seams: `weight_store.py`, `gpu_rrr_wavelet.py`, `token_chromosome.py`, `fm_index.py`
