@@ -123,11 +123,26 @@ def _entropy_bytes(arr):
     return len(zlib.compress(np.ascontiguousarray(arr).tobytes(), 9))
 
 
+def _minify_int(arr):
+    """Downcast an integer array to the smallest signed dtype that holds it losslessly.
+
+    Residuals are computed in int64 for headroom, but stored/entropy-coded at their true width — a
+    fair comparison against a baseline whose members are their native (narrow) dtype, and how a real
+    codec would emit them (an int8 residual is 1 byte, not 8).
+    """
+    lo, hi = int(arr.min()), int(arr.max()) if arr.size else (0, 0)
+    for dt in (np.int8, np.int16, np.int32):
+        info = np.iinfo(dt)
+        if lo >= info.min and hi <= info.max:
+            return arr.astype(dt)
+    return arr
+
+
 def encoded_bytes(gd):
     """Entropy-coded size of the atom: reference once + (exact residuals | rank-r factors)."""
     total = _entropy_bytes(gd.reference)
     if gd.residuals is not None:
-        total += _entropy_bytes(gd.residuals)
+        total += _entropy_bytes(_minify_int(gd.residuals))
     else:
         # float32 factors are the honest storage for the approx atom
         total += _entropy_bytes(gd.u.astype(np.float32))
