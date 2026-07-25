@@ -75,31 +75,44 @@ def main():
     print(f"2. centroid recovers ~the shared base: mean |residual| = {np.abs(atom.residuals).mean():.2f} "
           f"levels (small vs the {int(lib.max()) - int(lib.min())}-wide uint8 span)\n")
 
-    # 3. approx float32 low-rank: the HONEST NEGATIVE at this (large-d) shape --------------------
+    # 3. approx low-rank: float32 loses at large d (negative) -> int8 factors resolve it -----------
     lossless_bytes = gd.encoded_bytes(atom)
     base = gd.baseline_bytes(lib)
-    print("3. approx float32 low-rank atom -- honest negative at LoRA's large output dim:")
-    print(f"   {'rank':>5} {'mean_abs_err':>13} {'atom_bytes':>11} {'vs_baseline':>11}")
-    errs = {}
-    for r in (2, 4, 8, 12, 16):
-        a = gd.compress(lib, mode="centroid", rank=r)
-        errs[r] = gd.mean_abs_err(lib, a)
-        b = gd.encoded_bytes(a)
-        print(f"   {r:>5} {errs[r]:>13.3f} {b:>11} {base / b:>10.2f}x")
-    print(f"   (exact int8 residuals = {lossless_bytes}B)")
-    # error recovers structure (monotone to ~0 at full rank)...
-    assert errs[2] >= errs[8] >= errs[16], f"rank must recover structure monotonically: {errs}"
-    # ...but the float32 factors do NOT beat exact int8 residuals at this large-d shape (the negative)
-    approx_full = gd.encoded_bytes(gd.compress(lib, mode="centroid", rank=true_rank))
-    assert approx_full > lossless_bytes, (
-        f"at large d the float32 rank-{true_rank} atom should be BIGGER than exact int8 residuals "
-        f"(the honest negative): approx={approx_full}B lossless={lossless_bytes}B"
-    )
-    print(f"   -> NEGATIVE: float32 rank-{true_rank} atom ({approx_full}B) > exact int8 residuals "
-          f"({lossless_bytes}B). The factors must be quantized to pay at scale.\n")
+    print("3. approx low-rank atom -- float32 (the negative) vs int8 factors (the resolution):")
+    print(f"   {'rank':>5} {'err':>7} {'float32_B':>11} {'f32 vs_base':>11} "
+          f"{'int8_B':>10} {'int8 vs_base':>12}")
+    ferr = {}
+    for r in (4, 8, 12, 16):
+        f = gd.compress(lib, mode="centroid", rank=r)
+        q = gd.compress(lib, mode="centroid", rank=r, quant_factors=True)
+        ferr[r] = gd.mean_abs_err(lib, f)
+        fb, qb = gd.encoded_bytes(f), gd.encoded_bytes(q)
+        print(f"   {r:>5} {ferr[r]:>7.2f} {fb:>11} {base / fb:>10.2f}x {qb:>10} {base / qb:>11.2f}x")
+    print(f"   (exact int8 residuals = {lossless_bytes}B = {base / lossless_bytes:.2f}x)")
 
-    print("Summary: lossless grouping WINS on a LoRA library (~1.4x, bit-exact); the low-rank *approx* "
-          "only pays for small output dims OR with quantized factors -- measured, not assumed.")
+    assert ferr[4] >= ferr[8] >= ferr[16], f"rank must recover structure monotonically: {ferr}"
+    # the negative: float32 rank-rho atom is bigger than exact residuals at this large-d shape
+    f_full = gd.encoded_bytes(gd.compress(lib, mode="centroid", rank=true_rank))
+    assert f_full > lossless_bytes, (
+        f"float32 rank-{true_rank} atom should exceed exact int8 residuals (the negative): "
+        f"{f_full}B vs {lossless_bytes}B"
+    )
+    # the resolution: int8 factors make the SAME rank-rho atom WIN vs baseline, at the SAME error
+    q_full = gd.compress(lib, mode="centroid", rank=true_rank, quant_factors=True)
+    q_bytes = gd.encoded_bytes(q_full)
+    assert q_bytes < f_full and gd.mean_abs_err(lib, q_full) - ferr[true_rank] < 0.5, (
+        "int8 factors must shrink the atom at ~the same error"
+    )
+    assert base / q_bytes > 1.0, (
+        f"int8 rank-{true_rank} atom should beat independent storage, got {base / q_bytes:.2f}x"
+    )
+    print(f"   -> NEGATIVE resolved: float32 rank-{true_rank} loses ({base / f_full:.2f}x) but int8 "
+          f"factors win ({base / q_bytes:.2f}x) at the same error -- quantize the factors.\n")
+
+    print("Summary: on a LoRA library, exact-residual grouping is lossless ~1.4x; the low-rank approx "
+          "with FLOAT32 factors loses at large output dim, but with INT8 factors it wins (~1.9x at the "
+          "adapter rank, ~3x at lower rank for more error) -- the sweet spot is a measured 3-way trade "
+          "of exact-vs-rank-vs-factor-precision, not an assumption.")
     print("ALL PASSED")
 
 

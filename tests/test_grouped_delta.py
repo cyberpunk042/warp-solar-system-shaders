@@ -102,6 +102,17 @@ def main():
     print(f"  6b approx atom smaller than lossless: OK (approx={approx_bytes}B < "
           f"lossless={lossless_bytes}B)")
 
+    # 7. quantized-factor approx: int8 factors reconstruct at ~the same error but a smaller atom
+    f = gd.compress(lr, mode="centroid", rank=4)
+    q = gd.compress(lr, mode="centroid", rank=4, quant_factors=True)
+    ef, eq = gd.mean_abs_err(lr, f), gd.mean_abs_err(lr, q)
+    bf, bq = gd.encoded_bytes(f), gd.encoded_bytes(q)
+    assert q.uq is not None and q.uq.dtype == np.int8 and q.vq.dtype == np.int8, "factors must be int8"
+    assert abs(eq - ef) < 1.0, f"int8 factors should keep ~the same error: float32={ef:.3f} int8={eq:.3f}"
+    assert bq < bf, f"int8-factor atom must be smaller than float32-factor atom: int8={bq}B float32={bf}B"
+    assert gd.decompress(q).shape == lr.shape, "quantized-factor round-trip shape"
+    print(f"  7 quantized-factor approx: OK (int8 err={eq:.3f}~float32 {ef:.3f}, atom {bq}B < {bf}B)")
+
     print("ALL PASSED")
 
 
