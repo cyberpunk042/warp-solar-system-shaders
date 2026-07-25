@@ -9,6 +9,9 @@ schema.
 Run: .venv/bin/python -m pytest tests/test_format_atom.py -q
      .venv/bin/python tests/test_format_atom.py
 """
+import os
+import tempfile
+
 import numpy as np
 
 from warp_compress import format as fmt
@@ -102,6 +105,62 @@ def test_random_access_reads_only_the_target_atom():
         assert len(got) < total // 2                         # materialised << whole store (one atom of 64)
 
 
+def test_cfold_file_roundtrip_and_mmap_random_access():
+    # write a multi-atom store to a .cfold file, then pull one atom via mmap without loading the whole file
+    groups = {f"layer.{i}": _correlated_group(seed=20 + i) for i in range(5)}
+    atoms = {name: gd.to_bytes(gd.compress(g, mode="centroid")) for name, g in groups.items()}
+    atoms["adapter"] = se.to_bytes(se.compress(_correlated_group(seed=77), layers=3, rank=4,
+                                               mode="centroid", final_residual=True))
+    store = fmt.pack_atoms("weight_store", atoms)
+
+    with tempfile.TemporaryDirectory() as d:
+        path = os.path.join(d, "store.cfold")
+        n = fmt.write_cfold(path, store)
+        assert n == len(store) and os.path.getsize(path) == len(store)
+
+        # whole-file read round-trips byte-exact vs the in-memory blob
+        assert fmt.read_cfold(path) == store
+
+        # header-only name listing (no payload read)
+        assert set(fmt.atom_names_file(path)) == set(atoms)
+
+        # mmap random access: each atom byte-exact, and identical to the in-memory read_atom
+        for name in atoms:
+            disk = fmt.read_atom_file(path, name)
+            assert disk == atoms[name], f"mmap read_atom_file({name}) not byte-exact"
+            assert disk == fmt.read_atom(store, name), f"file vs in-memory read_atom differ for {name}"
+            # and it reconstructs through its codec
+            if name == "adapter":
+                assert np.array_equal(se.decompress(se.from_bytes(disk)), _correlated_group(seed=77))
+            else:
+                assert np.array_equal(gd.decompress(gd.from_bytes(disk)), groups[name])
+
+
+def test_cfold_file_guards():
+    with tempfile.TemporaryDirectory() as d:
+        # read_cfold rejects a non-container file
+        bad = os.path.join(d, "bad.cfold")
+        with open(bad, "wb") as f:
+            f.write(b"not a chromofold file")
+        try:
+            fmt.read_cfold(bad)
+        except ValueError as e:
+            assert "magic" in str(e)
+        else:
+            raise AssertionError("read_cfold should reject a non-container file")
+
+        # read_atom_file raises KeyError for an unknown atom
+        store = fmt.pack_atoms("weight_store", {"a": gd.to_bytes(gd.compress(_correlated_group(seed=5), mode="centroid"))})
+        path = os.path.join(d, "s.cfold")
+        fmt.write_cfold(path, store)
+        try:
+            fmt.read_atom_file(path, "missing")
+        except KeyError:
+            pass
+        else:
+            raise AssertionError("read_atom_file should raise KeyError for an unknown atom name")
+
+
 def test_read_atom_missing_name_raises():
     store = fmt.pack_atoms("weight_store", {"a": gd.to_bytes(gd.compress(_correlated_group(seed=4), mode="centroid"))})
     try:
@@ -138,6 +197,8 @@ if __name__ == "__main__":
     test_atom_params_recorded_in_header()
     test_multi_atom_store_roundtrips_and_random_access()
     test_random_access_reads_only_the_target_atom()
+    test_cfold_file_roundtrip_and_mmap_random_access()
+    test_cfold_file_guards()
     test_read_atom_missing_name_raises()
     test_pack_atoms_rejects_empty_and_unpack_atoms_rejects_plain()
     test_unpack_atom_rejects_non_atom_container()
