@@ -252,6 +252,34 @@ rotation mixes each block — so reconstruction is **row/block-wise** (recover a
 like the fused-matmul decode path, not single-weight random access. It composes with everything downstream (the
 rotated codes are just int levels in the index) and is the natural front-end for the sub-4-bit weight levers.
 
+## Lever 8 — error-feedback quantization: GPTQ / OBQ (`gptq_store.py`)
+
+Levers 1 and 7 both minimize the error on the *weights*. But a layer cares about the error on its *output* `W·x`.
+GPTQ (Frantar et al. 2022, the OBQ line — the method behind essentially every production 4-bit LLM) quantizes
+**column by column** and, after snapping each column to its nearest grid point, **propagates the rounding error
+into the not-yet-quantized columns** through the inverse Hessian `H⁻¹ = (XᵀX)⁻¹` of a small calibration batch
+`X`. The surviving weights absorb the damage, so at the *same* bit width the reconstructed matrix produces a far
+smaller output error. The result is **plain int codes** — identical in form to `weight_store` int-quant, so it
+drops straight into the same `RRRWaveletGPU` self-index (addressable, entropy-coded); only *which* codes were
+chosen differs (error-optimal vs round-to-nearest).
+
+Measured (`python -m warp_compress.gptq_store`, W 512×256, calib 4096×256, CPU):
+
+| bits | RTN out-err | GPTQ out-err | RTN b/w | GPTQ b/w | gain |
+|---|---|---|---|---|---|
+| 4 | 1.22 | **0.42** | 3.13 | 3.13 | **2.90×** |
+| 3 | 6.40 | **2.30** | 1.85 | 1.86 | **2.78×** |
+| 2 | 28.6 | 20.7 | 0.34 | 0.35 | 1.38× |
+
+**Where it wins:** everywhere the layer output matters — int4/int3 output error drops ~3× at the **same rate**
+(the win is quality, not bits). **Honest framing:** GPTQ is a **calibration-time** method — it needs a batch of
+real activations `X` (here synthetic correlated activations; the model box feeds real layer inputs) and spends a
+Hessian inverse + a column sweep at quantization time. Because it needs `X`, it does **not** fit the stateless
+`apply_lever(W)` harness contract — wiring it into `bench_levers.py` requires per-layer activation capture, the
+flagged follow-up. As a store it is just an int codec: `fetch == reconstruct`, GPU-addressable, lossless over the
+chosen codes. It **composes with Lever 7** (rotate for incoherence, *then* GPTQ the rotated weights — the QuIP#
+recipe).
+
 ## The model-eval harness (`bench_levers.py`)
 
 Every lever above carries a *synthetic* rate–distortion number (bits vs MSE on Gaussian / low-rank-plus-noise
@@ -334,9 +362,10 @@ application that consumes an addressable+searchable id stream.
 | Lossless over the lossy lever; `fetch == reconstruct` | Attention quality vs the full KV cache (semantic merge) |
 | GPU-addressable codes; FM search == brute force | LM utility of navigating the context memory vs full context |
 | Per-row distortion bound (semantic tier) | Fused decode-GEMM from a PQ codebook (a Marlin-class kernel) |
+| GPTQ output-error win on synthetic calibration (~3× vs RTN at int4) | GPTQ on real per-layer activations + wiring into the harness (activation capture) |
 
 ## Cross-references
 
 - [Research 44 — warp compression](44-warp-compression.md) · [Research 45 — simulation & compression](45-simulation-and-compression.md)
-- Code: `warp_compress/{vq_store,semantic_merge,context_memory,lowrank_store,rvq_store,sparse_store,lever_select,pq_subspace,pq_matmul,hadamard_store,bench_levers}.py` · matching tests under `tests/`
+- Code: `warp_compress/{vq_store,semantic_merge,context_memory,lowrank_store,rvq_store,sparse_store,lever_select,pq_subspace,pq_matmul,hadamard_store,gptq_store,bench_levers}.py` · matching tests under `tests/`
 - Reused seams: `weight_store.py`, `gpu_rrr_wavelet.py`, `token_chromosome.py`, `fm_index.py`
