@@ -136,6 +136,37 @@ def test_cfold_file_roundtrip_and_mmap_random_access():
                 assert np.array_equal(gd.decompress(gd.from_bytes(disk)), groups[name])
 
 
+def test_secfold_extension_convention():
+    # super-elastic-only store → .secfold; grouped_delta store → .cfold; mixed → .cfold
+    se_only = {f"l{i}": se.to_bytes(se.compress(_correlated_group(seed=30 + i), layers=3, rank=4,
+                                                mode="centroid", final_residual=True)) for i in range(3)}
+    gd_only = {f"l{i}": gd.to_bytes(gd.compress(_correlated_group(seed=40 + i), mode="centroid")) for i in range(3)}
+    mixed = {"a": next(iter(se_only.values())), "b": next(iter(gd_only.values()))}
+
+    se_store = fmt.pack_atoms("weight_store", se_only)
+    gd_store = fmt.pack_atoms("weight_store", gd_only)
+    mixed_store = fmt.pack_atoms("weight_store", mixed)
+    assert fmt.suggest_extension(se_store) == fmt.EXT_SECFOLD == ".secfold"
+    assert fmt.suggest_extension(gd_store) == fmt.EXT_CFOLD == ".cfold"
+    assert fmt.suggest_extension(mixed_store) == fmt.EXT_CFOLD           # not all super-elastic → general
+
+    # single-atom containers follow the same rule
+    assert fmt.suggest_extension(fmt.pack_atom("x", next(iter(se_only.values())))) == fmt.EXT_SECFOLD
+    assert fmt.suggest_extension(fmt.pack_atom("x", next(iter(gd_only.values())))) == fmt.EXT_CFOLD
+    # a plain (no-atom) container is the general extension
+    assert fmt.suggest_extension(fmt.pack("weight_store", {}, {}, {"v": np.arange(4, dtype=np.uint32)})) == ".cfold"
+
+    with tempfile.TemporaryDirectory() as d:
+        # write_cfold_auto picks .secfold and the file loads back extension-agnostically
+        p = fmt.write_cfold_auto(os.path.join(d, "store"), se_store)
+        assert p.endswith(".secfold")
+        assert fmt.read_cfold(p) == se_store                            # read is extension-agnostic (magic-validated)
+        assert set(fmt.atom_names_file(p)) == set(se_only)
+        assert fmt.read_atom_file(p, "l0") == se_only["l0"]             # mmap random access on a .secfold
+        # and the general path picks .cfold
+        assert fmt.write_cfold_auto(os.path.join(d, "gstore"), gd_store).endswith(".cfold")
+
+
 def test_cfold_file_guards():
     with tempfile.TemporaryDirectory() as d:
         # read_cfold rejects a non-container file
@@ -198,6 +229,7 @@ if __name__ == "__main__":
     test_multi_atom_store_roundtrips_and_random_access()
     test_random_access_reads_only_the_target_atom()
     test_cfold_file_roundtrip_and_mmap_random_access()
+    test_secfold_extension_convention()
     test_cfold_file_guards()
     test_read_atom_missing_name_raises()
     test_pack_atoms_rejects_empty_and_unpack_atoms_rejects_plain()

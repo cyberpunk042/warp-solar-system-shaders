@@ -33,6 +33,12 @@ import numpy as np
 MAGIC = b"CHROMOF\x01"          # 7 ASCII bytes + container-format version byte (0x01)
 VERSION = [1, 0]               # [major, minor] of the schema
 
+# On-disk extension convention. The container MAGIC is identical for every codec — the extension is only a
+# filename hint so a super-elastic store is distinguishable at a glance from the general container.
+EXT_CFOLD = ".cfold"           # general container (grouped_delta, weight_store, mixed, …)
+EXT_SECFOLD = ".secfold"       # super-elastic mode: every atom is a super_elastic (SELA1) blob
+_SE_MAGIC = "SELA1"            # super_elastic atom magic (as recorded in the header, decoded ascii)
+
 
 def pack(object_type: str, config: dict, params: dict, arrays: dict, compress=()) -> bytes:
     """Serialise a ChromoFold object into one container blob. `arrays` maps section name -> numpy array.
@@ -169,12 +175,40 @@ def write_cfold(path, data: bytes) -> int:
 
 
 def read_cfold(path) -> bytes:
-    """Read a whole ``.cfold`` file back into a container blob (validates magic)."""
+    """Read a whole container file back into a blob (validates magic). Extension-agnostic: a ``.cfold`` and a
+    ``.secfold`` share the same MAGIC, so both load here — the extension is only a filename hint."""
     with open(path, "rb") as f:
         data = f.read()
     if data[:8] != MAGIC:
         raise ValueError(f"{path} is not a ChromoFold container (bad magic)")
     return data
+
+
+def _atom_magics(data: bytes) -> list:
+    """The codec magic of every atom in a container (empty if it holds no atoms). Reads header params only."""
+    header, _ = _header_from_prefix(lambda a, b: data[a:b])
+    params = header.get("params", {})
+    manifest = params.get("atom_manifest")
+    if manifest:                                             # multi-atom store (pack_atoms)
+        return [m["magic"] for m in sorted(manifest.values(), key=lambda m: m["order"])]
+    if "atom_magic" in params:                              # single atom (pack_atom)
+        return [params["atom_magic"]]
+    return []
+
+
+def suggest_extension(data: bytes) -> str:
+    """The convention: ``.secfold`` iff the container is super-elastic mode (holds ≥1 atom and every atom is a
+    super_elastic ``SELA1`` blob); otherwise the general ``.cfold``. A mixed store stays ``.cfold``."""
+    magics = _atom_magics(data)
+    return EXT_SECFOLD if magics and all(m == _SE_MAGIC for m in magics) else EXT_CFOLD
+
+
+def write_cfold_auto(stem, data: bytes):
+    """Write a container to ``stem`` + the suggested extension (``.secfold`` for super-elastic mode, else
+    ``.cfold``). Returns the path written — the end-to-end 'super-elastic → .secfold' convenience."""
+    path = str(stem) + suggest_extension(data)
+    write_cfold(path, data)
+    return path
 
 
 def _header_from_prefix(read_prefix) -> dict:
@@ -267,6 +301,16 @@ def _demo():
     print(f"  on-disk .cfold ({os.path.getsize(path)/1e3:.1f} KB): mmap read_atom_file('layer.3') "
           f"byte-exact: {disk_one == layers['layer.3']}  names={atom_names_file(path)[:3]}…")
     os.remove(path)
+
+    # extension convention: a super-elastic-only store differentiates as .secfold
+    from warp_compress import super_elastic as se
+    se_atoms = {f"layer.{i}": se.to_bytes(se.compress(group, layers=3, rank=4, mode="centroid",
+                                                      final_residual=True)) for i in range(3)}
+    se_store = pack_atoms("weight_store", se_atoms)
+    se_path = write_cfold_auto(os.path.join(tempfile.gettempdir(), "chromofold_demo_se"), se_store)
+    print(f"  super-elastic store → {suggest_extension(se_store)}  (grouped store → {suggest_extension(store)})  "
+          f"wrote {os.path.basename(se_path)}  read back byte-exact: {read_cfold(se_path) == se_store}")
+    os.remove(se_path)
 
 
 if __name__ == "__main__":
