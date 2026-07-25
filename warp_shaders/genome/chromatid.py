@@ -12,7 +12,7 @@ we split its telomere-state position into a smooth fibre **centreline** (the mac
 **local offset** (the conserved fine detail = ``tel - centreline``); we re-place the centreline onto a short
 helical coil and add the *same* local offset back. So the folded chromatid is the real matter, only wound
 tighter — never regenerated, never a fresh coil drawn from nothing. This lib supplies the two end states
-(fibre band -> chromatid); ``scenes/warp_genome`` runs the whole ladder, this fold last.
+(fibre band -> chromatid); ``scenes/warp_genome_chain`` runs the whole ladder, this fold last.
 """
 
 from __future__ import annotations

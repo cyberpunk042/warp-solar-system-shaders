@@ -5,7 +5,7 @@ previous process's actual output. Process 1: tokenization. Process 2: base-pair 
 double helices. Process 4: nucleosomes (beads on a string). Process 5: the 30nm fibre. Process 6:
 telomeres (the strand's two ends curl into t-loop caps). Process 7: the chromatid fold (the capped fibre
 winds onto a coil scaffold into the condensed chromosome arm). Run back-to-back on one timeline this
-molecular ladder is the whole genome compression as one continuous animation (``scenes/warp_genome``).
+molecular ladder is the whole genome compression as one continuous animation (``scenes/warp_genome_chain``).
 """
 
 from .tokenize import tokenize_card, TokenCloud  # noqa: F401

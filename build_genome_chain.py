@@ -1,6 +1,6 @@
 """Build the whole genome ladder as ONE long continuous take -> docs/engine/genome_chain.gif.
 
-The take itself is the ``warp_genome_chain`` scene (see that module): the real gpu_board tokenising into
+The take itself is the ``warp_genome_thread`` scene (see that module): the real gpu_board granulating into
 its own tokens, then base pairs -> helices -> nucleosomes -> fibre -> telomere -> chromosome, every seam a
 cross-dissolve so it reads as one shape retransforming. This script just samples that scene at a fixed fps
 and encodes a compact GIF with a palette sampled across every stage (so nothing gets quantised away).
@@ -9,7 +9,7 @@ and encodes a compact GIF with a palette sampled across every stage (so nothing 
     python build_genome_chain.py --device cuda    # force GPU
     python build_genome_chain.py --fps 18 --width 512 --height 342
 
-For an interactive live view instead of a file, use ``watch.py --scene warp_genome_chain``.
+For an interactive live view instead of a file, use ``watch.py --scene warp_genome_thread``.
 """
 from __future__ import annotations
 
@@ -17,12 +17,13 @@ import argparse
 import os
 import time as _t
 
+import importlib
+
 import numpy as np
 import warp as wp
 from PIL import Image
 
 from warp_shaders.scene import get_scene
-from warp_shaders.scenes.warp_genome_chain import TOTAL
 
 OUT = os.path.join("docs", "engine", "genome_chain.gif")
 
@@ -35,6 +36,8 @@ def _pick_device(requested: str) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Render the genome chain to a GIF.")
+    ap.add_argument("--scene", default="warp_genome_thread",
+                    help="scene to sample (must expose TOTAL); e.g. warp_genome_thread or warp_genome_super")
     ap.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
     ap.add_argument("--fps", type=float, default=14.0)
     ap.add_argument("--width", type=int, default=384)
@@ -46,7 +49,8 @@ def main() -> None:
 
     wp.init()
     device = _pick_device(args.device)
-    sc = get_scene("warp_genome_chain")
+    sc = get_scene(args.scene)
+    TOTAL = float(importlib.import_module(f"warp_shaders.scenes.{args.scene}").TOTAL)
     n = int(round(TOTAL * args.fps))
     print(f"device: {device}  |  {n} frames @ {args.fps} fps  |  {args.width}x{args.height}", flush=True)
 
