@@ -191,6 +191,22 @@ singular values) picks the **low-rank lever** at a mid budget; the full-rank ten
 low-rank offers it nothing; the outlier tensor picks the **outlier side-channel** when the budget allows. The
 structure signal in each `reason` string is exactly what explains the choice — no guessing, all receipts.
 
+## Refinement — per-subspace PQ codebooks (`pq_subspace.py`)
+
+`vq_store` uses one codebook shared across every sub-vector. Standard PQ (Jégou 2011) uses a **codebook per
+subspace** — each block of `subdim` columns gets a codebook fit to its own statistics. Better fit per code-bit,
+but it stores `in/subdim` codebooks, a tax of ~`k/out` bits/weight. So the winner depends on the layer width:
+
+| tensor (heterogeneous columns) | shared PQ (subdim4, 8b) | per-subspace PQ (subdim4, 8b) |
+|---|---|---|
+| narrow, out=2048 | 2.24 b/w · out-err 2.95e-1 | 4.38 b/w · out-err 1.68e-1 (tax **+2 b/w**) |
+| wide, out=12288 | 2.23 b/w · out-err 2.83e-1 | 2.60 b/w · out-err **2.06e-1** (tax **+0.37 b/w**) |
+
+Per-subspace always fits better (lower error at the same code width), but its codebook tax shrinks as `out`
+grows: prohibitive on a narrow tensor (where shared PQ wins at matched bits), modest on a wide one — the regime
+of real LLM projection matrices. It stays addressable (per-subspace codes in the RRR index; lossless over the
+fp16 codebooks). An honest "it depends," measured.
+
 ## Runtime — a fused decode-from-codebook GEMM (`pq_matmul.py`)
 
 The related-work doc names the "two-stage LUT-decode → GEMM" from a PQ codebook as the production endgame.
