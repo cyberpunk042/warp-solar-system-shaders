@@ -52,9 +52,13 @@ class GroupedDelta:
     reference: np.ndarray  # R, shape == shape, dtype == dtype
     residuals: np.ndarray  # exact int residuals (n, prod(shape)) for lossless; else None
     rank: int              # r for approx; None for lossless
-    u: np.ndarray          # (n, r) approx factor; None for lossless
-    s: np.ndarray          # (r,)  approx singular values; None for lossless
-    vt: np.ndarray         # (r, d) approx factor; None for lossless
+    u: np.ndarray          # (n, r) approx factor (float32 path); None otherwise
+    s: np.ndarray          # (r,)  approx singular values (float32 path); None otherwise
+    vt: np.ndarray         # (r, d) approx factor (float32 path); None otherwise
+    uq: np.ndarray = None        # (n, r) int8 factor (quantized-factor path); None otherwise
+    vq: np.ndarray = None        # (r, d) int8 factor (quantized-factor path); None otherwise
+    uq_scale: float = None       # dequant scale for uq
+    vq_scale: float = None       # dequant scale for vq
 
 
 def _grid(dtype):
@@ -78,11 +82,20 @@ def build_reference(group, mode="centroid"):
     raise ValueError(f"unknown reference mode {mode!r} (use 'root' or 'centroid')")
 
 
-def compress(group, mode="centroid", rank=None):
+def _quant_i8(m):
+    """Symmetric per-matrix int8 quantize -> (int8 array, dequant scale)."""
+    scale = float(np.abs(m).max()) / 127.0 + 1e-12
+    return np.clip(np.rint(m / scale), -127, 127).astype(np.int8), scale
+
+
+def compress(group, mode="centroid", rank=None, quant_factors=False):
     """Fold a group of same-shape tensors into a :class:`GroupedDelta`.
 
     ``rank=None`` => the lossless product (exact residuals). ``rank=r`` => the approx product (rank-``r``
-    residual factorization — a named lossy layer).
+    residual factorization — a named lossy layer). ``quant_factors=True`` additionally stores the two
+    approx factors as **int8** (per-matrix scale) instead of float32 — 4x smaller factors, so the
+    low-rank atom can pay at large output dims where float32 factors don't (measured in
+    ``bench_grouped_delta_lora``).
     """
     g = np.asarray(group)
     if g.ndim < 2:
@@ -99,8 +112,15 @@ def compress(group, mode="centroid", rank=None):
 
     r = int(min(rank, n, resid.shape[1]))
     u, s, vt = np.linalg.svd(resid.astype(np.float64), full_matrices=False)
-    return GroupedDelta(shape, g.dtype, mode, n, ref, None,
-                        r, u[:, :r].copy(), s[:r].copy(), vt[:r].copy())
+    if not quant_factors:
+        return GroupedDelta(shape, g.dtype, mode, n, ref, None,
+                            r, u[:, :r].copy(), s[:r].copy(), vt[:r].copy())
+    # fold the singular values into the left factor, then int8-quantize both factors
+    uf = u[:, :r] * s[:r]                       # (n, r)
+    uq, uq_scale = _quant_i8(uf)
+    vq, vq_scale = _quant_i8(vt[:r])            # (r, d)
+    return GroupedDelta(shape, g.dtype, mode, n, ref, None, r, None, None, None,
+                        uq=uq, vq=vq, uq_scale=uq_scale, vq_scale=vq_scale)
 
 
 def decompress(gd):
@@ -109,8 +129,11 @@ def decompress(gd):
     ref = gd.reference.astype(np.int64).reshape(-1)
     if gd.residuals is not None:
         recon = ref + gd.residuals            # exact
+    elif gd.uq is not None:
+        approx = (gd.uq.astype(np.float64) * gd.uq_scale) @ (gd.vq.astype(np.float64) * gd.vq_scale)
+        recon = ref + np.rint(approx).astype(np.int64)
     else:
-        approx = gd.u @ np.diag(gd.s) @ gd.vt  # rank-r residual
+        approx = gd.u @ np.diag(gd.s) @ gd.vt  # rank-r residual (float32 factors)
         recon = ref + np.rint(approx).astype(np.int64)
     recon = np.clip(recon, lo, hi).astype(gd.dtype)
     return recon.reshape((gd.n, *gd.shape))
@@ -123,13 +146,33 @@ def _entropy_bytes(arr):
     return len(zlib.compress(np.ascontiguousarray(arr).tobytes(), 9))
 
 
+def _minify_int(arr):
+    """Downcast an integer array to the smallest signed dtype that holds it losslessly.
+
+    Residuals are computed in int64 for headroom, but stored/entropy-coded at their true width — a
+    fair comparison against a baseline whose members are their native (narrow) dtype, and how a real
+    codec would emit them (an int8 residual is 1 byte, not 8).
+    """
+    lo, hi = int(arr.min()), int(arr.max()) if arr.size else (0, 0)
+    for dt in (np.int8, np.int16, np.int32):
+        info = np.iinfo(dt)
+        if lo >= info.min and hi <= info.max:
+            return arr.astype(dt)
+    return arr
+
+
 def encoded_bytes(gd):
     """Entropy-coded size of the atom: reference once + (exact residuals | rank-r factors)."""
     total = _entropy_bytes(gd.reference)
     if gd.residuals is not None:
-        total += _entropy_bytes(gd.residuals)
+        total += _entropy_bytes(_minify_int(gd.residuals))
+    elif gd.uq is not None:
+        # int8 factors (+ two float scales) — 4x smaller than float32 factors
+        total += _entropy_bytes(gd.uq)
+        total += _entropy_bytes(gd.vq)
+        total += 8  # uq_scale + vq_scale, two float32
     else:
-        # float32 factors are the honest storage for the approx atom
+        # float32 factors are the honest storage for the plain approx atom
         total += _entropy_bytes(gd.u.astype(np.float32))
         total += _entropy_bytes(gd.s.astype(np.float32))
         total += _entropy_bytes(gd.vt.astype(np.float32))
