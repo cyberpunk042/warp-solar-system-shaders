@@ -147,6 +147,27 @@ centroids, where the equivalent single codebook needs 2¹⁶ = 65536 (infeasible
 is the "scale PQ to high accuracy with small codebooks" lever — useful for per-tensor codebooks and small
 tensors where a big codebook doesn't amortize.
 
+## The capstone — a build-driven lever selector (`lever_select.py`)
+
+Five weight levers (int, PQ, RVQ, low-rank+residual) are choices with different sweet spots. `lever_select`
+turns them into **one entry point** that, like `autotune` elsewhere in ChromoFold, **builds a candidate per
+lever and measures it** (bits, MSE, output error), then picks the best for the goal — minimise output error,
+optionally under a bit budget — and reports the SVD structure signal that explains the pick. Build-driven, so
+it can never mis-label.
+
+Measured (`python -m warp_compress.lever_select`, three tensor archetypes, budget sweep):
+
+| tensor (top-8 SV energy) | @2.5 b/w | @3.6 b/w | @4.5 b/w |
+|---|---|---|---|
+| low-rank r8 (**53%**) | PQ 4×8 | **lowrank16+PQ** | int4+outliers |
+| full-rank Gaussian (7%) | PQ 4×8 | **int4** | int4+outliers |
+| heavy-tailed outliers (8%) | PQ 4×8 | lowrank16+PQ | **int4+outliers** |
+
+The pick genuinely varies with the tensor and the budget: the low-rank tensor (53% of its energy in the top-8
+singular values) picks the **low-rank lever** at a mid budget; the full-rank tensor (7%) picks **int4** because
+low-rank offers it nothing; the outlier tensor picks the **outlier side-channel** when the budget allows. The
+structure signal in each `reason` string is exactly what explains the choice — no guessing, all receipts.
+
 ## How the levers compose
 
 ```
