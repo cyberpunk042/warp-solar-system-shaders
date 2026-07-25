@@ -25,7 +25,7 @@ distinctive claim, versus a flat KV cache that is none of those. `tol=0` is an e
 
 Measured (synthetic concept-structured context): `python -m warp_compress.context_memory`. The LM-utility
 question — does token-by-token navigation over this memory match full-context quality at lower memory? — needs
-a model and is the flagged follow-up (this CPU container has no torch). See docs/research/46.
+a model and is the flagged follow-up (this CPU container has no torch). See docs/research/47.
 """
 from __future__ import annotations
 

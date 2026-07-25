@@ -25,7 +25,7 @@ buys context capacity. The lossy lever is `tol`; you dial it against a bounded, 
     .ratio                            -> rows / leaders
 
 Measured (synthetic autoregressive KV): `python -m warp_compress.semantic_merge`. Real-model attention quality
-is the follow-up on a box with the model (this CPU container has no torch) — see docs/research/46.
+is the follow-up on a box with the model (this CPU container has no torch) — see docs/research/47.
 """
 from __future__ import annotations
 

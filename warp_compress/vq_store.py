@@ -23,7 +23,7 @@ is bit-exact given the fp16 codebook), exactly mirroring `weight_store`'s contra
 Honest: PQ pays a codebook (k*subdim fp16, amortized over the whole tensor — negligible for a big layer, real
 for a small one) and a gather to decode. It wins in the **low-bit regime** (sub-2 bits/weight) where scalar
 int2 collapses; at int4+ the scalar entropy path is competitive. Measured (synthetic weights): `python -m
-warp_compress.vq_store`. Real-model perplexity is the follow-up on a box with the model (see docs/research/46).
+warp_compress.vq_store`. Real-model perplexity is the follow-up on a box with the model (see docs/research/47).
 """
 from __future__ import annotations
 
