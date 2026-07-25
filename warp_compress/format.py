@@ -82,6 +82,30 @@ def unpack(data: bytes):
     return header, arrays
 
 
+def pack_atom(object_type: str, atom_bytes: bytes, config: dict | None = None,
+              params: dict | None = None) -> bytes:
+    """Embed a self-describing codec atom (e.g. ``grouped_delta.to_bytes`` / ``super_elastic.to_bytes``) as a
+    single raw section in a ``.cfold`` container.
+
+    The container carries the atom byte-exact; the atom's own header (``GDLT1`` / ``SELA1`` magic + varint
+    fields) self-describes its interior — so the two serialisation layers compose without either duplicating
+    the other's schema. ``params`` records the atom's codec magic so ``summary`` can report it without decoding."""
+    arr = np.frombuffer(atom_bytes, dtype=np.uint8)
+    p = dict(params or {})
+    p.setdefault("atom_magic", atom_bytes[:5].decode("ascii", "replace"))
+    p.setdefault("atom_nbytes", int(arr.nbytes))
+    return pack(object_type, config or {}, p, {"atom": arr})
+
+
+def unpack_atom(data: bytes):
+    """Inverse of :func:`pack_atom`: return ``(object_type, atom_bytes)`` — feed ``atom_bytes`` straight to the
+    codec's ``from_bytes``. Raises if the container has no ``atom`` section (not an atom container)."""
+    header, arrays = unpack(data)
+    if "atom" not in arrays:
+        raise ValueError("container has no 'atom' section (not an atom container)")
+    return header["object"], arrays["atom"].tobytes()
+
+
 def summary(data: bytes) -> str:
     """One-line human summary of a container without materialising the arrays."""
     header, _ = unpack(data)
@@ -103,6 +127,19 @@ def _demo():
     print("round-trip arrays identical:", ok, "  header params:", header["params"])
     print("=> a compressed ChromoFold object is one portable, self-describing, versioned blob. See "
           "docs/chromofold_format.md for the full protocol.")
+
+    # atom embedding: a folded codec atom (grouped_delta) rides inside the container byte-exact
+    from warp_compress import grouped_delta as gd
+    rng = np.random.default_rng(1)
+    base = rng.integers(0, 256, size=(16, 16), dtype=np.int64)
+    group = np.stack([base + rng.integers(-2, 3, size=base.shape) for _ in range(8)])
+    atom = gd.to_bytes(gd.compress(group, mode="centroid"))
+    ablob = pack_atom("grouped_delta", atom)
+    obj_type, atom_back = unpack_atom(ablob)
+    recon = gd.decompress(gd.from_bytes(atom_back))
+    print("atom container:", summary(ablob))
+    print(f"  object={obj_type}  atom byte-exact through container: {atom_back == atom}  "
+          f"lossless reconstruct: {np.array_equal(recon, group)}")
 
 
 if __name__ == "__main__":
