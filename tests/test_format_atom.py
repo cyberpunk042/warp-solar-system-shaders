@@ -88,6 +88,20 @@ def test_multi_atom_store_roundtrips_and_random_access():
     assert man["layer.0"]["magic"] == "GDLT1" and man["adapter"]["magic"] == "SELA1"
 
 
+def test_random_access_reads_only_the_target_atom():
+    # the structural random-access invariant behind bench_cfold_store: read_atom returns exactly one atom's
+    # bytes from a large store, byte-identical, regardless of the store's total size.
+    n = 64
+    atoms = {f"layer.{i}": gd.to_bytes(gd.compress(_correlated_group(seed=i), mode="centroid"))
+             for i in range(n)}
+    store = fmt.pack_atoms("weight_store", atoms)
+    total = sum(len(a) for a in atoms.values())
+    for name in ("layer.0", "layer.31", "layer.63"):
+        got = fmt.read_atom(store, name)
+        assert got == atoms[name]                            # exact target
+        assert len(got) < total // 2                         # materialised << whole store (one atom of 64)
+
+
 def test_read_atom_missing_name_raises():
     store = fmt.pack_atoms("weight_store", {"a": gd.to_bytes(gd.compress(_correlated_group(seed=4), mode="centroid"))})
     try:
@@ -123,6 +137,7 @@ if __name__ == "__main__":
     test_super_elastic_atom_roundtrips_through_container()
     test_atom_params_recorded_in_header()
     test_multi_atom_store_roundtrips_and_random_access()
+    test_random_access_reads_only_the_target_atom()
     test_read_atom_missing_name_raises()
     test_pack_atoms_rejects_empty_and_unpack_atoms_rejects_plain()
     test_unpack_atom_rejects_non_atom_container()
