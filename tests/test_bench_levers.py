@@ -56,6 +56,17 @@ def test_subspace_pq_rate_needs_a_wide_matrix():
     assert b_wide < b_narrow                                     # more rows amortize the codebooks -> fewer bits/wt
 
 
+def test_hadamard_lever_selectable_and_helps_on_outliers():
+    rng = np.random.default_rng(20)
+    W = (rng.standard_normal((1024, 256)) / 16).astype(np.float32)
+    m = rng.random(W.shape) < 0.003
+    W[m] += rng.standard_normal(int(m.sum())).astype(np.float32) * 3.0        # outlier-heavy
+    r_int4, _ = apply_lever(W, "int4", device=_DEV)
+    r_had, b_had = apply_lever(W, "hadamard", device=_DEV)
+    assert r_had.shape == W.shape and b_had < 8.0
+    assert ((r_had - W) ** 2).mean() < ((r_int4 - W) ** 2).mean()             # incoherence lowers int4 error
+
+
 def test_incompatible_shape_raises_not_crashes():
     Wbad = np.random.default_rng(5).standard_normal((7, 5)).astype(np.float32)   # size 35 odd, in=5
     for name in ("pq", "rvq", "subspace_pq"):
