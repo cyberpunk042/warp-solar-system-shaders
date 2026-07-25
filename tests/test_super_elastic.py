@@ -61,6 +61,17 @@ def main():
     assert back.shape == g.shape and back.dtype == g.dtype, "decode must preserve shape + dtype"
     print("  5 decode preserves shape + dtype: OK")
 
+    # 6. real serialization: to_bytes/from_bytes round-trips the layer stack (lossy + lossless)
+    for label, kw in (("lossy", dict(layers=3, rank=4)),
+                      ("lossless", dict(layers=3, rank=4, final_residual=True))):
+        x = se.compress(g, **kw)
+        blob = se.to_bytes(x)
+        rt = se.from_bytes(blob)
+        assert len(blob) > 0 and np.array_equal(se.decompress(rt), se.decompress(x)), f"{label} blob RT"
+        if kw.get("final_residual"):
+            assert np.array_equal(se.decompress(rt), g), "lossless stack blob must reconstruct exactly"
+    print("  6 serialization round-trip: OK (lossy + lossless layer-stack blobs reconstruct)")
+
     print("ALL PASSED")
 
 

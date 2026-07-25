@@ -113,6 +113,20 @@ def main():
     assert gd.decompress(q).shape == lr.shape, "quantized-factor round-trip shape"
     print(f"  7 quantized-factor approx: OK (int8 err={eq:.3f}~float32 {ef:.3f}, atom {bq}B < {bf}B)")
 
+    # 8. real serialization: to_bytes/from_bytes round-trips every variant to a self-describing blob
+    corr = _correlated_group(rng)
+    for label, kw in (("lossless", dict(rank=None)),
+                      ("float32-factors", dict(rank=4)),
+                      ("int8-factors", dict(rank=4, quant_factors=True))):
+        atom = gd.compress(corr, mode="centroid", **kw)
+        blob = gd.to_bytes(atom)
+        rt = gd.from_bytes(blob)
+        assert isinstance(blob, (bytes, bytearray)) and len(blob) > 0, f"{label} blob empty"
+        assert np.array_equal(gd.decompress(rt), gd.decompress(atom)), f"{label} blob round-trip differs"
+        if kw.get("rank") is None:
+            assert np.array_equal(gd.decompress(rt), corr), "lossless blob must reconstruct exactly"
+    print("  8 serialization round-trip: OK (lossless/float32/int8 blobs reconstruct)")
+
     print("ALL PASSED")
 
 

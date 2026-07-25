@@ -34,6 +34,7 @@ from .grouped_delta import (
     _quant_i8,
     build_reference,
 )
+from .varint import read_uvarint, write_uvarint
 
 
 @dataclass
@@ -130,3 +131,93 @@ def compress_group(group, layers=3, rank=4, mode="centroid", final_residual=Fals
         "ratio_vs_baseline": baseline_bytes(g) / max(encoded_bytes(se), 1),
         "mean_abs_err": mean_abs_err(g, se),
     }
+
+
+# ---- real serialization: a .cfold-style container for the layer stack ----
+#
+# Blob layout (LEB128 unless noted):
+#   MAGIC "SELA1" | n | ndim | shape... | len(dtype_str) | dtype_str | len(mode) | mode
+#   L (num layers) | has_final:1B
+#   reference: raw bytes (prod(shape) elems)
+#   per layer: rank_l | raw uq(n,rank_l) i8 | raw vq(rank_l,d) i8 | uq_scale f32 | vq_scale f32
+#   if has_final: len(final_dtype_str) | final_dtype_str | raw final_residual (n,d)
+
+_MAGIC = b"SELA1"
+
+
+def _wstr(out, s):
+    b = s.encode("ascii")
+    write_uvarint(out, len(b))
+    out += b
+
+
+def _rstr(buf, pos):
+    n, pos = read_uvarint(buf, pos)
+    return buf[pos:pos + n].decode("ascii"), pos + n
+
+
+def to_bytes(se) -> bytes:
+    """Serialize a :class:`SuperElastic` layer stack to a self-describing byte blob."""
+    d = int(np.prod(se.shape))
+    out = bytearray(_MAGIC)
+    write_uvarint(out, se.n)
+    write_uvarint(out, len(se.shape))
+    for x in se.shape:
+        write_uvarint(out, int(x))
+    _wstr(out, np.dtype(se.dtype).str)
+    _wstr(out, se.mode)
+    write_uvarint(out, len(se.layers))
+    out.append(1 if se.final_residual is not None else 0)
+    out += np.ascontiguousarray(se.reference).tobytes()
+    for uq, us, vq, vs in se.layers:
+        write_uvarint(out, uq.shape[1])          # rank_l
+        out += np.ascontiguousarray(uq).tobytes()
+        out += np.ascontiguousarray(vq).tobytes()
+        out += np.float32(us).tobytes()
+        out += np.float32(vs).tobytes()
+    if se.final_residual is not None:
+        fr = _minify_int(se.final_residual)
+        _wstr(out, fr.dtype.str)
+        out += np.ascontiguousarray(fr).tobytes()
+    return bytes(out)
+
+
+def from_bytes(blob: bytes):
+    """Parse a blob written by :func:`to_bytes` back into a :class:`SuperElastic`."""
+    if blob[:len(_MAGIC)] != _MAGIC:
+        raise ValueError("not a SELA1 super-elastic blob")
+    pos = len(_MAGIC)
+    n, pos = read_uvarint(blob, pos)
+    ndim, pos = read_uvarint(blob, pos)
+    shape = []
+    for _ in range(ndim):
+        v, pos = read_uvarint(blob, pos)
+        shape.append(v)
+    dtype_str, pos = _rstr(blob, pos)
+    mode, pos = _rstr(blob, pos)
+    n_layers, pos = read_uvarint(blob, pos)
+    has_final = blob[pos]; pos += 1
+    shape = tuple(shape)
+    d = int(np.prod(shape))
+    dt = np.dtype(dtype_str)
+    ref_n = d * dt.itemsize
+    reference = np.frombuffer(blob[pos:pos + ref_n], dtype=dt).reshape(shape).copy(); pos += ref_n
+
+    layers = []
+    for _ in range(n_layers):
+        r, pos = read_uvarint(blob, pos)
+        uq = np.frombuffer(blob[pos:pos + n * r], dtype=np.int8).reshape(n, r).copy(); pos += n * r
+        vq = np.frombuffer(blob[pos:pos + r * d], dtype=np.int8).reshape(r, d).copy(); pos += r * d
+        us = float(np.frombuffer(blob[pos:pos + 4], dtype=np.float32)[0]); pos += 4
+        vs = float(np.frombuffer(blob[pos:pos + 4], dtype=np.float32)[0]); pos += 4
+        layers.append((uq, us, vq, vs))
+
+    final = None
+    if has_final:
+        fdt_str, pos = _rstr(blob, pos)
+        fdt = np.dtype(fdt_str)
+        cnt = n * d
+        final = np.frombuffer(blob[pos:pos + cnt * fdt.itemsize], dtype=fdt).reshape(n, d).astype(np.int64)
+        pos += cnt * fdt.itemsize
+
+    return SuperElastic(shape, dt, mode, n, reference, layers, final)
