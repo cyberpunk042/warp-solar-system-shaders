@@ -280,6 +280,32 @@ flagged follow-up. As a store it is just an int codec: `fetch == reconstruct`, G
 chosen codes. It **composes with Lever 7** (rotate for incoherence, *then* GPTQ the rotated weights — the QuIP#
 recipe).
 
+## Lever 9 — importance-based KV eviction: H2O / SnapKV / StreamingLLM (`kv_evict.py`)
+
+`kv_store` shrinks the KV cache by *quantizing* every token; `semantic_merge` (Lever 2) shrinks it by *merging*
+near-duplicate tokens. This is the third, orthogonal, now-dominant production lever: **drop most tokens entirely**
+and keep only a budget of the ones attention actually uses. The keep-set is the H2O / SnapKV / StreamingLLM
+recipe — a union of **attention sinks** (the first few tokens, onto which the softmax dumps excess mass —
+evicting them wrecks attention), a **recent window** (locality), and **heavy hitters** (among the rest, the
+tokens with the highest *accumulated attention mass* over observed queries — H2O's heavy-hitter oracle).
+Everything else is evicted; the survivors drop into the succinct store (int-quant → `RRRWaveletGPU`), so
+**eviction and quantization stack** (evict, then quantize the survivors).
+
+Measured (`python -m warp_compress.kv_evict`, T=512 tokens, d=64, 32 queries; important tokens **spread** through
+the sequence):
+
+| budget | reduction | H2O err | recent err | random err | H2O vs recent |
+|---|---|---|---|---|---|
+| 64 | 8× | **2.05e-3** | 7.51e-1 | 8.96e-1 | **367×** |
+| 128 | 4× | **8.40e-4** | 6.61e-1 | 8.48e-1 | **787×** |
+
+**Where it wins:** when attention **reaches back** — important tokens spread through the context, not just at the
+tail — importance-keep beats recency- and random-keep by *orders of magnitude* at the same budget. **Honest
+regime note (measured):** when the important tokens *are* the recent ones, plain recency ties it — the win is
+real only when attention is long-range. Eviction is inherently lossy on the dropped tokens (no lossless frame
+here); the guarantees are **exact attention over the kept set** and **addressable, quantizable survivors**.
+Composed with int4 quant it reaches ~0.8 effective bits per original value at a 4× token reduction.
+
 ## The model-eval harness (`bench_levers.py`)
 
 Every lever above carries a *synthetic* rate–distortion number (bits vs MSE on Gaussian / low-rank-plus-noise
@@ -363,9 +389,10 @@ application that consumes an addressable+searchable id stream.
 | GPU-addressable codes; FM search == brute force | LM utility of navigating the context memory vs full context |
 | Per-row distortion bound (semantic tier) | Fused decode-GEMM from a PQ codebook (a Marlin-class kernel) |
 | GPTQ output-error win on synthetic calibration (~3× vs RTN at int4) | GPTQ on real per-layer activations + wiring into the harness (activation capture) |
+| KV eviction: exact attention over kept set; importance-keep ≫ recency when attention reaches back | KV eviction quality on a real model's attention (long-context perplexity vs budget) |
 
 ## Cross-references
 
 - [Research 44 — warp compression](44-warp-compression.md) · [Research 45 — simulation & compression](45-simulation-and-compression.md)
-- Code: `warp_compress/{vq_store,semantic_merge,context_memory,lowrank_store,rvq_store,sparse_store,lever_select,pq_subspace,pq_matmul,hadamard_store,gptq_store,bench_levers}.py` · matching tests under `tests/`
+- Code: `warp_compress/{vq_store,semantic_merge,context_memory,lowrank_store,rvq_store,sparse_store,lever_select,pq_subspace,pq_matmul,hadamard_store,gptq_store,kv_evict,bench_levers}.py` · matching tests under `tests/`
 - Reused seams: `weight_store.py`, `gpu_rrr_wavelet.py`, `token_chromosome.py`, `fm_index.py`
