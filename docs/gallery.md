@@ -223,18 +223,27 @@ interpenetration (measured). A close-up features the near end's green t-loop, th
 
 ![the terminal DNA leaving the fibre and curling into its t-loop cap](engine/warp_telomere.gif)
 
-**C3 — genome, process 7 · the chromosome** (`warp_chromosome`): the payoff. This process **chains from
-Process 6's capped fibre** and **folds** it — the fibre's centreline winds onto a short coil with a pinched
-**centromere** and rounded **telomere-capped** tips, every base pair carried **rigidly** with its own
-conserved helix/nucleosome/fibre detail, packing **shoulder to shoulder** into a dense stained-**purple**
-metaphase chromosome. This is the final ~50× fold, so unlike the earlier stages the fibre packs solid — but
-the turns **touch and never pass through** each other (the honest meaning of "condensed", measured). The
-beautiful chromosome is reached **through** the real compaction, rendered as the actual folded base pairs —
-not sculpted from nothing. A fixed camera dollies in as the whole strand condenses.
+**C3 — genome, process 7 · single chromatid** (`warp_chromosome`, *earlier per-stage still*): the first
+finale — this process **chains from Process 6's capped fibre** and **folds** it into ONE chromatid: the
+fibre's centreline winds onto a short coil with a pinched **centromere** and rounded **telomere-capped**
+tips, every base pair carried **rigidly** with its own conserved helix/nucleosome/fibre detail, packing
+**shoulder to shoulder** into a dense stained-**purple** body. The turns **touch and never pass through**
+each other (the honest meaning of "condensed", measured). Kept here as the single-arm stage; the **current**
+finale is the conserving metaphase **X** below (the one-take engine, `warp_genome_thread`).
 
-![warp_chromosome — the fibre folded into a dense banded purple metaphase chromosome](engine/warp_chromosome.png)
+![warp_chromosome — the fibre folded into a dense banded purple single chromatid (earlier still)](engine/warp_chromosome.png)
 
-![the capped fibre condensing into the banded chromosome with its centromere waist](engine/warp_chromosome.gif)
+![the capped fibre condensing into the banded chromatid with its centromere waist](engine/warp_chromosome.gif)
+
+**C3 — genome, process 8 · the metaphase X** (`warp_genome_thread`, *current finale*): the honest payoff.
+The same one thread folds into **both** arms of the metaphase X by a **conserving split** — every other
+ordered base pair migrates to the mirror diagonal, so the X is the *transformed* thread, not a spawned or
+copied sister chromatid. Particle count is constant (45718 through the whole ladder), the fibre→chromosome
+seam is continuous (measured max jump ≈ 2.4e-10), and the chromatid folds **in place** so the fibre visibly
+tightens into the X where it stands. This is the still that ends the whole one-take (`genome_chain.gif`
+above).
+
+![the conserving metaphase X — the one thread split into both arms, no sister spawned](engine/genome_metaphase_x.png)
 
 ## Simulation of reality — the card, by real physics
 
