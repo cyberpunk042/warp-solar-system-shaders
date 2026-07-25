@@ -24,6 +24,7 @@ Run: python -m warp_compress.format
 from __future__ import annotations
 
 import json
+import mmap
 import struct
 import zlib
 
@@ -160,6 +161,57 @@ def read_atom(data: bytes, name: str) -> bytes:
     raise KeyError(f"no atom named {name!r} in this container")
 
 
+def write_cfold(path, data: bytes) -> int:
+    """Write a container blob to a ``.cfold`` file. Returns bytes written — the container's on-disk form
+    (the module's whole promise: a compressed object is one portable, self-describing file you can ship)."""
+    with open(path, "wb") as f:
+        return f.write(data)
+
+
+def read_cfold(path) -> bytes:
+    """Read a whole ``.cfold`` file back into a container blob (validates magic)."""
+    with open(path, "rb") as f:
+        data = f.read()
+    if data[:8] != MAGIC:
+        raise ValueError(f"{path} is not a ChromoFold container (bad magic)")
+    return data
+
+
+def _header_from_prefix(read_prefix) -> dict:
+    """Parse the container header given a callable ``read_prefix(a, b) -> bytes`` over ``[a:b)``."""
+    if read_prefix(0, 8) != MAGIC:
+        raise ValueError("not a ChromoFold container (bad magic)")
+    (hlen,) = struct.unpack("<I", read_prefix(8, 12))
+    return json.loads(read_prefix(12, 12 + hlen).decode("utf-8")), 12 + hlen
+
+
+def read_atom_file(path, name: str) -> bytes:
+    """Random-access read of one atom from an on-disk ``.cfold`` store via ``mmap`` — the deployable form of
+    :func:`read_atom`. Parses the header, then slices that one section straight out of the memory-mapped file:
+    only the header pages + the target atom's pages are faulted in, so you pull one layer from a multi-GB
+    store **without loading the file**. Cost is independent of the other atoms' sizes."""
+    target = _ATOM_PREFIX + name
+    with open(path, "rb") as f:
+        with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+            header, off = _header_from_prefix(lambda a, b: mm[a:b])
+            for s in header["sections"]:
+                n = int(s["nbytes"])
+                if s["name"] == target:
+                    if s.get("codec"):
+                        raise ValueError(f"atom section {name!r} unexpectedly codec-wrapped ({s['codec']})")
+                    return bytes(mm[off:off + n])           # copy out only this atom's pages
+                off += n
+    raise KeyError(f"no atom named {name!r} in {path}")
+
+
+def atom_names_file(path) -> list:
+    """List the atom names in an on-disk store from its header alone — no payload read (mmap, header pages only)."""
+    with open(path, "rb") as f:
+        with mmap.mmap(f.fileno(), 0, access=mmap.ACCESS_READ) as mm:
+            header, _ = _header_from_prefix(lambda a, b: mm[a:b])
+    return [s["name"][len(_ATOM_PREFIX):] for s in header["sections"] if s["name"].startswith(_ATOM_PREFIX)]
+
+
 def summary(data: bytes) -> str:
     """One-line human summary of a container without materialising the arrays."""
     header, _ = unpack(data)
@@ -205,6 +257,16 @@ def _demo():
     print("multi-atom store:", summary(store))
     print(f"  {len(layers)} layers  random-access read_atom('layer.3') byte-exact: {one == layers['layer.3']}  "
           f"full unpack all byte-exact: {all(all_back[k] == v for k, v in layers.items())}")
+
+    # on-disk: write the store to a .cfold file, pull one layer via mmap without loading the file
+    import os
+    import tempfile
+    path = os.path.join(tempfile.gettempdir(), "chromofold_demo.cfold")
+    write_cfold(path, store)
+    disk_one = read_atom_file(path, "layer.3")
+    print(f"  on-disk .cfold ({os.path.getsize(path)/1e3:.1f} KB): mmap read_atom_file('layer.3') "
+          f"byte-exact: {disk_one == layers['layer.3']}  names={atom_names_file(path)[:3]}…")
+    os.remove(path)
 
 
 if __name__ == "__main__":
