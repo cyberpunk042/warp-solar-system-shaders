@@ -34,6 +34,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .varint import read_uvarint, write_uvarint
+
 
 @dataclass
 class GroupedDelta:
@@ -220,3 +222,100 @@ def compress_group(group, mode="centroid", rank=None):
         "atom_bytes": encoded_bytes(gd),
         "baseline_bytes": baseline_bytes(g),
     }
+
+
+# ---- real serialization: a .cfold-style container (magic + varint header + raw arrays) ----
+#
+# Blob layout (LEB128 unless noted), mirroring codec.py / wrapfold.py conventions:
+#   MAGIC "GDLT1" | variant:1B (0 lossless / 1 float32-factors / 2 int8-factors)
+#   n | ndim | shape... | len(dtype_str) | dtype_str | len(mode) | mode | rank
+#   reference: raw bytes (reference.dtype, prod(shape) elems)
+#   variant 0: len(resid_dtype_str) | resid_dtype_str | raw residual bytes ((n, d))
+#   variant 1: raw u(n,r) f32 | raw s(r) f32 | raw vt(r,d) f32
+#   variant 2: raw uq(n,r) i8 | raw vq(r,d) i8 | uq_scale f32 | vq_scale f32
+
+_MAGIC = b"GDLT1"
+
+
+def _wstr(out: bytearray, s: str) -> None:
+    b = s.encode("ascii")
+    write_uvarint(out, len(b))
+    out += b
+
+
+def _rstr(buf: bytes, pos: int):
+    n, pos = read_uvarint(buf, pos)
+    return buf[pos:pos + n].decode("ascii"), pos + n
+
+
+def to_bytes(gd) -> bytes:
+    """Serialize a :class:`GroupedDelta` to a self-describing byte blob (round-trips via `from_bytes`)."""
+    d = int(np.prod(gd.shape))
+    variant = 0 if gd.residuals is not None else (2 if gd.uq is not None else 1)
+    out = bytearray(_MAGIC)
+    out.append(variant)
+    write_uvarint(out, gd.n)
+    write_uvarint(out, len(gd.shape))
+    for x in gd.shape:
+        write_uvarint(out, int(x))
+    _wstr(out, np.dtype(gd.dtype).str)
+    _wstr(out, gd.mode)
+    write_uvarint(out, int(gd.rank or 0))
+    out += np.ascontiguousarray(gd.reference).tobytes()
+    if variant == 0:
+        r = _minify_int(gd.residuals)
+        _wstr(out, r.dtype.str)
+        out += np.ascontiguousarray(r).tobytes()
+    elif variant == 1:
+        out += np.ascontiguousarray(gd.u.astype(np.float32)).tobytes()
+        out += np.ascontiguousarray(gd.s.astype(np.float32)).tobytes()
+        out += np.ascontiguousarray(gd.vt.astype(np.float32)).tobytes()
+    else:
+        out += np.ascontiguousarray(gd.uq).tobytes()
+        out += np.ascontiguousarray(gd.vq).tobytes()
+        out += np.float32(gd.uq_scale).tobytes()
+        out += np.float32(gd.vq_scale).tobytes()
+    return bytes(out)
+
+
+def from_bytes(blob: bytes):
+    """Parse a blob written by :func:`to_bytes` back into a :class:`GroupedDelta`."""
+    if blob[:len(_MAGIC)] != _MAGIC:
+        raise ValueError("not a GDLT1 grouped-delta blob")
+    pos = len(_MAGIC)
+    variant = blob[pos]; pos += 1
+    n, pos = read_uvarint(blob, pos)
+    ndim, pos = read_uvarint(blob, pos)
+    shape = []
+    for _ in range(ndim):
+        v, pos = read_uvarint(blob, pos)
+        shape.append(v)
+    dtype_str, pos = _rstr(blob, pos)
+    mode, pos = _rstr(blob, pos)
+    rank, pos = read_uvarint(blob, pos)
+    shape = tuple(shape)
+    d = int(np.prod(shape))
+    dt = np.dtype(dtype_str)
+    ref_n = d * dt.itemsize
+    reference = np.frombuffer(blob[pos:pos + ref_n], dtype=dt).reshape(shape).copy(); pos += ref_n
+
+    residuals = u = s = vt = uq = vq = uq_scale = vq_scale = None
+    if variant == 0:
+        rdt_str, pos = _rstr(blob, pos)
+        rdt = np.dtype(rdt_str)
+        cnt = n * d
+        residuals = np.frombuffer(blob[pos:pos + cnt * rdt.itemsize], dtype=rdt).reshape(n, d).astype(np.int64)
+        pos += cnt * rdt.itemsize
+        rank = None
+    elif variant == 1:
+        u = np.frombuffer(blob[pos:pos + n * rank * 4], dtype=np.float32).reshape(n, rank).copy(); pos += n * rank * 4
+        s = np.frombuffer(blob[pos:pos + rank * 4], dtype=np.float32).reshape(rank).copy(); pos += rank * 4
+        vt = np.frombuffer(blob[pos:pos + rank * d * 4], dtype=np.float32).reshape(rank, d).copy(); pos += rank * d * 4
+    else:
+        uq = np.frombuffer(blob[pos:pos + n * rank], dtype=np.int8).reshape(n, rank).copy(); pos += n * rank
+        vq = np.frombuffer(blob[pos:pos + rank * d], dtype=np.int8).reshape(rank, d).copy(); pos += rank * d
+        uq_scale = float(np.frombuffer(blob[pos:pos + 4], dtype=np.float32)[0]); pos += 4
+        vq_scale = float(np.frombuffer(blob[pos:pos + 4], dtype=np.float32)[0]); pos += 4
+
+    return GroupedDelta(shape, dt, mode, n, reference, residuals, rank, u, s, vt,
+                        uq=uq, vq=vq, uq_scale=uq_scale, vq_scale=vq_scale)
