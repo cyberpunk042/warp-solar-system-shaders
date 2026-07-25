@@ -222,6 +222,18 @@ def build(sub: int = 1, block: int = 5) -> Thread:
     chromo = np.empty_like(card)
     chromo[a_tok] = chromo_c + small
     chromo[b_tok] = chromo_c - small
+    # CONSERVING split into the metaphase X — NO sister is spawned/manifested. Every other ordered pair folds
+    # onto the MIRROR diagonal (x negated); the SAME P pairs become BOTH arms of the X. During the fold those
+    # pairs migrate across to the sister diagonal — the thread TRANSFORMS into the X, it isn't copied into
+    # existence. Particle count is unchanged (P), matter is only rearranged (interleaved so each diagonal is
+    # sampled evenly along its whole length).
+    _sis = (np.arange(p) % 2 == 1)
+    chromo[a_tok[_sis], 0] *= -1.0
+    chromo[b_tok[_sis], 0] *= -1.0
+    # fold IN PLACE: co-locate the (now full-X) chromatid with the fibre it comes from (same centroid).
+    # Otherwise it sits ~0.55 below the fibre, so the reeling thread migrates down and stretches into a thin
+    # neck reading as two separate bodies. Co-located, the fibre visibly TIGHTENS into the X where it stands.
+    chromo += (fibre.mean(0) - chromo.mean(0)).astype(chromo.dtype)
 
     # --- colours ---
     col_card = np.tile(np.array([0.30, 0.36, 0.32], np.float32), (n, 1))   # muted board material
@@ -357,18 +369,25 @@ def frame(th: Thread, progress: float):
         if g <= a_hi or k == last:
             t = _smooth((g - a_lo) / max(a_hi - a_lo, 1e-6))
             if k == last:
-                # FEED, honest: the fibre is drawn through the telomere 3' TIP (one conduit point) and laid
-                # onto the chromatid in READ ORDER. Each pair routes fibre -> tip -> chromatid as the feed
-                # front passes it (never a straight morph — the whole strand threads through the one tip).
-                src = frames[k - 1]                       # the fibre (the source being reeled in)
-                dst = frames[k]                           # its slot on the chromatid
-                tip = np.array([0.30, 1.05, 0.0], np.float32)     # the telomere 3' tip — the conduit
+                # FOLD, honest & in-place: each base pair moves DIRECTLY from where the fibre left it to its
+                # own slot on the co-located chromatid, as the read-order feed front passes it. No conduit
+                # point — routing every pair through one fixed tip stretched the in-transit pairs into a thin
+                # neck between the fibre (top) and the chromatid (below), which read as two bodies joined by a
+                # string. A direct per-pair move is the honest fold (each pair goes straight to its folded
+                # position, nothing teleports) and, since the chromatid is co-located with the fibre, the
+                # fibre visibly TIGHTENS into the X where it stands — no neck, no migration.
+                src = frames[k - 1]                       # the fibre (reeled in)
+                dst = frames[k]                           # its slot on the co-located chromatid
                 pfrac = ((th.read // 2) / max(th.n // 2, 1)).astype(np.float32)
-                g = np.clip((t * 1.18 - pfrac) / 0.12 + 0.5, 0.0, 1.0)[:, None]   # 0=fibre .5=tip 1=chromatid
-                to_tip = np.clip(g * 2.0, 0.0, 1.0)
-                from_tip = np.clip((g - 0.5) * 2.0, 0.0, 1.0)
-                pos = np.where(g <= 0.5, src + (tip - src) * to_tip, tip + (dst - tip) * from_tip)
-                col = th.col_base * (1.0 - g) + th.col_chromo * g
+                # wavefront from BEFORE the strand (-W/2) to PAST it (1+W/2) over t:0->1, so at the stage
+                # boundary (t=0) p==0 for every pair -> the chromo stage starts EXACTLY at the fibre (no
+                # disconnect from the stage before it), and every pair has fully folded by t=1.
+                _W = 0.34
+                front = -0.5 * _W + t * (1.0 + _W)
+                p = np.clip((front - pfrac) / _W + 0.5, 0.0, 1.0)
+                p = (p * p * (3.0 - 2.0 * p))[:, None]                            # smooth per-pair fold 0..1
+                pos = src + (dst - src) * p
+                col = th.col_base * (1.0 - p) + th.col_chromo * p
                 return pos.astype(np.float32), col.astype(np.float32)
             pos = frames[k - 1] * (1.0 - t) + frames[k] * t
             col = th.col_token * (1.0 - t) + th.col_base * t if k == 1 else th.col_base

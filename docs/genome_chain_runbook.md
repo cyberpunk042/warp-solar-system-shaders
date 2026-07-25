@@ -51,9 +51,12 @@ Same element → same chromosome slot.
 | `build_genome_chain.py` | Renders `warp_genome_chain` → the GIF (global cross-stage palette so the purple chromosome survives quantization). |
 | `watch.py` | **Live MJPEG viewer** (WSL-friendly). |
 
-There is also a `warp_genome` scene (an earlier single-point-cloud morph) — **superseded**; the
-cross-dissolved `warp_genome_chain` is the one to use. `warp_chromosome_x` is the metaphase-X finale
-variant (vs the single chromatid in `warp_chromosome`).
+The deliverable take is now **`warp_genome_thread`** — the "one-thread" ChromoFold engine (`genome/thread.py`):
+a single ordered strand folded through all 8 stages, ending on the conserving metaphase **X** (the same P pairs
+split into both arms — no sister spawned). `build_genome_chain.py` renders it to `genome_chain.gif`.
+`warp_genome_super` continues that thread into **X + Y → super-X** (rendered to `genome_super.gif`). The older
+takes (`warp_genome` single-cloud morph, `warp_genome_chain` cross-dissolve, `warp_chromosome`,
+`warp_chromosome_x`) all remain live scenes in `warp_shaders/scenes/` — kept, not deprecated.
 
 ---
 
@@ -136,8 +139,13 @@ scenes free-run. `Ctrl-C` stops it.
   seam is the **same matter re-forming in place**, not a jump: tokens→base-pairs, base-pairs→helices,
   helices→nucleosomes, …→chromosome. For each, render the two adjacent sub-scenes at the seam time and
   blend 50/50 (see §5.3); fix any that jump the way stage 0 was fixed (match world/camera/pose).
-- **Finale choice.** Single chromatid (`warp_chromosome`) vs metaphase **X** (`warp_chromosome_x`). Offer
-  both; the operator asked to "try both."
+- **Chromosome rework (the big open item).** The operator rejected the current finales as "old trash" — the
+  chromosome (single chromatid AND the metaphase X) renders as a lumpy pile of overlapping purple splats, not a
+  real chromosome. Target (from the operator's reference images): smooth sister chromatid arms with the DNA
+  thread **visibly winding up** them, clear banding, a pinched centromere, rounded telomere tips — a crisp 3D
+  body, not fused blobs. This is a real geometry/render pass on `warp_chromosome_x` / `warp_chromosome` +
+  `chromatid.py` / `genome/thread.py` (smaller splats along a visible helical arm path + proper shading/AO, or
+  a solid surface), not a parameter nudge. The canonical finale is now the metaphase **X** (`warp_chromosome_x`).
 - **Length / pacing.** The operator wanted it *"very very very long."* Per-stage `play_secs` and
   `_DISSOLVE` live in `warp_genome_chain.py::_SEG`. Lengthen there, then re-run `build_genome_chain.py`.
 - **Higher-res deliverable** once on GPU: bump `--width/--height`; consider an `.mp4` (via `render.py

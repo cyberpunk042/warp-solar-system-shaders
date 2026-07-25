@@ -241,12 +241,10 @@ def _core(W, H, time, mx, my, zoomf, device):
         return np.where(cover[..., None], part, board)
     posr, colr = _with_rungs(pos, col)                           # draw the base-pair rungs
     if label == "chromo":
-        # feed directly into BOTH final strands of the metaphase X: this chromatid + its mirror sister (the
-        # replicated pair). Same feed g -> both build together as the strand reels through the tips.
-        posB = posr.copy(); posB[:, 0] = -posB[:, 0]
-        posr = np.concatenate([posr, posB], 0)
-        colr = np.concatenate([colr, colr], 0)
-        cam = _cam(posr, az, el, mx, my, zoomf)                   # reframe for the whole X
+        # NO mirror copy is spawned here anymore. The conserving split lives in the fold (genome.thread):
+        # the same P pairs fold into BOTH diagonals of the X, half migrating to the mirror arm — so the X is
+        # the transformed thread, not a doubled one. Just reframe for the whole (already two-armed) X.
+        cam = _cam(posr, az, el, mx, my, zoomf)
     return _particles(W, H, posr, colr, cam, device)
 
 
