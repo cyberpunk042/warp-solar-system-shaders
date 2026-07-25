@@ -135,13 +135,20 @@ exposed faces).
 
 ![the card folding in half five times into a 20x cube and back](engine/warp_fold_card.gif)
 
-**C3 — genome, the whole process in one take.** All seven stages of the biological compression chained
-end to end — the RTX board → tokens → base pairs → a field of double helices → nucleosome beads-on-a-string
-→ the 30 nm rope forest → the telomere t-loop cap → the thread feeding through the tip and **merging**
-(identical elements collapse onto one puzzle piece, scan-and-merge style) into the small, banded metaphase
-chromosome. Each stage begins from the previous stage's real output; the same matter, only reshaped.
+**C3 — genome, the whole process in one take** (`warp_genome_thread`). One ordered thread — the RTX board's
+own matter — folded through all eight stages end to end: board → tokens → base pairs → double helices →
+nucleosome beads-on-a-string → the 30 nm fibre → the telomere cap → the condensed **metaphase X**. The
+final fold is a *conserving split*: the same base pairs fold into **both** arms of the X (every other pair
+migrates to the mirror arm) — no sister chromatid is spawned or copied, the particle count is constant, and
+each stage begins from the previous stage's exact output. The same matter throughout, only reshaped.
 
-![the whole genome compression from the RTX board down to the chromosome, in one long take](engine/genome_chain.gif)
+![the whole genome compression from the RTX board down to the metaphase X, in one long take](engine/genome_chain.gif)
+
+**C3 — genome, Act II · X + Y → super-X** (`warp_genome_super`). The same thread continues: the finished
+metaphase **X** meets a folded acrocentric **Y** (stem + fork), and the two recurse into a **super-X** — the
+compression metaphor made visual, one rung up.
+
+![the metaphase X and a folded Y recursing into a super-chromosome](engine/genome_super.gif)
 
 **C3 — genome, process 1 · tokenize** (`warp_tokenize`): the **real board** is turned into **tokens** —
 every occupied bit of the card becomes a token (45718 voxels × 8 = **365744 tokens**, coloured by

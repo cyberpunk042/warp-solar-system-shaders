@@ -17,12 +17,13 @@ import argparse
 import os
 import time as _t
 
+import importlib
+
 import numpy as np
 import warp as wp
 from PIL import Image
 
 from warp_shaders.scene import get_scene
-from warp_shaders.scenes.warp_genome_thread import TOTAL
 
 OUT = os.path.join("docs", "engine", "genome_chain.gif")
 
@@ -35,6 +36,8 @@ def _pick_device(requested: str) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description="Render the genome chain to a GIF.")
+    ap.add_argument("--scene", default="warp_genome_thread",
+                    help="scene to sample (must expose TOTAL); e.g. warp_genome_thread or warp_genome_super")
     ap.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"])
     ap.add_argument("--fps", type=float, default=14.0)
     ap.add_argument("--width", type=int, default=384)
@@ -46,7 +49,8 @@ def main() -> None:
 
     wp.init()
     device = _pick_device(args.device)
-    sc = get_scene("warp_genome_thread")
+    sc = get_scene(args.scene)
+    TOTAL = float(importlib.import_module(f"warp_shaders.scenes.{args.scene}").TOTAL)
     n = int(round(TOTAL * args.fps))
     print(f"device: {device}  |  {n} frames @ {args.fps} fps  |  {args.width}x{args.height}", flush=True)
 
