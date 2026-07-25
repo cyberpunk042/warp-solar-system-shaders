@@ -191,6 +191,23 @@ singular values) picks the **low-rank lever** at a mid budget; the full-rank ten
 low-rank offers it nothing; the outlier tensor picks the **outlier side-channel** when the budget allows. The
 structure signal in each `reason` string is exactly what explains the choice — no guessing, all receipts.
 
+## Runtime — a fused decode-from-codebook GEMM (`pq_matmul.py`)
+
+The related-work doc names the "two-stage LUT-decode → GEMM" from a PQ codebook as the production endgame.
+`gpu_fused_matmul` does it for int weights; this does the **codebook** version: a Warp kernel computes
+`y = x·Ŵᵀ` by decoding each PQ weight from the codebook **in registers** as it multiplies — the dense fp32 `W`
+is never materialized, and codes are held at their natural **uint8** width (k ≤ 256).
+
+Measured (`python -m warp_compress.pq_matmul`, W 1024×512, CPU device):
+
+- **Correctness:** fused result vs decode-then-GEMM, max rel error **7.2e-7** (bit-close).
+- **Resident during compute:** 133 KB (uint8 codes + fp16 codebook) vs 2097 KB dense fp32 → **15.8× less weight
+  memory resident** (matches PQ's 2 bits/weight).
+
+Honest scope: this is a correctness + memory PoC that re-decodes `W` per GEMM (exactly like the int
+`gpu_fused_matmul` PoC). The **throughput** win — the whole point of a fused kernel — needs a GPU and a
+tensor-core-class kernel; it is not measurable on CPU. RVQ generalizes it (sum the per-stage codebook lookups).
+
 ## How the levers compose
 
 ```
