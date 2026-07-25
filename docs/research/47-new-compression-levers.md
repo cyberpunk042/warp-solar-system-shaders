@@ -123,6 +123,30 @@ touch better on output error) — not a blanket win. Its distinctive value is se
 **addressable low-rank base** (shareable across a model family — the LoRA insight generalized) + a residual,
 and owning the **sub-1-bit structure-only** regime.
 
+## Lever 5 — residual (multi-codebook) vector quantization (`rvq_store.py`)
+
+Extends Lever 1: instead of one codebook per sub-vector, stack `stages` of them — codebook 1 quantizes the
+sub-vector, codebook 2 quantizes the *residual*, and so on; reconstruction is the sum of the chosen centroids.
+Each stage's codes are their own token stream in the same index (addressable), lossless over the fp16
+codebooks.
+
+Measured (`python -m warp_compress.rvq_store`, synthetic correlated weights, 2048×512):
+
+| config | b/weight | MSE vs fp32 | output error |
+|---|---|---|---|
+| PQ subdim4 8b (1 codebook) | 2.25 | 3.92e-4 | 1.98e-1 |
+| RVQ subdim4 2×4b | 2.27 | 4.90e-4 | 2.49e-1 |
+| RVQ subdim4 3×4b | 3.39 | 1.88e-4 | 9.63e-2 |
+| RVQ subdim4 4×4b | 4.45 | 7.73e-5 | 3.94e-2 |
+
+**Honest read:** at *matched* code-bits a single free codebook is slightly **better** than stacked ones (RVQ
+2×4b MSE 4.9e-4 vs a single 8b's 3.9e-4) — additive centroids (a Minkowski sum of 16+16 points) are less
+expressive than 256 free points. RVQ is **not** a same-bits distortion win. Its value is **scalability + tiny
+stable codebooks**: adding stages refines the residual to high accuracy (4×4b → 7.7e-5 MSE) using 4×16
+centroids, where the equivalent single codebook needs 2¹⁶ = 65536 (infeasible k-means + huge codebook). So it
+is the "scale PQ to high accuracy with small codebooks" lever — useful for per-tensor codebooks and small
+tensors where a big codebook doesn't amortize.
+
 ## How the levers compose
 
 ```
