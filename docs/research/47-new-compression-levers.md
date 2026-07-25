@@ -147,6 +147,29 @@ centroids, where the equivalent single codebook needs 2¹⁶ = 65536 (infeasible
 is the "scale PQ to high accuracy with small codebooks" lever — useful for per-tensor codebooks and small
 tensors where a big codebook doesn't amortize.
 
+## Lever 6 — 2:4 structured sparsity (`sparse_store.py`) — a measured *negative*
+
+The one lever category left untouched was structured sparsity. NVIDIA Ampere+ tensor cores run a **2:4**
+pattern (exactly 2 of every 4 contiguous weights nonzero) at ~2× throughput. Implemented as a codec:
+magnitude-prune each group of 4 to its two largest, store the survivors (int, entropy-coded) + a 3-bit pattern
+id per group; both streams in the RRR index (addressable).
+
+Measured (`python -m warp_compress.sparse_store`, Gaussian weights, **no fine-tuning**):
+
+| config | b/weight | MSE | output error |
+|---|---|---|---|
+| dense int4 | 3.05 | 8.30e-5 | 4.22e-2 |
+| dense PQ 4×8 | 2.26 | 1.89e-4 | 9.60e-2 |
+| 2:4 int8 | 4.77 | 2.59e-4 | **1.30e-1** |
+| 2:4 int4 | 2.46 | 3.00e-4 | 1.51e-1 |
+
+**Honest negative:** post-training 2:4 drops half the weights, so it is **dominated** on the RD curve — 2:4-int8
+spends 4.77 b/w yet has **3× the output error** of dense int4 at 3.05 b/w. 2:4 is *not* a ratio/quality win
+here; its payoff is the ~2× sparse-tensor-core **throughput** on supported GPUs (not measurable on CPU), which
+you pair with fine-tuning to recover the accuracy this number quantifies. Shipping it as a measured negative is
+the point — the lever is mapped, its cost known. (The lever selector deliberately does *not* include it, since
+it loses on the pure RD metric it optimizes.)
+
 ## The capstone — a build-driven lever selector (`lever_select.py`)
 
 Five weight levers (int, PQ, RVQ, low-rank+residual) are choices with different sweet spots. `lever_select`
