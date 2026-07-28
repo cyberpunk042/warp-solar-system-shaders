@@ -287,6 +287,17 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `bomb_amplitude` | Press-Teukolsky mirror runaway `A_n = A₀(1+g)ⁿ` |
 | `lense_thirring_omega` | frame drag `ω_LT = 2Ma/r³` (1/r³ law asserted) |
 
+### `engine.desitter` — the cosmic horizon (host-side, all test-asserted)
+
+| Function | What it is |
+|---|---|
+| `horizon_radius` / `gibbons_hawking_temperature` / `ds_entropy` | `r_H = 1/H`; `T = H/2π`; `S = A/4 = π/H²` (S = A/4 asserted) |
+| `comoving_event_horizon` | `χ_EH = e^{−Ht}/H` — shrinks exponentially during inflation (asserted) |
+| `mode_crossing_time` | mode k exits at `k = aH`, `t_k = ln(k/H)/H` — octave scales exit at equal time steps (log law asserted) |
+| `spectral_tilt` / `mode_amplitude` | `n_s = 1 + 2η − 6ε`; frozen spectrum `√P ∝ k^{(n_s−1)/2}` — exact red power law asserted |
+| `efolds` | `N = ln(a_end/a_start)`; N ≳ 60 solves the horizon problem |
+| `hubble_flow_redshift` | static-patch `1+z = 1/√(1−H²r²)` — diverges at the horizon (asserted) |
+
 ## Post — `engine.post`
 
 Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with
