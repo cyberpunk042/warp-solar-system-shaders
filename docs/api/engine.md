@@ -223,9 +223,11 @@ it hits the disk or escapes. Units are geometric with `r_s = 1`. See
 
 ## AdS/CFT holography — `engine.adscft`
 
-Shared core for the holography set (`ads_cft`, `ads_bulk`): the `{7,3}` hyperbolic
+Shared core for the holography set (`ads_cft`, `ads_bulk`, `ads_hawking_page`,
+`ads_entanglement`, `ads_wormhole`, `ads_confinement`): the `{7,3}` hyperbolic
 reflection-group fold (mirror geometry derived from `cosh m = cos(π/q)/sin(π/p)`), the
-Schwarzschild-AdS blackening factor, the CFT boundary texture, and the Hawking temperature.
+Schwarzschild-AdS blackening factor, the two CFT boundary textures (thermofield-double
+pair), the Hawking-Page thermodynamic dictionary, and the RT/Wilson geodesic dictionary.
 See [Research 46](../research/46-ads-cft-holography.md).
 
 | Function | Signature |
@@ -239,6 +241,12 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `hawking_page_temperature` | *(host)* `(l_ads) -> float` — the transition temperature `T_HP = 1/(πL)`; below it thermal AdS dominates the ensemble, above it the large hole |
 | `large_hole_radius` | *(host)* `(t, l_ads) -> float` — horizon of the stable large hole at temperature `t`: the large-branch inverse of `T(r_h)`; `r_h(T_HP) = L` exactly |
 | `mass_of_radius` | *(host)* `(r_h, l_ads) -> float` — `M = r_h(1 + r_h²/L²)/2` from `f(r_h) = 0` |
+| `boundary_cft_dual` | `(rd: vec3, time, t_hawk) -> vec3` — the SECOND CFT copy (cool palette, counter-rotating flow): the other boundary of the eternal hole, the right factor of the thermofield double |
+| `rt_geodesic_glow` | `(zd: vec2, th1, th2, px) -> float` — the bulk geodesic anchored at boundary angles: the RT minimal surface AND (in AdS₃) the static Wilson-loop string |
+| `interval_entropy` | *(host)* `(dtheta, eps, c) -> float` — `S = (c/3) ln((2/ε) sin(Δθ/2))`: RT geodesic length = the Calabrese-Cardy interval entropy |
+| `mutual_information` | *(host)* `(gap, size_a, size_b, eps, c) -> (I, connected)` — `I(A:B)` from the min over geodesic pairings; exactly 0 in the disconnected phase (the holographic MI transition) |
+| `string_turning_radius` | *(host)* `(dtheta, r_bdy) -> float` — deepest point of the quark string: `r_min = R(1 − sin α)/cos α` |
+| `screening_angle` | *(host)* `(r_h, r_bdy) -> float` — separation at which the string breaks on the horizon: `sin α = (R² − r_h²)/(R² + r_h²)` |
 
 ## Post — `engine.post`
 

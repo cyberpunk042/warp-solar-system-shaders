@@ -173,6 +173,98 @@ capture parameter `b ≈ 3√3 M` is comparable to the whole box — the optical
 shadow with its blazing ring of lensed boundary lattice is not an artistic choice, it is
 *why* the large hole dominates.
 
+## Part IV — entanglement builds geometry: `ads_entanglement`
+
+`ads_cft` decorates the disk with RT arcs; this scene **computes** them. Ryu & Takayanagi
+(2006, [hep-th/0603001](https://arxiv.org/abs/hep-th/0603001)): the entanglement entropy of
+a boundary region A equals the area (in AdS₃, the *length*) of the minimal bulk surface
+anchored on ∂A, in units 4G = 1. For an interval of angular size `Δθ` on the boundary circle
+of global AdS₃ the regularized geodesic length gives
+
+```
+S(Δθ) = (c/3) ln( (2/ε) sin(Δθ/2) )
+```
+
+— exactly the Calabrese–Cardy answer computed on the CFT side with no reference to any bulk
+([cond-mat/0503393](https://arxiv.org/abs/cond-mat/0503393)). Two very different
+calculations, one number: that agreement is the content of the duality, and the engine
+carries the formula as `interval_entropy` (test-asserted, including the pure-state symmetry
+`S(Δθ) = S(2π − Δθ)` and the maximum `S(π) = (c/3) ln(2/ε)`).
+
+For TWO intervals the RT prescription becomes a **minimization over pairings**: cap each
+interval with its own geodesic (*disconnected*) or cap the two gaps instead (*connected*).
+`mutual_information` computes `I(A:B) = S_A + S_B − min(S_disc, S_conn)` — identically zero
+in the disconnected phase, switching on with discontinuous first derivative when the
+intervals approach: the **holographic mutual-information phase transition**, first-order by
+saddle competition exactly like Hawking–Page. The scene draws the winning pairing bright and
+the losing one ghost-faint (the subleading saddle is still there; it just doesn't dominate),
+and fills the **entanglement wedge** — the bulk region bounded by the cross-geodesics, the
+region A∪B can reconstruct — with light scaled by the actual I(A:B). When the intervals
+share no information the wedge is two disjoint slivers; when I jumps on, a connected chunk
+of spacetime belongs to them. Entanglement is literally holding that region together — Van
+Raamsdonk's "building up spacetime with quantum entanglement"
+([1005.3035](https://arxiv.org/abs/1005.3035)).
+
+## Part V — ER = EPR: `ads_wormhole`
+
+The eternal Schwarzschild-AdS black hole has **two** asymptotic boundaries. Maldacena
+(2001, [hep-th/0106112](https://arxiv.org/abs/hep-th/0106112)) identified its dual: two
+copies of the CFT in the **thermofield-double state**, `|TFD⟩ = Σ e^{−βE/2} |E⟩_L |E⟩_R` —
+a specific entangled state whose reduced density matrix on either side is exactly thermal.
+The Einstein–Rosen bridge between the exteriors IS the entanglement: **ER = EPR**
+(Maldacena & Susskind, [1306.0533](https://arxiv.org/abs/1306.0533)). But the bridge is
+non-traversable — entanglement alone is not a channel; you cannot signal through it. In the
+scene, coupling OFF: the shadow is honestly black. The other universe is *there* (the TFD
+knows it) and causally out of reach.
+
+Gao, Jafferis & Wall ([1608.05687](https://arxiv.org/abs/1608.05687)) found the loophole:
+couple the two boundary theories directly, `δH = −g O_L O_R` (a double-trace deformation).
+The coupling injects **negative null energy** into the bulk — allowed here because the
+averaged null energy condition constrains states, not deformed Hamiltonians — and the
+wormhole opens, briefly and traversably. Entanglement + classical communication = a
+channel: this is bulk **quantum teleportation** through the ER bridge. The scene runs the
+protocol as a cycle: coupling ON, rays that would have been captured cross the bridge and
+climb out the far side, and the shadow **fills with the other universe's CFT** — the
+counter-rotating cyan lattice of `boundary_cft_dual` (`H_L = −H_R` in the TFD: the copies
+flow oppositely), behind a blue negative-energy wash at the throat. What was the darkest
+region of the sky becomes a window. Rendering honesty: the traversal hand-off itself is
+schematic (the ray is passed through the throat antipodally rather than integrated through
+the GJW-deformed metric); the exterior geodesics, the reflecting boundary, the two CFT
+copies and the coupling gate are the honest dictionary, and the test suite asserts the
+shadow is dark with the coupling off and blue-dominant with it on.
+
+## Part VI — confinement and the breaking string: `ads_confinement`
+
+Why can't a single quark be pulled out of a hadron? The holographic answer (Maldacena
+[hep-th/9803002](https://arxiv.org/abs/hep-th/9803002); Rey & Yee
+[hep-th/9803001](https://arxiv.org/abs/hep-th/9803001)) is a picture: the Wilson loop of a
+quark–antiquark pair on the boundary is computed by a **string hanging into the bulk**, and
+the interquark potential is the string's regularized length. On a constant-time slice of
+AdS₃ the static string minimizes proper length — it is the SAME orthogonal-circle geodesic
+as the RT surface (one arc, two dictionary entries), and its geometry is closed-form:
+through two boundary points at half-angle `α` on the cutoff sphere of radius `R`, the
+orthogonal circle has centre distance `d = R/cos α`, radius `ρ = R tan α`, and deepest point
+
+```
+r_min = R (1 − sin α) / cos α          (string_turning_radius)
+```
+
+The scene runs the Hawking–Page dial of Part III with a quark pair whose separation sweeps:
+
+- **Confined (T < T_HP, thermal AdS).** No horizon exists — however far the quarks are
+  pulled, the connected string survives, at wide separation diving past the centre of the
+  box as one unbroken flux tube. Separating the pair just makes more string. That IS
+  confinement (Witten [hep-th/9803131](https://arxiv.org/abs/hep-th/9803131)).
+- **Deconfined (T > T_HP).** The horizon offers the string a way out. The connected arc
+  exists only while `r_min > r_h`; solving `r_min = r_h` gives the **screening angle**
+  `sin α = (R² − r_h²)/(R² + r_h²)` (`screening_angle`, inverse round-trip test-asserted).
+  Beyond it the string snaps into two radial segments falling into the hole — each quark
+  screened by the plasma, the potential flat. Close pairs stay bound even above T_HP
+  (quarkonium surviving deconfinement): the break happens at the computed angle, not at
+  the phase boundary. A lensing honesty note: the broken strings' inner ends are hidden
+  *behind* the shadow — rays grazing them are captured — so the stubs visibly drain into
+  darkness.
+
 ## Sources
 
 - J. Maldacena, *The Large N Limit of Superconformal Field Theories and Supergravity*,
@@ -200,3 +292,17 @@ shadow with its blazing ring of lensed boundary lattice is not an artistic choic
 - O. Aharony, S. Gubser, J. Maldacena, H. Ooguri, Y. Oz, *Large N Field Theories, String
   Theory and Gravity* (the MAGOO review), [hep-th/9905111](https://arxiv.org/abs/hep-th/9905111)
   — reflecting boundary conditions, AdS-as-a-box, the duality dictionary
+- P. Calabrese, J. Cardy, *Entanglement Entropy and Quantum Field Theory*,
+  [cond-mat/0503393](https://arxiv.org/abs/cond-mat/0503393) — the CFT-side interval entropy
+  the RT geodesic length reproduces
+- M. Van Raamsdonk, *Building up spacetime with quantum entanglement*,
+  [1005.3035](https://arxiv.org/abs/1005.3035) — the entanglement-wedge reading
+- J. Maldacena, *Eternal Black Holes in AdS*,
+  [hep-th/0106112](https://arxiv.org/abs/hep-th/0106112) — the thermofield double
+- J. Maldacena, L. Susskind, *Cool horizons for entangled black holes* (ER=EPR),
+  [1306.0533](https://arxiv.org/abs/1306.0533)
+- P. Gao, D. L. Jafferis, A. C. Wall, *Traversable Wormholes via a Double Trace
+  Deformation*, [1608.05687](https://arxiv.org/abs/1608.05687)
+- J. Maldacena, *Wilson loops in large N field theories*,
+  [hep-th/9803002](https://arxiv.org/abs/hep-th/9803002); S.-J. Rey, J. Yee,
+  [hep-th/9803001](https://arxiv.org/abs/hep-th/9803001) — the hanging Wilson-loop string

@@ -1,10 +1,13 @@
-"""Smoke tests for the AdS/CFT holography set (ads_cft disk + ads_bulk ray-traced bulk).
+"""Smoke tests for the AdS/CFT holography set (all six scenes + the dictionary).
 
-Both frames are deterministic, so beyond finite/in-range/animating we assert real
-structure. ads_cft: a bright conformal-boundary ring at the disk rim, a tiled
-(high-variance) hyperbolic bulk inside it, a dimmer — but not empty — holographic
-exterior. ads_bulk: a genuine event-horizon shadow, a lit CFT boundary sky, and the
-LOD tiers (boundary bounces + integration steps) rendering at every quality.
+Frames are deterministic, so beyond finite/in-range/animating we assert real structure.
+ads_cft: boundary ring / tiled bulk / hologram. ads_bulk: horizon shadow, lit CFT sky,
+LOD sweep. ads_hawking_page: the two phases. ads_entanglement: the mutual-information
+phase transition (geodesic pairings swap; the wedge lights). ads_wormhole: the shadow is
+dark with the coupling OFF and fills with the (cyan) dual CFT when ON. ads_confinement:
+the string survives any separation below T_HP and breaks on the horizon above it. The
+host-side dictionary (entropies, mutual information, turning radius, screening angle) is
+asserted against closed forms.
 
     python -m tests.test_holography
 """
@@ -18,8 +21,12 @@ from warp_shaders.engine.adscft import (
     hawking_page_temperature,
     hawking_temperature,
     horizon_radius,
+    interval_entropy,
     large_hole_radius,
     mass_of_radius,
+    mutual_information,
+    screening_angle,
+    string_turning_radius,
 )
 
 _DISK_R = 0.43  # keep in sync with warp_shaders/scenes/ads_cft.py
@@ -125,7 +132,90 @@ def main():
     assert np.abs(a - b).mean() > 5e-3, "ads_hawking_page: phases do not differ"
     print(f"  ads_hawking_page: OK  (shadow-frac hole {dark_hole:.3f} vs thermal-AdS {dark_ads:.3f})")
 
-    print("ALL PASSED (3 scenes + LOD sweep + thermodynamics + phase transition)")
+    # ---- RT dictionary: entropy = regularized geodesic length (Calabrese-Cardy) ----
+    # S(Δθ) = (c/3) ln((2/ε) sin(Δθ/2)): symmetric under Δθ → 2π − Δθ (pure global
+    # state: S_A = S_Ā), maximal at Δθ = π where S = (1/3) ln(2/ε) exactly.
+    eps = 0.05
+    assert abs(interval_entropy(1.0, eps) - interval_entropy(2.0 * np.pi - 1.0, eps)) < 1e-12
+    assert interval_entropy(np.pi, eps) > interval_entropy(1.0, eps) > interval_entropy(0.3, eps)
+    assert abs(interval_entropy(np.pi, eps) - np.log(2.0 / eps) / 3.0) < 1e-12
+    # mutual information: exactly 0 in the disconnected phase, monotone-on as the gap closes
+    i_far, c_far = mutual_information(2.0, 1.35, 1.35, eps)
+    i_mid, c_mid = mutual_information(0.5, 1.35, 1.35, eps)
+    i_near, c_near = mutual_information(0.2, 1.35, 1.35, eps)
+    assert i_far == 0.0 and not c_far, "far intervals should be disconnected with I = 0"
+    assert c_mid and c_near and i_near > i_mid > 0.0, "I should switch on and grow as gap closes"
+    print(f"  RT dictionary: OK  (S(pi) = ln(2/eps)/3; I: far 0 -> mid {i_mid:.3f} "
+          f"-> near {i_near:.3f})")
+
+    # ---- Wilson-string geometry: turning radius + screening angle (closed forms) ----
+    r_bdy = 24.0
+    assert abs(string_turning_radius(1e-9, r_bdy) - r_bdy) < 1e-5
+    assert string_turning_radius(0.99 * np.pi, r_bdy) < 0.2
+    r1, r2 = string_turning_radius(1.0, r_bdy), string_turning_radius(2.0, r_bdy)
+    assert r1 > r2, "turning radius must deepen with separation"
+    th = screening_angle(2.2, r_bdy)
+    assert abs(string_turning_radius(th, r_bdy) - 2.2) < 1e-9, "screening-angle inverse broken"
+    print(f"  string geometry: OK  (r_min monotone; screening inverse round-trips, "
+          f"th_scr(2.2, 24) = {th:.4f})")
+
+    # ---- ads_entanglement: the mutual-information transition on screen ----
+    # t=3.3: disconnected (each interval capped by its own geodesic; centre is dim bulk)
+    # t=10.5: connected (a near-diameter cross-geodesic passes the centre; wedge glows)
+    a = _render("ads_entanglement", 10.5)
+    b = _render("ads_entanglement", 3.3)
+    h, w = a.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w]
+    u = (xx + 0.5 - 0.5 * w) / h
+    v = (0.5 * h - (yy + 0.5)) / h
+    rr = np.sqrt(u * u + v * v) / _DISK_R
+    centre = rr < 0.06
+    c_conn = a.mean(axis=2)[centre].mean()
+    c_disc = b.mean(axis=2)[centre].mean()
+    assert c_conn > 2.0 * c_disc, \
+        f"connected cross-geodesic should light the centre ({c_conn:.3f} vs {c_disc:.3f})"
+    # the wedge wash is purple: in the connected frame the interior right half gains blue
+    right_half = (rr < 0.85) & (u > 0.05)
+    blue_conn = a[..., 2][right_half].mean()
+    blue_disc = b[..., 2][right_half].mean()
+    assert blue_conn > 1.2 * blue_disc, \
+        f"entanglement wedge should tint the interior ({blue_conn:.3f} vs {blue_disc:.3f})"
+    assert np.abs(a - b).mean() > 5e-3, "ads_entanglement: phases do not differ"
+    print(f"  ads_entanglement: OK  (centre conn {c_conn:.3f} vs disc {c_disc:.3f}; "
+          f"wedge blue {blue_conn:.3f} vs {blue_disc:.3f})")
+
+    # ---- ads_wormhole: the shadow becomes a window when the coupling switches on ----
+    a = _render("ads_wormhole", 9.42)          # coupling OFF — non-traversable
+    lum = a.mean(axis=2)
+    dark_off = float((lum < 0.05).mean())
+    assert dark_off > 0.08, f"ads_wormhole: no shadow with coupling off ({dark_off:.3f})"
+    b = _render("ads_wormhole", 3.14)          # coupling ON — traversable
+    dark_on = float((b.mean(axis=2) < 0.05).mean())
+    assert dark_on < 0.35 * dark_off, \
+        f"ads_wormhole: throat did not open ({dark_on:.3f} vs {dark_off:.3f})"
+    # the light in the former shadow is the OTHER universe's cyan lattice: blue > red there
+    shadow = lum < 0.05
+    assert b[..., 2][shadow].mean() > 1.3 * b[..., 0][shadow].mean(), \
+        "ads_wormhole: traversed light should be the cyan dual CFT"
+    print(f"  ads_wormhole: OK  (shadow-frac off {dark_off:.3f} -> on {dark_on:.3f}; "
+          f"dual CFT is blue-dominant)")
+
+    # ---- ads_confinement: the string survives thermal AdS, breaks on the horizon ----
+    a = _render("ads_confinement", 4.5)        # confined: wide pair, string through centre
+    b = _render("ads_confinement", 6.3)        # deconfined: hole + wide pair -> broken
+    ch, cw = a.shape[0] // 2, a.shape[1] // 2
+    c_conf = a.mean(axis=2)[ch - 8:ch + 8, cw - 8:cw + 8].mean()
+    c_brk = b.mean(axis=2)[ch - 8:ch + 8, cw - 8:cw + 8].mean()
+    assert c_conf > 3.0 * c_brk, \
+        f"confined string should cross the centre, broken must not ({c_conf:.3f} vs {c_brk:.3f})"
+    dark_brk = float((b.mean(axis=2) < 0.08).mean())
+    assert dark_brk > 0.25, f"ads_confinement: no shadow in the deconfined phase ({dark_brk:.3f})"
+    assert np.abs(a - b).mean() > 5e-3, "ads_confinement: phases do not differ"
+    print(f"  ads_confinement: OK  (centre confined {c_conf:.3f} vs broken {c_brk:.3f}; "
+          f"deconfined shadow-frac {dark_brk:.3f})")
+
+    print("ALL PASSED (6 scenes + LOD sweep + thermodynamics + phase transition "
+          "+ RT dictionary + string screening)")
 
 
 if __name__ == "__main__":

@@ -690,14 +690,30 @@ hole (Λ drops out of the photon path shape, so the shared geodesic core is exac
 conformal boundary **reflecting light back in** (bounces scale with `--quality`), and every
 boundary hit painting the CFT lattice with a thermal wash at the hole's **Hawking temperature**.
 
-`ads_hawking_page` completes the set with the **Hawking–Page transition**: sweep the boundary
+`ads_hawking_page` adds the **Hawking–Page transition**: sweep the boundary
 temperature through `T_HP = 1/(πL)` and the bulk changes phase by ensemble dominance — thermal
 AdS (confined) below, a large black hole nucleating at AdS size `r_h = L` (deconfined) above,
 its Hawking temperature locked to the boundary dial.
 
+The set then completes the modern dictionary: `ads_entanglement` draws **Ryu–Takayanagi
+quantitatively** — interval entropies as regularized geodesic lengths (= Calabrese–Cardy
+exactly), the **mutual-information phase transition** as a first-order swap between competing
+geodesic pairings, and the **entanglement wedge** glowing with the computed `I(A:B)`.
+`ads_wormhole` runs **ER=EPR and the Gao–Jafferis–Wall protocol**: the eternal hole as a
+thermofield-double bridge between two CFT copies — coupling off, an honestly black shadow;
+coupling on, negative null energy opens the throat and the shadow fills with the *other
+universe's* counter-rotating cyan lattice. `ads_confinement` explains **why you can't free a
+quark**: the Wilson-loop string (in AdS₃ the same geodesic as the RT surface) survives any
+separation below `T_HP`, and above it snaps on the horizon at the exact screening angle
+`sin α = (R² − r_h²)/(R² + r_h²)` — plasma screening, with close pairs (quarkonium) still bound.
+
 | ads_cft — the holographic map | ads_bulk — inside the AdS box | ads_hawking_page — the phase cycle |
 |---|---|---|
 | ![ads_cft](docs/engine/ads_cft.png) | ![ads_bulk](docs/engine/ads_bulk.png) | ![hawking page](docs/engine/ads_hawking_page.gif) |
+
+| ads_entanglement — the MI transition | ads_wormhole — the throat opens | ads_confinement — the string breaks |
+|---|---|---|
+| ![ads_entanglement](docs/engine/ads_entanglement.png) | ![ads_wormhole](docs/engine/ads_wormhole.gif) | ![ads_confinement](docs/engine/ads_confinement.png) |
 
 ## Engine leap — global illumination
 

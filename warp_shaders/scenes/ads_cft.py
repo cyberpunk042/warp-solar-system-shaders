@@ -30,7 +30,7 @@ See ``docs/research/46-ads-cft-holography.md``. --frames flows the isometry; iMo
 import warp as wp
 
 from ..engine import post
-from ..engine.adscft import poincare_fold, tile_edge
+from ..engine.adscft import poincare_fold, rt_geodesic_glow, tile_edge
 from ..scene import Scene
 
 # The {7,3} tiling constants + reflection-group fold live in the shared engine core
@@ -53,28 +53,6 @@ def _mobius_jac(z: wp.vec2, a: wp.vec2) -> float:
     """|f'(z)| = (1 - |a|^2) / |1 - conj(a) z|^2 — local magnification of the isometry."""
     d = wp.vec2(1.0 - (a[0] * z[0] + a[1] * z[1]), a[1] * z[0] - a[0] * z[1])
     return (1.0 - (a[0] * a[0] + a[1] * a[1])) / (d[0] * d[0] + d[1] * d[1] + 1.0e-12)
-
-
-@wp.func
-def _rt_geodesic(zd: wp.vec2, th1: float, th2: float, px: float) -> float:
-    """Glow of the bulk geodesic anchored at boundary angles th1, th2.
-
-    The unique circle through both endpoints orthogonal to the unit circle has centre
-    c = (u + v)/(1 + u.v) and radius^2 = |c|^2 - 1; its arc inside the disk IS the
-    hyperbolic geodesic (the RT minimal surface for the boundary interval).
-    """
-    u = wp.vec2(wp.cos(th1), wp.sin(th1))
-    v = wp.vec2(wp.cos(th2), wp.sin(th2))
-    den = 1.0 + u[0] * v[0] + u[1] * v[1]
-    c = wp.vec2((u[0] + v[0]) / den, (u[1] + v[1]) / den)
-    rad = wp.sqrt(wp.max(wp.dot(c, c) - 1.0, 1.0e-8))
-    darc = wp.abs(wp.length(zd - c) - rad)
-    w = wp.max(0.0035, 1.5 * px)
-    glow = wp.exp(-(darc * darc) / (w * w)) + 0.35 * wp.exp(-darc * 26.0)
-    # endpoint dots — the boundary interval's operator insertions
-    de = wp.min(wp.length(zd - u), wp.length(zd - v))
-    glow += 2.2 * wp.exp(-(de * de) / (9.0 * w * w))
-    return glow
 
 
 @wp.kernel
@@ -152,7 +130,7 @@ def _render_kernel(
         gf = float(g)
         thc = gf * 2.0943951 + 0.21 * time * (1.0 - 0.24 * gf)
         half = 0.62 + 0.30 * wp.sin(0.37 * time + gf * 2.1)
-        glow = _rt_geodesic(zd, thc - half, thc + half, px)
+        glow = rt_geodesic_glow(zd, thc - half, thc + half, px)
         gc = wp.vec3(1.0, 0.42, 0.85)
         if g == 1:
             gc = wp.vec3(0.45, 1.0, 0.70)

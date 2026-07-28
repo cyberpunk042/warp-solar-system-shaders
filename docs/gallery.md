@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (314 scenes).
+`python render.py --list` for the full, current list (317 scenes).
 
 ## Engine showcase
 
@@ -123,6 +123,57 @@ One full temperature cycle — the hole nucleating and evaporating as the ensemb
 mind:
 
 ![the Hawking-Page phase cycle](engine/ads_hawking_page.gif)
+
+`ads_entanglement` — **entanglement builds geometry**
+([Research 46, Part IV](research/46-ads-cft-holography.md)). The Ryu–Takayanagi formula drawn
+*quantitatively*: two boundary intervals whose entropies are the regularized lengths of their
+bulk geodesics — `S = (c/3) ln((2/ε) sin(Δθ/2))`, exactly the Calabrese–Cardy CFT answer, the
+agreement being the duality. As the intervals drift together the minimal geodesic pairing
+**swaps** (each-its-own vs gaps-capped) — the holographic **mutual-information phase
+transition**, first-order by saddle competition like Hawking–Page, winner drawn bright and
+loser ghost-faint. In the connected phase the **entanglement wedge** between the cross-arcs
+fills with light scaled by the actual `I(A:B)`: entanglement literally holding a region of
+spacetime together.
+
+![ads_entanglement — the mutual-information transition](engine/ads_entanglement.png)
+
+The sweep through the transition — pairings swapping, the wedge igniting and dying:
+
+![the mutual-information phase transition](engine/ads_entanglement.gif)
+
+`ads_wormhole` — **ER = EPR**, then the throat opens
+([Research 46, Part V](research/46-ads-cft-holography.md)). The eternal AdS hole is a wormhole
+between two universes dual to two CFT copies entangled in the **thermofield double**; the
+Einstein–Rosen bridge IS the entanglement (Maldacena–Susskind) — and it is non-traversable:
+coupling OFF, the shadow is honestly black; the other universe is *there* but out of reach.
+Then the **Gao–Jafferis–Wall protocol**: couple the boundaries (`δH = −g O_L O_R`), negative
+null energy opens the throat, and the shadow **fills with the other universe's
+counter-rotating cyan lattice** (`H_L = −H_R` in the TFD) — quantum teleportation drawn as a
+window in the darkest part of the sky.
+
+![ads_wormhole — the shadow becomes a window](engine/ads_wormhole.png)
+
+One full coupling cycle — non-traversable shadow, then the other universe shining through:
+
+![the GJW traversability cycle](engine/ads_wormhole.gif)
+
+`ads_confinement` — **why you can't free a quark**
+([Research 46, Part VI](research/46-ads-cft-holography.md)). A quark–antiquark pair on the
+boundary joined by a **Wilson-loop string** hanging into the bulk — in AdS₃ the *same*
+orthogonal-circle geodesic as the RT surface (one arc, two dictionary entries). Below `T_HP`
+no horizon exists: however far the pair is pulled, the flux tube survives, diving past the
+centre of the box — **confinement**. Above `T_HP` the nucleated horizon snaps the string at
+the exact **screening angle** `sin α = (R² − r_h²)/(R² + r_h²)` (closed-form, test-asserted)
+into two strings draining into the hole — deconfined **screening**, close pairs still bound
+(quarkonium surviving the plasma). The broken ends vanish *behind* the shadow: rays grazing
+them are captured.
+
+![ads_confinement — the string breaking on the horizon](engine/ads_confinement.png)
+
+Both cycles running — the hole flickering with the ensemble, the string breaking and
+re-forming at the computed angle:
+
+![confinement and screening](engine/ads_confinement.gif)
 
 ## Warp compression — three compressions of the card's visual information
 
