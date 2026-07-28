@@ -102,6 +102,7 @@ nav:
       - AdS/CFT holography (Poincaré disk, RT geodesics): research/46-ads-cft-holography.md
       - New compression levers (PQ, semantic merge, context memory): research/47-new-compression-levers.md
       - BTZ black hole on the disk (quotient, plateau, ringdown): research/48-btz-black-hole-on-the-disk.md
+      - Holographic quantum information (bit threads, MERA, HaPPY code): research/49-holographic-quantum-information.md
 
 markdown_extensions:
   - admonition
