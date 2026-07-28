@@ -265,6 +265,48 @@ The scene runs the Hawking–Page dial of Part III with a quark pair whose separ
   *behind* the shadow — rays grazing them are captured — so the stubs visibly drain into
   darkness.
 
+## Part VII — the Page curve: `ads_page_curve`
+
+The capstone, because it is the same rule one more time. Hawking (1974): an evaporating
+hole emits thermal radiation whose entropy **rises monotonically until the hole is gone**
+— and the information that fell in is lost, violating unitarity. Page (1993,
+[hep-th/9306083](https://arxiv.org/abs/hep-th/9306083)): if evaporation IS unitary, the
+radiation entropy must track the *smaller* of (radiation so far, hole remaining) — rising,
+turning over at the **Page time**, and returning to zero. For fifty years the question was
+which curve gravity itself computes.
+
+The 2019 answer (Penington [1905.08255](https://arxiv.org/abs/1905.08255);
+Almheiri–Engelhardt–Marolf–Maxfield [1905.08762](https://arxiv.org/abs/1905.08762)): the
+gravitational path integral computes the radiation entropy by the quantum-extremal-surface
+prescription as a **minimum over saddles** —
+
+```
+S_rad(t) = min( S₀ − S_BH(t),   S_BH(t) )
+              Hawking saddle    island saddle
+```
+
+The **island saddle** puts a quantum extremal surface just inside the horizon and hands
+the entire interior — the *island* — to the radiation's entanglement wedge, at the cost of
+the horizon area. It is subleading early and wins after the Page time. This is the SAME
+minimum rule as the mutual-information pairing swap (Part IV) and the Hawking–Page
+ensemble (Part III): saddle competition, three times over. That is the thesis of this
+whole research note.
+
+The engine carries the dictionary closed-form (`bh_entropy_evaporating`, `page_curve`,
+`page_time`): Stefan–Boltzmann evaporation `dM/dt ∝ −1/M²` gives `S_BH = S₀(1 − t/T)^{2/3}`
+and `r_h ∝ (1 − t/T)^{1/3}`, so the crossing `S₀ − S_BH = S_BH` happens at `S_BH = S₀/2`,
+i.e. `t_page = T(1 − 2^{−3/2}) ≈ 0.646 T` — peak height exactly `S₀/2`, rise-then-fall
+shape, and the island flag flipping precisely at `t_page`, all test-asserted.
+
+The scene runs one evaporation per cycle: the hole shrinks on the honest schedule
+(heating as it goes — small holes are hot — and flashing at the end); before the Page
+time the capture disk is **near-black with a faint thermal rim**: information going in,
+featureless heat coming out. At `t_page` a violet **QES ring** ignites and the interior
+itself fills with cyan light — the island now *belongs to the radiation*, and what the
+Hawking saddle drew as a void the island saddle draws as reclaimed spacetime. The
+radiation purifies as its entropy comes back down; at `t = T` the hole is gone and the
+box holds pure light. Unitarity, watched in real time.
+
 ## Sources
 
 - J. Maldacena, *The Large N Limit of Superconformal Field Theories and Supergravity*,
@@ -306,3 +348,11 @@ The scene runs the Hawking–Page dial of Part III with a quark pair whose separ
 - J. Maldacena, *Wilson loops in large N field theories*,
   [hep-th/9803002](https://arxiv.org/abs/hep-th/9803002); S.-J. Rey, J. Yee,
   [hep-th/9803001](https://arxiv.org/abs/hep-th/9803001) — the hanging Wilson-loop string
+- D. N. Page, *Information in Black Hole Radiation*,
+  [hep-th/9306083](https://arxiv.org/abs/hep-th/9306083) — the curve unitarity demands
+- G. Penington, *Entanglement Wedge Reconstruction and the Information Paradox*,
+  [1905.08255](https://arxiv.org/abs/1905.08255); A. Almheiri, N. Engelhardt, D. Marolf,
+  H. Maxfield, *The entropy of bulk quantum fields and the entanglement wedge of an
+  evaporating black hole*, [1905.08762](https://arxiv.org/abs/1905.08762) — the island saddle
+- A. Almheiri, T. Hartman, J. Maldacena, E. Shaghoulian, A. Tajdini, *The entropy of
+  Hawking radiation* (review), [2006.06872](https://arxiv.org/abs/2006.06872)

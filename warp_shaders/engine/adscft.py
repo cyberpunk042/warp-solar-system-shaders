@@ -24,6 +24,9 @@ The engine-level core behind the holography set:
   RT length), ``mutual_information`` (the min-pairing phase transition),
   ``string_turning_radius`` / ``screening_angle`` (where the quark string breaks on a
   horizon — deconfined screening).
+* ``bh_entropy_evaporating`` / ``page_curve`` / ``page_time`` — the unitary Page curve as
+  a minimum over gravitational saddles (Hawking vs island), crossing closed-form at
+  ``t_page = T(1 − 2^{−3/2})`` (Penington; AEMM 2019).
 
 Null-geodesic honesty: in Schwarzschild-AdS the photon orbital equation is
 ``d²u/dφ² + u = 3Mu²`` — the cosmological constant **drops out of the path shape**
@@ -238,6 +241,43 @@ def screening_angle(r_h: float, r_bdy: float) -> float:
     (host-side): r_min = R(1 − sin α)/cos α = r_h  ⇒  sin α = (R² − r_h²)/(R² + r_h²)."""
     s = (r_bdy * r_bdy - r_h * r_h) / (r_bdy * r_bdy + r_h * r_h)
     return 2.0 * math.asin(min(max(s, 0.0), 1.0))
+
+
+def bh_entropy_evaporating(t: float, t_evap: float, s0: float = 1.0) -> float:
+    """Bekenstein-Hawking entropy of an evaporating hole (host-side).
+
+    Stefan-Boltzmann evaporation ``dM/dt ∝ −1/M²`` gives ``M(t) = M₀(1 − t/T)^{1/3}``,
+    and ``S ∝ Area ∝ M²``, so ``S_BH(t) = S₀ (1 − t/T)^{2/3}`` — and the horizon radius
+    scales as ``r_h(t) = r_h,0 (1 − t/T)^{1/3}``. Clamped to 0 after t_evap.
+    """
+    x = max(1.0 - t / t_evap, 0.0)
+    return s0 * x ** (2.0 / 3.0)
+
+
+def page_curve(t: float, t_evap: float, s0: float = 1.0):
+    """The Page curve: radiation entropy as a minimum over two gravitational saddles
+    (host-side). Returns ``(S_rad, island_dominant)``.
+
+    * **Hawking saddle** (no island): ``S = S₀ − S_BH(t)`` — rises as radiation
+      accumulates, and would rise forever (the information paradox).
+    * **Island saddle**: the quantum extremal surface just inside the horizon puts the
+      interior in the radiation's entanglement wedge, at the cost of the horizon area:
+      ``S = S_BH(t)`` — falls as the hole evaporates.
+
+    The gravitational path integral takes the MINIMUM (Penington; Almheiri-Engelhardt-
+    Marolf-Maxfield 2019) — the same rule as ``mutual_information``'s pairing swap and
+    the Hawking-Page ensemble: saddle competition. The result rises, turns over at the
+    Page time, and returns to zero: unitarity restored.
+    """
+    s_bh = bh_entropy_evaporating(t, t_evap, s0)
+    s_hawk = s0 - s_bh
+    return (min(s_hawk, s_bh), s_hawk > s_bh)
+
+
+def page_time(t_evap: float) -> float:
+    """The Page time (host-side): the saddle crossing S₀ − S_BH = S_BH happens at
+    S_BH = S₀/2, i.e. ``(1 − t/T)^{2/3} = 1/2`` ⇒ ``t_page = T (1 − 2^{−3/2})`` ≈ 0.6464 T."""
+    return t_evap * (1.0 - 2.0 ** -1.5)
 
 
 def horizon_radius(m: float, l_ads: float) -> float:

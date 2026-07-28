@@ -715,6 +715,12 @@ separation below `T_HP`, and above it snaps on the horizon at the exact screenin
 |---|---|---|
 | ![ads_entanglement](docs/engine/ads_entanglement.png) | ![ads_wormhole](docs/engine/ads_wormhole.gif) | ![ads_confinement](docs/engine/ads_confinement.png) |
 
+And the capstone, `ads_page_curve` — **the information paradox resolved by the same minimum
+rule**: a hole evaporating on the honest Stefan–Boltzmann schedule while its radiation entropy
+follows `min(S₀ − S_BH, S_BH)`; at the closed-form Page time `T(1 − 2^{−3/2})` the **island
+saddle** wins, a violet quantum extremal surface ignites, and the interior fills with purifying
+cyan light — unitarity watched in real time ([the cycle](docs/engine/ads_page_curve.gif)).
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
