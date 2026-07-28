@@ -17,6 +17,17 @@ import warp as wp
 
 import warp_shaders as ws
 from warp_shaders import lod
+from warp_shaders.engine.desitter import (
+    comoving_event_horizon,
+    ds_entropy,
+    efolds,
+    gibbons_hawking_temperature,
+    horizon_radius as ds_horizon_radius,
+    hubble_flow_redshift,
+    mode_amplitude,
+    mode_crossing_time,
+    spectral_tilt,
+)
 from warp_shaders.engine.kerr import (
     bomb_amplitude,
     ergosurface,
@@ -560,10 +571,62 @@ def main():
         "kerr_superradiance: after the mirror bursts the disk must go quiet"
     print(f"  kerr_superradiance: OK  (wave {cy_a:.4f} -> {cy_b:.4f}, then the bomb goes off)")
 
-    print("ALL PASSED (17 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- de Sitter dictionary: the horizon around the observer ----
+    H = 0.7
+    assert abs(gibbons_hawking_temperature(H) - H / (2 * np.pi)) < 1e-15, "T = H/2pi"
+    A_ds = 4 * np.pi * ds_horizon_radius(H) ** 2
+    assert abs(ds_entropy(H) - A_ds / 4) < 1e-12, "S = A/4 = pi/H^2"
+    ts = [mode_crossing_time(k, H) for k in (1.0, 2.0, 4.0, 8.0)]
+    dts = [ts[i + 1] - ts[i] for i in range(3)]
+    assert max(dts) - min(dts) < 1e-12 and abs(dts[0] - np.log(2) / H) < 1e-12, \
+        "octave-spaced scales must exit the horizon at EQUAL time steps (log law)"
+    ns = spectral_tilt(0.008, 0.006)
+    ratio = mode_amplitude(4.0, H, ns) / mode_amplitude(1.0, H, ns)
+    assert abs(ratio - 4.0 ** (0.5 * (ns - 1))) < 1e-15 and ratio < 1.0, \
+        "the tilted spectrum must be an exact red power law"
+    assert abs(efolds(1.0, np.e ** 60) - 60) < 1e-9
+    assert abs(comoving_event_horizon(H, 3.0) - np.exp(-2.1) / H) < 1e-12, \
+        "the comoving horizon must shrink exponentially"
+    assert hubble_flow_redshift(0.0, H) == 1.0 and \
+        hubble_flow_redshift(0.999 / H, H) > 20.0, "1+z diverges AT the horizon"
+    print(f"  de Sitter dictionary: OK  (T=H/2pi; S=A/4; log-spaced crossings "
+          f"dln={dts[0]:.4f}; red tilt n_s={ns:.4f}; 60 e-folds; z divergence)")
+
+    # ---- the three de Sitter scenes: structural checks ----
+    a = _render("ds_horizon", 1.5)           # sky full of galaxies, wide horizon
+    b = _render("ds_horizon", 14.5)          # dark energy ramped: contracted ring, empty sky
+    hk, wk = a.shape[0], a.shape[1]
+    core_a = a[hk // 2 - 25:hk // 2 + 25, wk // 2 - 30:wk // 2 + 30]
+    core_b = b[hk // 2 - 25:hk // 2 + 25, wk // 2 - 30:wk // 2 + 30]
+    gal_a = int((core_a.mean(axis=2) > 0.25).sum())
+    gal_b = int((core_b.mean(axis=2) > 0.25).sum())
+    assert gal_a > gal_b + 3, \
+        f"ds_horizon: the sky must EMPTY as the horizon contracts ({gal_a} -> {gal_b} bright px)"
+    print(f"  ds_horizon: OK  (bright galaxy pixels {gal_a} -> {gal_b} into the lonely future)")
+
+    a = _render("ds_inflation", 1.0)         # early: modes still oscillating (cyan)
+    b = _render("ds_inflation", 6.5)         # late inflation: all frozen (gold)
+    gold_a = float((a[..., 0] - a[..., 2]).clip(0).mean())
+    gold_b = float((b[..., 0] - b[..., 2]).clip(0).mean())
+    assert gold_b > 3.0 * max(gold_a, 1e-4) and gold_b > 0.01, \
+        f"ds_inflation: modes must freeze gold as the comoving horizon collapses ({gold_a:.4f} -> {gold_b:.4f})"
+    c = _render("ds_inflation", 14.5)        # structure precipitated
+    assert float(c.max()) > 0.5, "ds_inflation: proto-galaxies must precipitate after reheating"
+    print(f"  ds_inflation: OK  (freeze-out {gold_a:.4f} -> {gold_b:.4f}, then structure)")
+
+    a = _render("ds_thermal", 0.5)           # cold: big ring, many entropy ticks
+    b = _render("ds_thermal", 8.0)           # hot: small ring, few ticks
+    ring_a = int((a.mean(axis=2) > 0.15).sum())
+    ring_b = int((b.mean(axis=2) > 0.15).sum())
+    assert ring_a > ring_b, \
+        f"ds_thermal: the horizon must SHRINK as Lambda rises (bright px {ring_a} -> {ring_b})"
+    print(f"  ds_thermal: OK  (horizon bright px {ring_a} -> {ring_b} as the bath warms)")
+
+    print("ALL PASSED (20 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
-          "+ Kerr horizons/area-theorem/superradiance)")
+          "+ Kerr horizons/area-theorem/superradiance "
+          "+ de Sitter T=H/2pi/S=A/4/log-crossings/red-tilt)")
 
 
 if __name__ == "__main__":

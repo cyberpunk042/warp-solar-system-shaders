@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (328 scenes).
+`python render.py --list` for the full, current list (331 scenes).
 
 ## Engine showcase
 
@@ -320,6 +320,41 @@ spin spokes slow — until the mirror bursts: flash, shrapnel, and a slower, qui
 ![kerr_superradiance — armed](engine/kerr_superradiance.png)
 
 ![arm, amplify, detonate](engine/kerr_superradiance.gif)
+
+### The de Sitter set — the horizon that wraps around you
+
+`ds_horizon` — **the black hole turned inside out**
+([Research 51, Part I](research/51-desitter-cosmic-horizon.md)). Galaxies ride the
+Hubble flow and redden by the exact `1+z = 1/√(1−H²r²)`, freezing and fading AT the
+cosmic horizon exactly like infall watched from outside a black hole; when dark energy
+ramps, the ring at `1/H` contracts, warms (T = H/2π), and empties the sky — the lonely
+far future, played fast.
+
+![ds_horizon — the lonely future](engine/ds_horizon.png)
+
+![one drift-and-contraction cycle](engine/ds_horizon.gif)
+
+`ds_inflation` — **the origin of everything**
+([Research 51, Part II](research/51-desitter-cosmic-horizon.md)). In comoving
+coordinates the trick is visible: the violet horizon `e^{−Ht}/H` collapses past
+standing quantum waves, freezing each gold at its exact `k = aH` crossing (octave
+scales freeze at equal time steps — the asserted log law) with the exact tilted
+amplitude `k^{(n_s−1)/2}`; reheating flashes, the modes re-enter, and proto-galaxies
+precipitate where the frozen ripples interfere — vacuum noise becoming structure.
+
+![ds_inflation — freeze-out](engine/ds_inflation.png)
+
+![shrink, freeze, flash, precipitate](engine/ds_inflation.gif)
+
+`ds_thermal` — **the thermal sky and the last ledger**
+([Research 51, Part III](research/51-desitter-cosmic-horizon.md)). The
+Gibbons-Hawking bath: thermal quanta stream inward from the horizon while cyan
+entropy tiles count `S = π/H² = A/4` live — and as Λ sweeps up the horizon SHRINKS,
+warms, and the ledger drops: a hotter universe holds less.
+
+![ds_thermal — the ledger](engine/ds_thermal.png)
+
+![one sweep of the cosmological constant](engine/ds_thermal.gif)
 
 ## Warp compression — three compressions of the card's visual information
 

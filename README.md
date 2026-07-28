@@ -768,6 +768,20 @@ it detonates; Press–Teukolsky 1972, exact condition `0 < ω < mΩ_H` asserted)
 |---|---|---|
 | ![kerr_ergosphere](docs/engine/kerr_ergosphere.png) | ![kerr_penrose](docs/engine/kerr_penrose.gif) | ![kerr_superradiance](docs/engine/kerr_superradiance.png) |
 
+And finally the horizon that wraps around **us** — the **de Sitter set**
+([research 51](docs/research/51-desitter-cosmic-horizon.md)): the cosmic event horizon as
+a black hole turned inside out (`ds_horizon` — galaxies redden by the exact
+`1+z = 1/√(1−H²r²)`, freeze, and fade as dark energy contracts the sky), inflation
+freezing quantum modes into the seeds of galaxies (`ds_inflation` — the comoving horizon
+collapses past standing waves, octave scales freezing at the asserted equal time steps
+with the measured red tilt n_s ≈ 0.964, then structure precipitates from the frozen
+interference), and the Gibbons-Hawking bath (`ds_thermal` — `T = H/2π` quanta streaming
+inward while entropy tiles count `S = π/H² = A/4` live: hotter means smaller means less).
+
+| ds_horizon — the lonely future | ds_inflation — the origin of structure | ds_thermal — the last ledger |
+|---|---|---|
+| ![ds_horizon](docs/engine/ds_horizon.png) | ![ds_inflation](docs/engine/ds_inflation.gif) | ![ds_thermal](docs/engine/ds_thermal.png) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted

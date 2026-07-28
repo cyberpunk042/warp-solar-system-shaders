@@ -104,6 +104,7 @@ nav:
       - BTZ black hole on the disk (quotient, plateau, ringdown): research/48-btz-black-hole-on-the-disk.md
       - Holographic quantum information (bit threads, MERA, HaPPY code): research/49-holographic-quantum-information.md
       - Kerr, the spinning black hole (ergosphere, Penrose mine, the bomb): research/50-kerr-spinning-black-hole.md
+      - de Sitter, the cosmic horizon (Gibbons-Hawking, inflation, the thermal sky): research/51-desitter-cosmic-horizon.md
 
 markdown_extensions:
   - admonition
