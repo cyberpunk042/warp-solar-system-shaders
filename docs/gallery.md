@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (325 scenes).
+`python render.py --list` for the full, current list (328 scenes).
 
 ## Engine showcase
 
@@ -285,6 +285,41 @@ rule) proves recovery impossible. Heal the boundary and the bulk returns.
 ![holo_code — erasure vs the code](engine/holo_code.png)
 
 ![one erase-and-heal cycle](engine/holo_code.gif)
+
+### The Kerr set — dragged space, the energy mine, and the bomb
+
+`kerr_ergosphere` — **watch the ergosphere be born**
+([Research 50, Part I](research/50-kerr-spinning-black-hole.md)). The spin is the time
+axis: χ sweeps 0 → 0.98, the horizon `r_+ = M(1+√(1−χ²))` contracts, and the violet
+ergosurface peels away from it into the oblate shell where standing still is impossible
+— painted as ray path-length through the ergoregion — while genuine 1/r³ Lense–Thirring
+drag smears the starfield and warps the shadow.
+
+![kerr_ergosphere — the shell](engine/kerr_ergosphere.png)
+
+![one spin-up-and-down](engine/kerr_ergosphere.gif)
+
+`kerr_penrose` — **the energy mine**
+([Research 50, Part II](research/50-kerr-spinning-black-hole.md)). Particles split in
+the ergoregion: crimson fragments fall in with negative energy, green ones escape
+richer — and the exact Christodoulou ledger updates after every event: mass down, spin
+down, swirl slower, **horizon bigger** (M_irr never falls — the area theorem, asserted
+over 300 random extractions; the near-reversible mine recovers 99.9% of the 29.3%
+Penrose bound). The mine dies when the violet annulus pinches shut.
+
+![kerr_penrose — the mine](engine/kerr_penrose.png)
+
+![one mining campaign](engine/kerr_penrose.gif)
+
+`kerr_superradiance` — **the black-hole bomb**
+([Research 50, Part III](research/50-kerr-spinning-black-hole.md)). An m = 2 wave chosen
+honestly superradiant (`0 < ω < mΩ_H`, the exact Zel'dovich condition) bounces between
+the hole and a mirror, ratcheting up as `(1+g)ⁿ` (Press–Teukolsky) while the horizon's
+spin spokes slow — until the mirror bursts: flash, shrapnel, and a slower, quieter hole.
+
+![kerr_superradiance — armed](engine/kerr_superradiance.png)
+
+![arm, amplify, detonate](engine/kerr_superradiance.gif)
 
 ## Warp compression — three compressions of the card's visual information
 

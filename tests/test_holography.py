@@ -17,6 +17,19 @@ import warp as wp
 
 import warp_shaders as ws
 from warp_shaders import lod
+from warp_shaders.engine.kerr import (
+    bomb_amplitude,
+    ergosurface,
+    irreducible_mass,
+    kerr_entropy,
+    kerr_horizons,
+    kerr_omega_h,
+    kerr_temperature,
+    lense_thirring_omega,
+    penrose_bound,
+    penrose_extract,
+    superradiant,
+)
 from warp_shaders.engine.holoinfo import (
     erasure_correctable,
     five_qubit_stabilizers,
@@ -469,9 +482,88 @@ def main():
         "holo_code: the erased boundary must burn crimson at peak erasure"
     print(f"  holo_code: OK  (logical qubit {star_a:.3f} -> {star_b:.3f}; boundary burnt)")
 
-    print("ALL PASSED (14 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- Kerr dictionary: horizons, the third law, the mine, the bomb ----
+    import random
+    for a_spin in (0.0, 0.3, 0.7, 0.94):
+        rp, rm = kerr_horizons(1.0, a_spin)
+        assert abs(rp + rm - 2.0) < 1e-12 and abs(rp * rm - a_spin ** 2) < 1e-9, \
+            "r_+ + r_- = 2M and r_+ r_- = a^2 must hold exactly"
+        assert abs(ergosurface(1.0, a_spin, 0.0) - rp) < 1e-12, "ergosurface touches r_+ at the pole"
+        assert abs(ergosurface(1.0, a_spin, np.pi / 2) - 2.0) < 1e-12, "and reaches 2M at the equator"
+        rp2, _ = kerr_horizons(1.0, a_spin)
+        assert abs(kerr_omega_h(1.0, a_spin) - a_spin / (2.0 * rp2)) < 1e-12
+    assert abs(kerr_temperature(1.0, 0.0) - 1.0 / (8 * np.pi)) < 1e-15, "a=0 is Schwarzschild"
+    assert kerr_temperature(1.0, 0.9999999) < 1e-3 * kerr_temperature(1.0, 0.0), \
+        "T -> 0 at extremality (the third law)"
+    assert abs(kerr_entropy(1.0, 0.0) - 4 * np.pi) < 1e-12, "S = 2 pi M r_+ = 4 pi M^2 at a=0"
+    assert abs(irreducible_mass(1.0, 1.0) - 1 / np.sqrt(2)) < 1e-12
+    assert abs(penrose_bound() - (1 - 2 ** -0.5)) < 1e-15
+
+    mM, aA = 1.0, 0.98
+    mirr = irreducible_mass(mM, aA)
+    random.seed(7)
+    for _ in range(300):
+        mM, aA, _ = penrose_extract(mM, aA, random.uniform(0.001, 0.01),
+                                    q=random.uniform(0.5, 1.0))
+        mi = irreducible_mass(mM, aA)
+        assert mi >= mirr - 1e-12, "THE AREA THEOREM: M_irr must never decrease"
+        mirr = mi
+    mM, aA, tot = 1.0, 0.9999999, 0.0
+    for _ in range(30000):
+        mM, aA, de = penrose_extract(mM, aA, 5e-5, q=0.9999)
+        tot += de
+        if aA < 1e-9:
+            break
+    assert 0.99 * penrose_bound() < tot <= penrose_bound() + 1e-9, \
+        f"the near-reversible mine must approach the Penrose bound from below ({tot:.4f})"
+
+    om_H = kerr_omega_h(1.0, 0.9)
+    assert superradiant(0.5 * 2 * om_H, 2, om_H) and not superradiant(1.5 * 2 * om_H, 2, om_H) \
+        and not superradiant(-0.1, 2, om_H), "amplification iff 0 < omega < m Omega_H"
+    assert abs(bomb_amplitude(10, 0.16) - 1.16 ** 10) < 1e-12
+    assert abs(lense_thirring_omega(2.0, 1.0, 0.9) / lense_thirring_omega(4.0, 1.0, 0.9)
+               - 8.0) < 1e-12, "frame drag falls as 1/r^3"
+    print(f"  Kerr dictionary: OK  (horizon identities; third law; area theorem over 300 "
+          f"random extractions; mine reaches {tot:.4f} of bound {penrose_bound():.4f}; "
+          f"superradiance boundary; 1/r^3 drag)")
+
+    # ---- the three Kerr scenes: structural checks ----
+    a = _render("kerr_ergosphere", 0.2)      # chi ~ 0: no ergoregion
+    b = _render("kerr_ergosphere", 7.0)      # chi = 0.98: violet shell + drag
+    hk, wk = a.shape[0], a.shape[1]
+    boxa = a[hk // 2 - 45:hk // 2 + 45, wk // 2 - 55:wk // 2 + 55]
+    boxb = b[hk // 2 - 45:hk // 2 + 45, wk // 2 - 55:wk // 2 + 55]
+    v_a = float((boxa[..., 2] - boxa[..., 1]).clip(0).mean())
+    v_b = float((boxb[..., 2] - boxb[..., 1]).clip(0).mean())
+    assert v_b > 4.0 * max(v_a, 1e-4) and v_b > 0.008, \
+        f"kerr_ergosphere: the violet ergoregion veil must be born with the spin ({v_a:.4f} -> {v_b:.4f})"
+    print(f"  kerr_ergosphere: OK  (ergo veil {v_a:.4f} -> {v_b:.4f} across the spin-up)")
+
+    a = _render("kerr_penrose", 0.5)         # extremal: wide ergo annulus
+    b = _render("kerr_penrose", 15.5)        # mined out: annulus pinched shut
+    shadow_a = int((a.mean(axis=2)[hk // 2 - 40:hk // 2 + 40, wk // 2 - 40:wk // 2 + 40] < 0.075).sum())
+    shadow_b = int((b.mean(axis=2)[hk // 2 - 40:hk // 2 + 40, wk // 2 - 40:wk // 2 + 40] < 0.075).sum())
+    assert shadow_b > 1.2 * shadow_a, \
+        f"kerr_penrose: the horizon must GROW as the mine runs (area theorem: {shadow_a} -> {shadow_b} px)"
+    assert float(a.mean()) > 1.5 * float(b.mean()), \
+        "kerr_penrose: the ergoregion glow must die as the spin is mined out"
+    print(f"  kerr_penrose: OK  (horizon {shadow_a} -> {shadow_b} px while the annulus dies)")
+
+    a = _render("kerr_superradiance", 2.0)   # first pass
+    b = _render("kerr_superradiance", 9.5)   # ratcheted up
+    c = _render("kerr_superradiance", 14.0)  # after the burst: quiet
+    cy_a = float((a[..., 2] - a[..., 0]).clip(0).mean())
+    cy_b = float((b[..., 2] - b[..., 0]).clip(0).mean())
+    assert cy_b > 1.5 * cy_a > 0.0, \
+        f"kerr_superradiance: the trapped wave must ratchet up (1+g)^n ({cy_a:.4f} -> {cy_b:.4f})"
+    assert float(b.mean()) > 1.8 * float(c.mean()), \
+        "kerr_superradiance: after the mirror bursts the disk must go quiet"
+    print(f"  kerr_superradiance: OK  (wave {cy_a:.4f} -> {cy_b:.4f}, then the bomb goes off)")
+
+    print("ALL PASSED (17 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
-          "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY)")
+          "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
+          "+ Kerr horizons/area-theorem/superradiance)")
 
 
 if __name__ == "__main__":
