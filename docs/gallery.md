@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (317 scenes).
+`python render.py --list` for the full, current list (318 scenes).
 
 ## Engine showcase
 
@@ -174,6 +174,24 @@ Both cycles running — the hole flickering with the ensemble, the string breaki
 re-forming at the computed angle:
 
 ![confinement and screening](engine/ads_confinement.gif)
+
+`ads_page_curve` — **unitarity, watched in real time**
+([Research 46, Part VII](research/46-ads-cft-holography.md)). The information-paradox
+endgame: a hole evaporates on the honest Stefan–Boltzmann schedule `r_h ∝ (1 − t/T)^{1/3}`
+(heating as it shrinks, flashing at the end) while the gravitational path integral computes
+its radiation entropy as a **minimum over saddles** — `min(S₀ − S_BH, S_BH)`, the same rule
+as the mutual-information swap and the Hawking–Page ensemble, one more time. Before the
+closed-form **Page time** `t_page = T(1 − 2^{−3/2})` the capture disk is near-black with a
+faint thermal rim: information going in, featureless heat coming out. Then the **island
+saddle** wins: a violet quantum extremal surface ignites and the interior itself fills with
+purifying cyan light — the island now belongs to the radiation's entanglement wedge, and
+the Page curve turns over. At `t = T` the box holds pure light.
+
+![ads_page_curve — the island phase](engine/ads_page_curve.png)
+
+One full evaporation — Hawking rise, island takeover, final flash:
+
+![the Page curve cycle](engine/ads_page_curve.gif)
 
 ## Warp compression — three compressions of the card's visual information
 

@@ -18,6 +18,7 @@ import warp as wp
 import warp_shaders as ws
 from warp_shaders import lod
 from warp_shaders.engine.adscft import (
+    bh_entropy_evaporating,
     hawking_page_temperature,
     hawking_temperature,
     horizon_radius,
@@ -25,6 +26,8 @@ from warp_shaders.engine.adscft import (
     large_hole_radius,
     mass_of_radius,
     mutual_information,
+    page_curve,
+    page_time,
     screening_angle,
     string_turning_radius,
 )
@@ -214,8 +217,46 @@ def main():
     print(f"  ads_confinement: OK  (centre confined {c_conf:.3f} vs broken {c_brk:.3f}; "
           f"deconfined shadow-frac {dark_brk:.3f})")
 
-    print("ALL PASSED (6 scenes + LOD sweep + thermodynamics + phase transition "
-          "+ RT dictionary + string screening)")
+    # ---- Page-curve dictionary: unitarity from saddle competition (closed forms) ----
+    T = 16.0
+    tp = page_time(T)
+    assert abs(tp / T - (1.0 - 2.0 ** -1.5)) < 1e-12
+    assert abs(bh_entropy_evaporating(tp, T) - 0.5) < 1e-12, "S_BH(t_page) must be S0/2"
+    s0_rad, isl0 = page_curve(0.0, T)
+    s_end, _ = page_curve(T, T)
+    s_pg, _ = page_curve(tp, T)
+    assert s0_rad == 0.0 and not isl0, "radiation entropy must start at 0 (Hawking saddle)"
+    assert abs(s_end) < 1e-12, "radiation entropy must return to 0 (unitarity)"
+    assert abs(s_pg - 0.5) < 1e-12, "the curve peaks at S0/2 at the Page time"
+    _, before = page_curve(tp - 0.01, T)
+    _, after = page_curve(tp + 0.01, T)
+    assert (not before) and after, "island dominance must switch exactly at t_page"
+    ts = np.linspace(0.0, T, 33)
+    ss = [page_curve(float(t), T)[0] for t in ts]
+    ipk = int(np.argmax(ss))
+    assert all(ss[k] <= ss[k + 1] + 1e-12 for k in range(ipk)), "curve must rise to the peak"
+    assert all(ss[k] >= ss[k + 1] - 1e-12 for k in range(ipk, 32)), "curve must fall after it"
+    print(f"  page_curve dictionary: OK  (t_page/T = {tp / T:.4f}; peak S0/2 at t_page; "
+          f"rises then falls; island flips at t_page)")
+
+    # ---- ads_page_curve: dark shadow before t_page, luminous island interior after ----
+    a = _render("ads_page_curve", 3.0)         # Hawking phase: information going in
+    b = _render("ads_page_curve", 12.0)        # island phase: the interior belongs to the radiation
+    ch, cw = a.shape[0] // 2, a.shape[1] // 2
+    cen = np.s_[ch - 12:ch + 12, cw - 12:cw + 12]
+    lum_h = a.mean(axis=2)[cen].mean()
+    lum_i = b.mean(axis=2)[cen].mean()
+    assert lum_h < 0.15, f"ads_page_curve: pre-Page shadow should be near-black ({lum_h:.3f})"
+    assert lum_i > 3.0 * lum_h, \
+        f"ads_page_curve: island phase must light the interior ({lum_i:.3f} vs {lum_h:.3f})"
+    assert b[..., 2][cen].mean() > 1.1 * b[..., 0][cen].mean(), \
+        "ads_page_curve: the purified radiation should be blue-dominant"
+    assert np.abs(a - b).mean() > 5e-3, "ads_page_curve: phases do not differ"
+    print(f"  ads_page_curve: OK  (centre pre-Page {lum_h:.3f} -> island {lum_i:.3f}, "
+          f"blue-dominant)")
+
+    print("ALL PASSED (7 scenes + LOD sweep + thermodynamics + phase transition "
+          "+ RT dictionary + string screening + Page curve)")
 
 
 if __name__ == "__main__":

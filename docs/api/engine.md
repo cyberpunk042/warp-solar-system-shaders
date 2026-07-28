@@ -224,7 +224,7 @@ it hits the disk or escapes. Units are geometric with `r_s = 1`. See
 ## AdS/CFT holography — `engine.adscft`
 
 Shared core for the holography set (`ads_cft`, `ads_bulk`, `ads_hawking_page`,
-`ads_entanglement`, `ads_wormhole`, `ads_confinement`): the `{7,3}` hyperbolic
+`ads_entanglement`, `ads_wormhole`, `ads_confinement`, `ads_page_curve`): the `{7,3}` hyperbolic
 reflection-group fold (mirror geometry derived from `cosh m = cos(π/q)/sin(π/p)`), the
 Schwarzschild-AdS blackening factor, the two CFT boundary textures (thermofield-double
 pair), the Hawking-Page thermodynamic dictionary, and the RT/Wilson geodesic dictionary.
@@ -247,6 +247,9 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `mutual_information` | *(host)* `(gap, size_a, size_b, eps, c) -> (I, connected)` — `I(A:B)` from the min over geodesic pairings; exactly 0 in the disconnected phase (the holographic MI transition) |
 | `string_turning_radius` | *(host)* `(dtheta, r_bdy) -> float` — deepest point of the quark string: `r_min = R(1 − sin α)/cos α` |
 | `screening_angle` | *(host)* `(r_h, r_bdy) -> float` — separation at which the string breaks on the horizon: `sin α = (R² − r_h²)/(R² + r_h²)` |
+| `bh_entropy_evaporating` | *(host)* `(t, t_evap, s0) -> float` — `S_BH = S₀(1 − t/T)^{2/3}` from Stefan-Boltzmann evaporation (`r_h ∝ (1 − t/T)^{1/3}`) |
+| `page_curve` | *(host)* `(t, t_evap, s0) -> (S_rad, island)` — `min(S₀ − S_BH, S_BH)`: Hawking saddle vs island saddle, the unitary Page curve |
+| `page_time` | *(host)* `(t_evap) -> float` — the saddle crossing at `S_BH = S₀/2`: `t_page = T(1 − 2^{−3/2})` |
 
 ## Post — `engine.post`
 
