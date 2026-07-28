@@ -14,7 +14,13 @@ import warp as wp
 
 import warp_shaders as ws
 from warp_shaders import lod
-from warp_shaders.engine.adscft import hawking_temperature
+from warp_shaders.engine.adscft import (
+    hawking_page_temperature,
+    hawking_temperature,
+    horizon_radius,
+    large_hole_radius,
+    mass_of_radius,
+)
 
 _DISK_R = 0.43  # keep in sync with warp_shaders/scenes/ads_cft.py
 
@@ -93,7 +99,33 @@ def main():
     print(f"  hawking_temperature: OK  (T_min {t_min:.4f} < both branches; "
           f"small {t_small:.4f} > mid {t_mid:.4f} < large {t_large:.4f})")
 
-    print("ALL PASSED (2 scenes + LOD sweep + thermodynamics)")
+    # Hawking-Page dictionary: T_HP = 1/(πL); the large hole at the transition has
+    # r_h = L exactly; mass/radius/temperature round-trip through the engine helpers.
+    t_hp = hawking_page_temperature(2.2)
+    assert abs(t_hp - 1.0 / (np.pi * 2.2)) < 1e-12
+    r_hp = large_hole_radius(t_hp, 2.2)
+    assert abs(r_hp - 2.2) < 1e-9, f"large hole at T_HP should sit at r_h = L (got {r_hp:.6f})"
+    m_hp = mass_of_radius(r_hp, 2.2)
+    assert abs(horizon_radius(m_hp, 2.2) - r_hp) < 1e-6, "mass/radius round-trip broken"
+    assert abs(hawking_temperature(m_hp, 2.2) - t_hp) < 1e-9, "T(M(r_h(T_HP))) != T_HP"
+    print(f"  hawking_page dictionary: OK  (T_HP {t_hp:.4f}, r_h(T_HP) = L = {r_hp:.4f})")
+
+    # ads_hawking_page — the two phases: hole above T_HP (t=2.0: shadow), thermal AdS
+    # below (t=5.9: no shadow, the box glows)
+    # (bloom lifts the shadow floor to ~0.05 at smoke resolution, so "dark" is < 0.08 here)
+    a = _render("ads_hawking_page", 2.0)
+    lum = a.mean(axis=2)
+    dark_hole = float((lum < 0.08).mean())
+    assert dark_hole > 0.30, f"ads_hawking_page: no nucleated-hole shadow ({dark_hole:.3f})"
+    b = _render("ads_hawking_page", 5.9)
+    dark_ads = float((b.mean(axis=2) < 0.08).mean())
+    assert dark_ads < 0.3 * dark_hole, \
+        f"ads_hawking_page: thermal-AdS phase should have (almost) no shadow " \
+        f"({dark_ads:.3f} vs hole {dark_hole:.3f})"
+    assert np.abs(a - b).mean() > 5e-3, "ads_hawking_page: phases do not differ"
+    print(f"  ads_hawking_page: OK  (shadow-frac hole {dark_hole:.3f} vs thermal-AdS {dark_ads:.3f})")
+
+    print("ALL PASSED (3 scenes + LOD sweep + thermodynamics + phase transition)")
 
 
 if __name__ == "__main__":

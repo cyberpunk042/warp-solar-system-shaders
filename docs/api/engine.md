@@ -235,6 +235,10 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `ads_blackening` | `(r, l_ads, m) -> float` — Schwarzschild-AdS `f(r) = 1 + r²/L² − 2M/r` |
 | `boundary_cft` | `(rd: vec3, time, t_hawk) -> vec3` — the CFT on the conformal boundary: stereographic (conformal) projection of the shared lattice + thermal wash at the Hawking temperature |
 | `hawking_temperature` | *(host)* `(m, l_ads) -> float` — `T = f'(r_h)/4π` with `r_h` from bisection of `f(r_h) = 0` |
+| `horizon_radius` | *(host)* `(m, l_ads) -> float` — the positive root of `f(r) = 0` (bisection) |
+| `hawking_page_temperature` | *(host)* `(l_ads) -> float` — the transition temperature `T_HP = 1/(πL)`; below it thermal AdS dominates the ensemble, above it the large hole |
+| `large_hole_radius` | *(host)* `(t, l_ads) -> float` — horizon of the stable large hole at temperature `t`: the large-branch inverse of `T(r_h)`; `r_h(T_HP) = L` exactly |
+| `mass_of_radius` | *(host)* `(r_h, l_ads) -> float` — `M = r_h(1 + r_h²/L²)/2` from `f(r_h) = 0` |
 
 ## Post — `engine.post`
 

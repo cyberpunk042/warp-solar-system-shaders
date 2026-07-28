@@ -137,6 +137,42 @@ boundary-frame units at the finite cutoff `R_bdy` — which is precisely the reg
 scheme of **holographic renormalization**. Bulk disk emission additionally carries the AdS
 redshift ratio `√(f(r_em)/f(r_cam))` between emission point and camera.
 
+## Part III — the Hawking–Page transition: `ads_hawking_page`
+
+Part II put a black hole in the box; Part III asks *when the box wants one at all*. Hawking &
+Page (1983) computed the free energies of the two saddles of the canonical ensemble at
+boundary temperature `T` — **thermal AdS** (no hole, a gas of gravitons in the box) and the
+**Schwarzschild-AdS black hole** — and found a first-order phase transition at
+
+```
+T_HP = 1/(πL)        (the large hole at the transition has r_h = L exactly)
+```
+
+Below `T_HP` thermal AdS dominates (`F ≈ O(1)`); above it the **large** hole does
+(`F ≈ O(N²)` on the boundary side). Witten (1998) identified this with the
+**confinement/deconfinement transition** of the boundary gauge theory — the reason this
+transition is on every AdS/CFT poster.
+
+The scene sweeps the boundary temperature sinusoidally through `T_HP`, and the bulk follows
+by **ensemble dominance** (which saddle wins the partition function — not dynamical
+collapse; the short nucleation cross-fade is visualization smoothing of a first-order jump):
+
+- **Below `T_HP`**: no horizon anywhere. The reflecting box glows — the CFT lattice at the
+  boundary temperature plus a centred thermal graviton gas. The confined phase.
+- **Above `T_HP`**: the hole nucleates *already AdS-sized* (`r_h = L` — first-order means no
+  gentle growth) and is drawn in equilibrium with its own radiation (the Hartle–Hawking heat
+  bath — deliberately **no accretion disk**: an equilibrium hole in a box is bathed, not
+  fed). Its Hawking temperature is locked to the boundary dial by construction:
+  `T(M(r_h(T))) = T` round-trips through the engine helpers, and the test suite asserts it.
+
+The dictionary functions live in the shared core (`engine/adscft.py`): `horizon_radius`
+(bisection of `f(r) = 0`), `hawking_page_temperature`, `large_hole_radius` — the stable
+large-branch inverse `r_h = (2πL²T + √(4π²L⁴T² − 3L²))/3` — and `mass_of_radius`
+(`M = r_h(1 + r_h²/L²)/2`). A rendering honesty note: near the transition the hole's photon
+capture parameter `b ≈ 3√3 M` is comparable to the whole box — the optically-overwhelming
+shadow with its blazing ring of lensed boundary lattice is not an artistic choice, it is
+*why* the large hole dominates.
+
 ## Sources
 
 - J. Maldacena, *The Large N Limit of Superconformal Field Theories and Supergravity*,
@@ -156,6 +192,9 @@ redshift ratio `√(f(r_em)/f(r_cam))` between emission point and camera.
   orthogonal to the boundary, hyperbolic right-triangle relations
 - S. W. Hawking, D. N. Page, *Thermodynamics of Black Holes in Anti-de Sitter Space*,
   Commun. Math. Phys. 87 (1983) 577 — Hawking temperature of AdS holes, phase transition
+- E. Witten, *Anti-de Sitter Space, Thermal Phase Transition, And Confinement In Gauge
+  Theories*, [hep-th/9803131](https://arxiv.org/abs/hep-th/9803131) — the boundary reading of
+  Hawking-Page as confinement/deconfinement
 - J. N. Islam, *The cosmological constant and classical tests of general relativity*,
   Phys. Lett. A 97 (1983) 239 — Λ drops out of the null-geodesic orbital equation
 - O. Aharony, S. Gubser, J. Maldacena, H. Ooguri, Y. Oz, *Large N Field Theories, String

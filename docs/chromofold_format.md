@@ -4,7 +4,7 @@ The on-disk / on-wire schema for a ChromoFold-compressed object, the encode/deco
 byte-level layout of the succinct structures. A ChromoFold artifact is **one self-describing, versioned blob**:
 a compressed weight tensor, a whole model, an RRR self-index, a delta cluster — all share the same container.
 
-Reference implementation: [`warp_compress/format.py`](../warp_compress/format.py) (`pack` / `unpack`),
+Reference implementation: `warp_compress/format.py` (`pack` / `unpack`),
 with per-object `save`/`load` on the stores.
 
 ---
