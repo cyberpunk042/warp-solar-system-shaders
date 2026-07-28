@@ -754,6 +754,20 @@ structurally, it *is* quantum information.
 |---|---|---|
 | ![holo_bit_threads](docs/engine/holo_bit_threads.png) | ![holo_mera](docs/engine/holo_mera.png) | ![holo_code](docs/engine/holo_code.gif) |
 
+Then out of the AdS box, to the hole the universe actually makes — the **Kerr set**
+([research 50](docs/research/50-kerr-spinning-black-hole.md)): the ergosphere born live as
+the spin sweeps 0 → 0.98 (`kerr_ergosphere` — the violet shell where standing still is
+impossible, painted in ray path-length), the **Penrose mine** (`kerr_penrose` — particles
+split in the ergoregion and escape richer while Christodoulou's M_irr never falls: the
+area theorem asserted over 300 random extractions, the horizon growing on screen as the
+mine runs, 99.9% of the 29.3% bound recovered), and the **black-hole bomb**
+(`kerr_superradiance` — a mirror-trapped superradiant wave ratcheting up `(1+g)ⁿ` until
+it detonates; Press–Teukolsky 1972, exact condition `0 < ω < mΩ_H` asserted).
+
+| kerr_ergosphere — the shell | kerr_penrose — the mine | kerr_superradiance — the bomb |
+|---|---|---|
+| ![kerr_ergosphere](docs/engine/kerr_ergosphere.png) | ![kerr_penrose](docs/engine/kerr_penrose.gif) | ![kerr_superradiance](docs/engine/kerr_superradiance.png) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted

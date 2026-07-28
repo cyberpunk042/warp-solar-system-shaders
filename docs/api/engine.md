@@ -274,6 +274,19 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `mera_layers` / `mera_cut_bonds` | binary-MERA counts: `ceil(log₂ ℓ)` layers, `2·log₂ ℓ + O(1)` severed bonds — the network log law (Swingle) |
 | `happy_erased_legs` / `happy_central_recoverable` | HaPPY central tensor vs a contiguous erased arc: survives iff ≥3 of 5 legs intact — asserted equal to the [[5,1,3]] criterion |
 
+### `engine.kerr` — the spinning black hole (host-side, all test-asserted)
+
+| Function | What it is |
+|---|---|
+| `kerr_horizons` | `r_± = M ± √(M²−a²)`, with `r_+ + r_− = 2M` and `r_+·r_− = a²` exact |
+| `ergosurface` | the stationary limit `r_E(θ) = M + √(M²−a²cos²θ)`: r_+ at the poles, 2M at the equator |
+| `kerr_omega_h` / `kerr_temperature` / `kerr_entropy` | `Ω_H = a/2Mr_+`; `T → 0` at extremality (third law); `S = 2πMr_+` |
+| `irreducible_mass` | Christodoulou's `M_irr = √(Mr_+/2)` — proportional to √area, never decreases |
+| `penrose_extract` / `penrose_bound` | one mining event, substepped so `dA ≥ 0` holds along the path; the 29.3% extremal bound — area theorem asserted over random sequences |
+| `superradiant` | the Zel'dovich condition `0 < ω < m·Ω_H` for wave amplification |
+| `bomb_amplitude` | Press-Teukolsky mirror runaway `A_n = A₀(1+g)ⁿ` |
+| `lense_thirring_omega` | frame drag `ω_LT = 2Ma/r³` (1/r³ law asserted) |
+
 ## Post — `engine.post`
 
 Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with
