@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (309 scenes).
+`python render.py --list` for the full, current list (314 scenes).
 
 ## Engine showcase
 
@@ -105,6 +105,24 @@ temperature** `T = f'(r_h)/4π` — the thermal state dual to the black hole.
 Orbiting inside the box — the lensed CFT lattice streaming around the shadow:
 
 ![inside the AdS box](engine/ads_bulk.gif)
+
+`ads_hawking_page` — *when does the box want a hole at all?*
+([Research 46, Part III](research/46-ads-cft-holography.md)). The boundary temperature sweeps
+through the **Hawking–Page point** `T_HP = 1/(πL)` and the bulk changes phase by **ensemble
+dominance**: below, **thermal AdS** — no horizon, a reflecting box of graviton gas and gently
+glowing CFT lattice (the *confined* boundary phase); above, the **large black hole** nucleates
+*already AdS-sized* (`r_h = L` exactly at the transition — first-order, no gentle growth), drawn
+in equilibrium with its own Hartle–Hawking heat bath (no accretion disk — an equilibrium hole is
+bathed, not fed), its Hawking temperature locked to the boundary dial (`T(M(r_h(T))) = T`
+round-trips through the engine helpers, asserted in the tests). Witten's reading: the
+confinement/deconfinement transition of the boundary gauge theory.
+
+![ads_hawking_page — the large hole above the transition](engine/ads_hawking_page.png)
+
+One full temperature cycle — the hole nucleating and evaporating as the ensemble changes its
+mind:
+
+![the Hawking-Page phase cycle](engine/ads_hawking_page.gif)
 
 ## Warp compression — three compressions of the card's visual information
 

@@ -690,9 +690,14 @@ hole (Λ drops out of the photon path shape, so the shared geodesic core is exac
 conformal boundary **reflecting light back in** (bounces scale with `--quality`), and every
 boundary hit painting the CFT lattice with a thermal wash at the hole's **Hawking temperature**.
 
-| ads_cft — the holographic map | ads_bulk — inside the AdS box | the isometry flow |
+`ads_hawking_page` completes the set with the **Hawking–Page transition**: sweep the boundary
+temperature through `T_HP = 1/(πL)` and the bulk changes phase by ensemble dominance — thermal
+AdS (confined) below, a large black hole nucleating at AdS size `r_h = L` (deconfined) above,
+its Hawking temperature locked to the boundary dial.
+
+| ads_cft — the holographic map | ads_bulk — inside the AdS box | ads_hawking_page — the phase cycle |
 |---|---|---|
-| ![ads_cft](docs/engine/ads_cft.png) | ![ads_bulk](docs/engine/ads_bulk.png) | ![ads_cft flow](docs/engine/ads_cft.gif) |
+| ![ads_cft](docs/engine/ads_cft.png) | ![ads_bulk](docs/engine/ads_bulk.png) | ![hawking page](docs/engine/ads_hawking_page.gif) |
 
 ## Engine leap — global illumination
 

@@ -122,14 +122,9 @@ def boundary_cft(rd: wp.vec3, time: float, t_hawk: float) -> wp.vec3:
     return base + lattice + thermal
 
 
-def hawking_temperature(m: float, l_ads: float) -> float:
-    """Hawking temperature T = f'(r_h)/4π of a Schwarzschild-AdS hole (host-side).
-
-    The horizon r_h is the positive root of f(r) = 1 + r²/L² − 2M/r (bisection; f is
-    monotone increasing past its minimum). T(r_h) = (L² + 3r_h²)/(4πL²r_h) has a minimum
-    at r_h = L/√3: small AdS holes cool as they grow (negative specific heat, like flat
-    space) while large ones heat up (positive specific heat) — the Hawking-Page structure.
-    """
+def horizon_radius(m: float, l_ads: float) -> float:
+    """Horizon r_h of a Schwarzschild-AdS hole: the positive root of f(r) = 0 (bisection;
+    f is monotone increasing past its minimum, host-side)."""
     lo, hi = 1.0e-6, 2.0 * m + l_ads
     for _ in range(80):
         mid = 0.5 * (lo + hi)
@@ -137,6 +132,43 @@ def hawking_temperature(m: float, l_ads: float) -> float:
             lo = mid
         else:
             hi = mid
-    r_h = 0.5 * (lo + hi)
+    return 0.5 * (lo + hi)
+
+
+def hawking_temperature(m: float, l_ads: float) -> float:
+    """Hawking temperature T = f'(r_h)/4π of a Schwarzschild-AdS hole (host-side).
+
+    T(r_h) = (L² + 3r_h²)/(4πL²r_h) has a minimum at r_h = L/√3: small AdS holes cool as
+    they grow (negative specific heat, like flat space) while large ones heat up (positive
+    specific heat) — the Hawking-Page structure.
+    """
+    r_h = horizon_radius(m, l_ads)
     fprime = 2.0 * r_h / (l_ads * l_ads) + 2.0 * m / (r_h * r_h)
     return fprime / (4.0 * math.pi)
+
+
+def hawking_page_temperature(l_ads: float) -> float:
+    """The Hawking-Page transition temperature T_HP = 1/(πL) (host-side).
+
+    Below T_HP the canonical ensemble is dominated by *thermal AdS* (no black hole);
+    above it, by the *large* black hole (whose horizon at the transition is r_h = L).
+    On the boundary this is the confinement/deconfinement transition (Witten 1998).
+    """
+    return 1.0 / (math.pi * l_ads)
+
+
+def large_hole_radius(t: float, l_ads: float) -> float:
+    """Horizon of the LARGE (thermodynamically stable) hole at temperature t (host-side).
+
+    Inverts T(r_h) = (L² + 3r_h²)/(4πL²r_h) on the large branch:
+    r_h = (2πL²T + √(4π²L⁴T² − 3L²)) / 3. Only defined for t ≥ T_min = √3/(2πL);
+    the discriminant is clamped so t just below T_min returns the minimum-T hole.
+    """
+    disc = 4.0 * (math.pi ** 2) * (l_ads ** 4) * (t ** 2) - 3.0 * (l_ads ** 2)
+    return (2.0 * math.pi * (l_ads ** 2) * t + math.sqrt(max(disc, 0.0))) / 3.0
+
+
+def mass_of_radius(r_h: float, l_ads: float) -> float:
+    """Mass of the Schwarzschild-AdS hole with horizon r_h: M = r_h(1 + r_h²/L²)/2
+    (from f(r_h) = 0, host-side)."""
+    return 0.5 * r_h * (1.0 + (r_h * r_h) / (l_ads * l_ads))
