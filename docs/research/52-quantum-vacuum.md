@@ -1,7 +1,7 @@
 # The vacuum is alive — Unruh, Casimir, Schwinger, and the third temperature
 
 Seven rounds of horizons produced two of physics' great temperatures: Hawking's
-`T = κ/2π` ([research 45](45-ads-cft-engine-holography.md)) and Gibbons–Hawking's
+`T = κ/2π` ([research 46](46-ads-cft-holography.md)) and Gibbons–Hawking's
 `T = H/2π` ([research 51](51-desitter-cosmic-horizon.md)). This set delivers the third
 — and with it the punchline that none of them were ever about gravity. Empty space is
 a physical medium: accelerate through it and it glows; bound it and it pushes; stress
