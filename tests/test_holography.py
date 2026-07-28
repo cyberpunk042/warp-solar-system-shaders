@@ -28,6 +28,16 @@ from warp_shaders.engine.desitter import (
     mode_crossing_time,
     spectral_tilt,
 )
+from warp_shaders.engine.vacuum import (
+    allowed_modes,
+    casimir_energy,
+    casimir_pressure,
+    rindler_horizon_distance,
+    rindler_worldline,
+    schwinger_critical_field,
+    schwinger_rate,
+    unruh_temperature,
+)
 from warp_shaders.engine.kerr import (
     bomb_amplitude,
     ergosurface,
@@ -622,11 +632,71 @@ def main():
         f"ds_thermal: the horizon must SHRINK as Lambda rises (bright px {ring_a} -> {ring_b})"
     print(f"  ds_thermal: OK  (horizon bright px {ring_a} -> {ring_b} as the bath warms)")
 
-    print("ALL PASSED (20 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- the quantum vacuum: Unruh, Casimir, Schwinger ----
+    acc = 0.8
+    assert abs(unruh_temperature(acc) - acc / (2 * np.pi)) < 1e-15, "T = a/2pi"
+    # THE TEMPERATURE TRILOGY: kappa/2pi (Hawking), H/2pi (Gibbons-Hawking), a/2pi
+    # (Unruh) are the same statement — equal arguments give equal temperatures
+    assert abs(unruh_temperature(acc) - gibbons_hawking_temperature(acc)) < 1e-15, \
+        "the temperature trilogy must be one identity"
+    for tt in (0.0, 0.5, 2.0, 5.0):
+        xw, tw = rindler_worldline(acc, tt)
+        assert abs(xw * xw - tw * tw - 1 / (acc * acc)) < 1e-9 and xw > abs(tw), \
+            "the worldline must ride the hyperbola, never crossing the horizon"
+    assert abs(rindler_horizon_distance(2.0) - 0.5) < 1e-15
+    assert abs(casimir_pressure(0.5) / casimir_pressure(1.0) - 16.0) < 1e-12, \
+        "halve the gap, SIXTEENFOLD the pressure (the 1/d^4 law)"
+    hh = 1e-6
+    dnum = -(casimir_energy(1.0 + hh) - casimir_energy(1.0 - hh)) / (2 * hh)
+    assert abs(dnum - casimir_pressure(1.0)) < 1e-6, "P = -d(E/A)/dd"
+    assert allowed_modes(1.0, 10 * np.pi) == 10 and allowed_modes(0.5, 10 * np.pi) == 5
+    e_c = schwinger_critical_field()
+    sub = schwinger_rate(e_c / 10, e_c) / schwinger_rate(e_c, e_c)
+    assert sub < 1e-13, f"below critical the vacuum must NOT break down ({sub:.2e})"
+    assert schwinger_rate(2 * e_c, e_c) > schwinger_rate(e_c, e_c), "above: avalanche"
+    print(f"  quantum vacuum: OK  (trilogy T=a/2pi==H/2pi; hyperbola identity; Casimir "
+          f"16x + P=-dE/dd; Schwinger subcritical ratio {sub:.1e})")
+
+    # ---- the three vacuum scenes: structural checks ----
+    a = _render("unruh_horizon", 0.5)        # a ~ 0.25: cold, dark bath
+    b = _render("unruh_horizon", 8.0)        # a = 2.5: hot bath at the vertex
+    warm_a = float((a[..., 0] - a[..., 2]).clip(0).mean())
+    warm_b = float((b[..., 0] - b[..., 2]).clip(0).mean())
+    assert warm_b > 2.0 * max(warm_a, 1e-4) and warm_b > 0.004, \
+        f"unruh_horizon: the bath must warm with acceleration ({warm_a:.4f} -> {warm_b:.4f})"
+    print(f"  unruh_horizon: OK  (bath warmth {warm_a:.4f} -> {warm_b:.4f} as a ramps)")
+
+    a = _render("casimir_plates", 0.5)       # wide gap: weak force, many modes
+    b = _render("casimir_plates", 8.0)       # narrow gap: 1/d^4 arrows
+    hk, wk = a.shape[0], a.shape[1]
+    # amber arrow band at mid-height, outside the plates
+    band_a = a[hk // 2 - 4:hk // 2 + 4, :]
+    band_b = b[hk // 2 - 4:hk // 2 + 4, :]
+    arr_a = float((band_a[..., 0] - band_a[..., 2]).clip(0).mean())
+    arr_b = float((band_b[..., 0] - band_b[..., 2]).clip(0).mean())
+    assert arr_b > 1.4 * arr_a > 0.0, \
+        f"casimir_plates: the force arrows must grow as the gap closes ({arr_a:.4f} -> {arr_b:.4f})"
+    print(f"  casimir_plates: OK  (arrow band {arr_a:.4f} -> {arr_b:.4f} into the squeeze)")
+
+    a = _render("schwinger_pairs", 4.0)      # deep sub-critical: NO pairs
+    b = _render("schwinger_pairs", 11.9)     # near critical: pairs firing
+    c = _render("schwinger_pairs", 12.7)     # breakdown flash
+    # magenta positron signature (R and B high, G low) in the gap interior
+    core_a = a[hk // 4:3 * hk // 4, wk // 4:3 * wk // 4]
+    core_b = b[hk // 4:3 * hk // 4, wk // 4:3 * wk // 4]
+    mag_a = float(np.minimum(core_a[..., 0], core_a[..., 2]).clip(0).mean() - core_a[..., 1].mean())
+    mag_b = float(np.minimum(core_b[..., 0], core_b[..., 2]).clip(0).mean() - core_b[..., 1].mean())
+    assert mag_b > mag_a, \
+        f"schwinger_pairs: pairs must appear only near the critical field ({mag_a:.4f} -> {mag_b:.4f})"
+    assert float(c.mean()) > 1.6 * float(a.mean()), "schwinger_pairs: the breakdown must flash"
+    print(f"  schwinger_pairs: OK  (pair signature {mag_a:.4f} -> {mag_b:.4f}, then breakdown)")
+
+    print("ALL PASSED (23 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
           "+ Kerr horizons/area-theorem/superradiance "
-          "+ de Sitter T=H/2pi/S=A/4/log-crossings/red-tilt)")
+          "+ de Sitter T=H/2pi/S=A/4/log-crossings/red-tilt "
+          "+ vacuum trilogy/Casimir-16x/Schwinger-threshold)")
 
 
 if __name__ == "__main__":

@@ -782,6 +782,22 @@ inward while entropy tiles count `S = π/H² = A/4` live: hotter means smaller m
 |---|---|---|
 | ![ds_horizon](docs/engine/ds_horizon.png) | ![ds_inflation](docs/engine/ds_inflation.gif) | ![ds_thermal](docs/engine/ds_thermal.png) |
 
+The punchline of the whole horizon arc is the **quantum-vacuum set**
+([research 52](docs/research/52-quantum-vacuum.md)): none of it was ever about gravity.
+`unruh_horizon` completes the temperature trilogy — Hawking's κ/2π, Gibbons–Hawking's
+H/2π, and Unruh's `T = a/2π` asserted as ONE identity, played on a live spacetime
+diagram where the observer rides the exact hyperbola `x² − t² = 1/a²` past their own
+private horizon. `casimir_plates` squeezes the mirrors while modes are evicted one by
+one and the force grows by the exact `1/d⁴` (halve the gap, sixteenfold — asserted;
+measured to ~1% in the real world). `schwinger_pairs` cranks a field to
+`E_c = m²/e` on the exact rate `E²e^{−πE_c/E}` — subcritical silence (`e^{−10π}`,
+asserted), then the avalanche that shorts empty space out. The vacuum is not the
+absence of everything; it is the thing that remains.
+
+| unruh_horizon — the third temperature | casimir_plates — the push | schwinger_pairs — the breakdown |
+|---|---|---|
+| ![unruh_horizon](docs/engine/unruh_horizon.png) | ![casimir_plates](docs/engine/casimir_plates.gif) | ![schwinger_pairs](docs/engine/schwinger_pairs.png) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted

@@ -298,6 +298,16 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `efolds` | `N = ln(a_end/a_start)`; N ≳ 60 solves the horizon problem |
 | `hubble_flow_redshift` | static-patch `1+z = 1/√(1−H²r²)` — diverges at the horizon (asserted) |
 
+### `engine.vacuum` — the quantum vacuum (host-side, all test-asserted)
+
+| Function | What it is |
+|---|---|
+| `unruh_temperature` | `T = a/2π` — asserted equal to `H/2π` (the temperature trilogy is one identity) |
+| `rindler_worldline` / `rindler_horizon_distance` | the hyperbola `x² − t² = 1/a²` (identity asserted); the private horizon at `1/a` |
+| `casimir_pressure` / `casimir_energy` | `P = −π²/240d⁴` (halve gap → 16×, asserted) with `P = −∂(E/A)/∂d` (asserted) |
+| `allowed_modes` | the standing waves `k_n = nπ/d` that survive between the mirrors |
+| `schwinger_critical_field` / `schwinger_rate` | `E_c = m²/e`; `Γ ∝ E²e^{−πE_c/E}` — subcritical suppression `e^{−10π}` asserted |
+
 ## Post — `engine.post`
 
 Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with
