@@ -264,6 +264,16 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `in_boundary_arc` | boundary-arc membership test (wrap-safe), for interval bands on the disk |
 | `geodesic_far_side` | soft mask for the far side of the geodesic capping a boundary arc — entanglement-wedge shading |
 
+### `engine.holoinfo` — quantum information (host-side, all test-asserted)
+
+| Function | What it is |
+|---|---|
+| `five_qubit_stabilizers` | the [[5,1,3]] perfect code's 4 generators (cyclic XZZXI) as GF(2) bit-mask pairs |
+| `erasure_correctable` | exact erasure criterion (no logical operator on the erased set, brute-forced): any 2 erasures correctable, any 3 fatal |
+| `build_disk_graph` / `interval_max_flow` | hyperbolic polar grid + Dinic max-flow: bit threads — flow == min cut == RT geodesic length (Freedman-Headrick) |
+| `mera_layers` / `mera_cut_bonds` | binary-MERA counts: `ceil(log₂ ℓ)` layers, `2·log₂ ℓ + O(1)` severed bonds — the network log law (Swingle) |
+| `happy_erased_legs` / `happy_central_recoverable` | HaPPY central tensor vs a contiguous erased arc: survives iff ≥3 of 5 legs intact — asserted equal to the [[5,1,3]] criterion |
+
 ## Post — `engine.post`
 
 Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with

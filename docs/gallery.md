@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (322 scenes).
+`python render.py --list` for the full, current list (325 scenes).
 
 ## Engine showcase
 
@@ -248,6 +248,43 @@ correlator: ringdown *equals* thermalization.
 ![btz_ringdown — the kick](engine/btz_ringdown.png)
 
 ![one kick, one full decay](engine/btz_ringdown.gif)
+
+### The quantum-information set — threads, networks, and the code
+
+`holo_bit_threads` — **entropy is a flow**
+([Research 49, Part I](research/49-holographic-quantum-information.md)). Freedman–
+Headrick bit threads: nested cyan strands pair every point of a boundary interval with
+its complement, their count tracking S(A), squeezing through the RT geodesic — the
+bottleneck the max flow saturates. Backed in the suite by an actual Dinic max-flow on a
+hyperbolic grid: **flow == cut to 1e-9** (exact MFMC), tracking the analytic
+`2·ln(sin(Δθ/2)) + const`.
+
+![holo_bit_threads — the bundle](engine/holo_bit_threads.png)
+
+![threads switching on as S grows](engine/holo_bit_threads.gif)
+
+`holo_mera` — **the tiling was a tensor network all along**
+([Research 49, Part II](research/49-holographic-quantum-information.md)). Swingle's
+MERA/AdS map: tiling generations as RG layers (UV gold rim → IR blue core), the
+interval's causal cone tinted violet, and the minimal cut drawn as **beads at equal
+hyperbolic spacing — one per severed bond** — multiplying logarithmically as the
+interval sweeps: the CFT log law, counted on screen.
+
+![holo_mera — the network](engine/holo_mera.png)
+
+![the log law in beads](engine/holo_mera.gif)
+
+`holo_code` — **the bulk is a code**
+([Research 49, Part III](research/49-holographic-quantum-information.md)). The HaPPY
+pentagon tiling (`{5,4}`, one `[[5,1,3]]` perfect-code tensor per tile) fights a growing
+boundary erasure: the intact wedge shrinks, the central tensor's legs die crimson, and
+the central logical qubit goes dark at **exactly the third lost leg** — where the GF(2)
+brute force (in the suite: any 2 erasures correctable, any 3 fatal, wedge rule == code
+rule) proves recovery impossible. Heal the boundary and the bulk returns.
+
+![holo_code — erasure vs the code](engine/holo_code.png)
+
+![one erase-and-heal cycle](engine/holo_code.gif)
 
 ## Warp compression — three compressions of the card's visual information
 

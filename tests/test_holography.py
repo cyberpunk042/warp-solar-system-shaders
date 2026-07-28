@@ -17,6 +17,15 @@ import warp as wp
 
 import warp_shaders as ws
 from warp_shaders import lod
+from warp_shaders.engine.holoinfo import (
+    erasure_correctable,
+    five_qubit_stabilizers,
+    happy_central_recoverable,
+    happy_erased_legs,
+    interval_max_flow,
+    mera_cut_bonds,
+    mera_layers,
+)
 from warp_shaders.engine.adscft import (
     bh_entropy_evaporating,
     btz_entropy,
@@ -386,9 +395,83 @@ def main():
     assert np.abs(a - b).mean() > 5e-3, "btz_ringdown: epochs do not differ"
     print(f"  btz_ringdown: OK  (bulk ripple std {std_a:.4f} -> {std_b:.4f}: exact QNM damping)")
 
-    print("ALL PASSED (11 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- quantum-information dictionary: the code, the flow, the network ----
+    import itertools
+    gens = five_qubit_stabilizers()
+    assert len(gens) == 4 and all(
+        bin(x | z).count("1") == 4 for (x, z) in gens), "[[5,1,3]]: 4 weight-4 generators"
+    for g1, g2 in itertools.combinations(gens, 2):
+        assert (bin(g1[0] & g2[1]).count("1") + bin(g1[1] & g2[0]).count("1")) % 2 == 0, \
+            "stabilizer generators must mutually commute"
+    assert erasure_correctable(())
+    for k in (1, 2):
+        assert all(erasure_correctable(e) for e in itertools.combinations(range(5), k)), \
+            f"[[5,1,3]] must correct ANY {k} erasures"
+    assert all(not erasure_correctable(e) for e in itertools.combinations(range(5), 3)), \
+        "[[5,1,3]] must fail on ANY 3 erasures (no-cloning)"
+
+    flows = []
+    for dth in (0.8, 1.6, 2.4, 3.2):
+        f, cut = interval_max_flow(dth)
+        assert abs(f - cut) < 1e-9, "max flow must equal min cut EXACTLY (MFMC)"
+        flows.append((dth, f))
+    assert all(flows[k][1] < flows[k + 1][1] for k in range(3)), \
+        "flow must grow with the interval"
+    devs = [f - 2.0 * np.log(np.sin(0.5 * d)) for (d, f) in flows]
+    assert max(devs) - min(devs) < 0.5, \
+        f"flow must track the analytic geodesic length 2 ln sin(dth/2) + const ({devs})"
+
+    assert [mera_layers(2 ** k) for k in range(1, 6)] == [1, 2, 3, 4, 5]
+    assert all(mera_cut_bonds(2 * l) - mera_cut_bonds(l) == 2 for l in (2, 4, 8, 32)), \
+        "doubling the interval must add exactly one severed bond per side"
+
+    for arc in (0.5, 2.0, 3.0, 3.9, 5.5):
+        rec, n_er = happy_central_recoverable(arc, 0.30)
+        legs = happy_erased_legs(arc, 0.30)
+        assert n_er == len(legs)
+        assert rec == erasure_correctable(legs), \
+            "the geometric wedge rule MUST equal the [[5,1,3]] erasure criterion"
+    print(f"  QI dictionary: OK  ([[5,1,3]] exact; MFMC flow==cut, tracks 2 ln sin "
+          f"(offsets {['%.2f' % d for d in devs]}); MERA log law; wedge rule == code rule)")
+
+    # ---- the three quantum-information scenes: structural checks ----
+    a = _render("holo_bit_threads", 2.0)
+    b = _render("holo_bit_threads", 7.0)
+    hh2, ww2 = a.shape[0], a.shape[1]
+    ys2, xs3 = np.mgrid[0:hh2, 0:ww2]
+    rad2 = np.sqrt((xs3 - ww2 / 2) ** 2 + (ys2 - hh2 / 2) ** 2)
+    inner = rad2 < 0.80 * 0.43 * hh2
+    cyan_a = float((a[..., 2][inner] - a[..., 0][inner]).clip(0).mean())
+    cyan_b = float((b[..., 2][inner] - b[..., 0][inner]).clip(0).mean())
+    # S(A) is logarithmic, so the honest growth over this sweep is modest (~15-30%)
+    assert cyan_b > 1.08 * cyan_a and cyan_a > 0.05, \
+        f"holo_bit_threads: the thread bundle must grow with S(A) ({cyan_a:.4f} -> {cyan_b:.4f})"
+    print(f"  holo_bit_threads: OK  (thread flux {cyan_a:.4f} -> {cyan_b:.4f})")
+
+    a = _render("holo_mera", 2.0)
+    b = _render("holo_mera", 7.0)
+    beads_a = int((a.mean(axis=2)[inner] > 0.85).sum())
+    beads_b = int((b.mean(axis=2)[inner] > 0.85).sum())
+    assert beads_b > beads_a > 0, \
+        f"holo_mera: severed-bond beads must multiply as the interval grows ({beads_a} -> {beads_b})"
+    assert np.abs(a - b).mean() > 5e-3, "holo_mera: epochs do not differ"
+    print(f"  holo_mera: OK  (bead pixels {beads_a} -> {beads_b}: the log law, counted)")
+
+    a = _render("holo_code", 1.0)
+    b = _render("holo_code", 8.0)
+    cen2 = np.s_[hh2 // 2 - 2:hh2 // 2 + 2, ww2 // 2 - 2:ww2 // 2 + 2]
+    star_a = float(a.mean(axis=2)[cen2].mean())
+    star_b = float(b.mean(axis=2)[cen2].mean())
+    assert star_a > 0.8 and star_b < 0.6, \
+        f"holo_code: the central logical qubit must die at the third erased leg ({star_a:.3f} -> {star_b:.3f})"
+    rim = np.abs(rad2 - 0.43 * hh2) < 2
+    assert float((b[..., 0][rim] - b[..., 2][rim]).mean()) > 0.05, \
+        "holo_code: the erased boundary must burn crimson at peak erasure"
+    print(f"  holo_code: OK  (logical qubit {star_a:.3f} -> {star_b:.3f}; boundary burnt)")
+
+    print("ALL PASSED (14 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
-          "+ BTZ quotient/plateau/ringdown)")
+          "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY)")
 
 
 if __name__ == "__main__":

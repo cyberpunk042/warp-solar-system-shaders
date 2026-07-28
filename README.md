@@ -740,6 +740,20 @@ thermalization).
 |---|---|---|
 | ![btz_quotient](docs/engine/btz_quotient.png) | ![btz_entanglement](docs/engine/btz_entanglement.gif) | ![btz_ringdown](docs/engine/btz_ringdown.png) |
 
+And finally the **quantum-information set**
+([research 49](docs/research/49-holographic-quantum-information.md)) — the HOW behind
+"entanglement builds geometry": `holo_bit_threads` (entropy as a maximum flow — an actual
+Dinic max-flow on a hyperbolic grid asserts flow == cut == RT), `holo_mera` (the tiling IS
+Swingle's renormalization network — the CFT log law counted in beads, one per severed
+bond), and `holo_code` (the HaPPY `{5,4}` pentagon code with a real `[[5,1,3]]` stabilizer
+code verified over GF(2) — the central bulk qubit dies at exactly the third erased leg,
+where no-cloning says it must). Spacetime doesn't just have quantum information —
+structurally, it *is* quantum information.
+
+| holo_bit_threads — the flow | holo_mera — the network | holo_code — the code |
+|---|---|---|
+| ![holo_bit_threads](docs/engine/holo_bit_threads.png) | ![holo_mera](docs/engine/holo_mera.png) | ![holo_code](docs/engine/holo_code.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
