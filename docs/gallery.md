@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (318 scenes).
+`python render.py --list` for the full, current list (319 scenes).
 
 ## Engine showcase
 
@@ -192,6 +192,21 @@ the Page curve turns over. At `t = T` the box holds pure light.
 One full evaporation — Hawking rise, island takeover, final flash:
 
 ![the Page curve cycle](engine/ads_page_curve.gif)
+
+`ads_complexity` — **the wormhole grows forever**
+([Research 46, Part VIII](research/46-ads-cft-holography.md)). Susskind's
+complexity=volume staged as a disconnect: the boundary CFT thermalizes in seconds — the
+lattice freezes into static equilibrium — while inside the shadow the Einstein–Rosen
+interior keeps growing, drawn as a violet pillar of light whose height tracks
+`C(t) = (2M/π)·t_r·ln cosh(t/t_r)` and whose brightness tracks `dC/dt` saturating the
+**Lloyd bound** `2M/π` from below (test-asserted, never exceeded). Black holes are
+nature's fastest computers — still computing long after everything visible has stopped.
+
+![ads_complexity — the growing interior](engine/ads_complexity.png)
+
+One thermalization cycle — the lattice freezes, the pillar keeps growing:
+
+![the complexity cycle](engine/ads_complexity.gif)
 
 ## Warp compression — three compressions of the card's visual information
 

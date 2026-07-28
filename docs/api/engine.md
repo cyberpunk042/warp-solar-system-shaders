@@ -224,7 +224,7 @@ it hits the disk or escapes. Units are geometric with `r_s = 1`. See
 ## AdS/CFT holography — `engine.adscft`
 
 Shared core for the holography set (`ads_cft`, `ads_bulk`, `ads_hawking_page`,
-`ads_entanglement`, `ads_wormhole`, `ads_confinement`, `ads_page_curve`): the `{7,3}` hyperbolic
+`ads_entanglement`, `ads_wormhole`, `ads_confinement`, `ads_page_curve`, `ads_complexity`): the `{7,3}` hyperbolic
 reflection-group fold (mirror geometry derived from `cosh m = cos(π/q)/sin(π/p)`), the
 Schwarzschild-AdS blackening factor, the two CFT boundary textures (thermofield-double
 pair), the Hawking-Page thermodynamic dictionary, and the RT/Wilson geodesic dictionary.
@@ -250,6 +250,10 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `bh_entropy_evaporating` | *(host)* `(t, t_evap, s0) -> float` — `S_BH = S₀(1 − t/T)^{2/3}` from Stefan-Boltzmann evaporation (`r_h ∝ (1 − t/T)^{1/3}`) |
 | `page_curve` | *(host)* `(t, t_evap, s0) -> (S_rad, island)` — `min(S₀ − S_BH, S_BH)`: Hawking saddle vs island saddle, the unitary Page curve |
 | `page_time` | *(host)* `(t_evap) -> float` — the saddle crossing at `S_BH = S₀/2`: `t_page = T(1 − 2^{−3/2})` |
+| `lloyd_bound` | *(host)* `(m) -> float` — `dC/dt ≤ 2M/π`: the fastest-computer bound, saturated by black holes (CA late-time rate) |
+| `complexity_rate` | *(host)* `(t, m, t_ramp) -> float` — `(2M/π)·tanh(t/t_ramp)`: rises from zero to the Lloyd bound from below |
+| `complexity_growth` | *(host)* `(t, m, t_ramp) -> float` — `C(t) = (2M/π)·t_ramp·ln cosh(t/t_ramp)`: quadratic early, linear forever after |
+| `scrambling_time` | *(host)* `(s, t_hawk) -> float` — `t_* = (β/2π)·ln S`: black holes as the fastest scramblers |
 
 ## Post — `engine.post`
 

@@ -307,6 +307,44 @@ Hawking saddle drew as a void the island saddle draws as reclaimed spacetime. Th
 radiation purifies as its entropy comes back down; at `t = T` the hole is gone and the
 box holds pure light. Unitarity, watched in real time.
 
+## Part VIII — the wormhole grows forever: `ads_complexity`
+
+After the Page curve closed the entropy story, one thing in the dictionary still moves.
+Quench the eternal hole's dual CFT and it **thermalizes in a few thermal times** —
+correlators decay like `e^{−2πt/β}`, entanglement entropies saturate at their thermal
+values, and every conventional observable goes static. But the Einstein–Rosen interior
+**keeps growing**: the maximal bulk slice lengthens linearly in time, and continues for
+times exponential in the entropy. Susskind's question (2014,
+[1403.5695](https://arxiv.org/abs/1403.5695)): *what boundary quantity is still evolving
+when everything else has stopped?* His answer: **computational complexity** — the minimum
+gate count to build the state from a reference — with the dictionary **complexity =
+interior volume** (CV, Stanford–Susskind
+[1406.2678](https://arxiv.org/abs/1406.2678)), refined to **complexity = action** (CA:
+the Wheeler–DeWitt patch action, Brown–Roberts–Susskind–Swingle–Zhao
+[1509.07876](https://arxiv.org/abs/1509.07876)). CA's late-time rate is exact and
+startling:
+
+```
+dC/dt = 2M/π        — the Lloyd bound
+```
+
+Black holes compute as fast as the laws of physics allow. The engine carries the
+dictionary host-side: `lloyd_bound` (2M/π), `complexity_rate` (a documented tanh-ramp
+interpolation with the qualitatively correct shape per Carmi et al.
+[1709.10184](https://arxiv.org/abs/1709.10184) — rising from zero, approaching the bound
+*from below*, never exceeding it), `complexity_growth` (`(2M/π)·t_r·ln cosh(t/t_r)`:
+quadratic early, **linear without end** late, numerically stable at large `t`), and
+`scrambling_time` (`t_* = (β/2π)·ln S` — Sekino–Susskind fast scrambling). All
+test-asserted: monotone rate, bound never exceeded, convex-then-linear growth, log
+scrambling.
+
+The scene stages the disconnect in one picture: the boundary lattice starts hot and
+flickering (the quench) and freezes into static equilibrium within a couple of seconds —
+while inside the shadow a violet-white **pillar of light** — the maximal slice through
+the bridge — keeps lengthening with `C(t)`, its brightness pinned to `dC/dt` saturating
+the Lloyd bound. Long after everything visible has stopped, the interior is still
+computing. That is the point.
+
 ## Sources
 
 - J. Maldacena, *The Large N Limit of Superconformal Field Theories and Supergravity*,
@@ -356,3 +394,12 @@ box holds pure light. Unitarity, watched in real time.
   evaporating black hole*, [1905.08762](https://arxiv.org/abs/1905.08762) — the island saddle
 - A. Almheiri, T. Hartman, J. Maldacena, E. Shaghoulian, A. Tajdini, *The entropy of
   Hawking radiation* (review), [2006.06872](https://arxiv.org/abs/2006.06872)
+- L. Susskind, *Computational Complexity and Black Hole Horizons*,
+  [1403.5695](https://arxiv.org/abs/1403.5695); D. Stanford, L. Susskind,
+  [1406.2678](https://arxiv.org/abs/1406.2678) — complexity = volume
+- A. Brown, D. Roberts, L. Susskind, B. Swingle, Y. Zhao, *Complexity Equals Action*,
+  [1509.07876](https://arxiv.org/abs/1509.07876) — the 2M/π Lloyd-bound rate
+- D. Carmi, S. Chapman, H. Marrochio, R. Myers, S. Sugishita, *On the Time Dependence of
+  Holographic Complexity*, [1709.10184](https://arxiv.org/abs/1709.10184)
+- Y. Sekino, L. Susskind, *Fast Scramblers*,
+  [0808.2096](https://arxiv.org/abs/0808.2096) — t_* = (β/2π) ln S

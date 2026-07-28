@@ -27,6 +27,9 @@ The engine-level core behind the holography set:
 * ``bh_entropy_evaporating`` / ``page_curve`` / ``page_time`` — the unitary Page curve as
   a minimum over gravitational saddles (Hawking vs island), crossing closed-form at
   ``t_page = T(1 − 2^{−3/2})`` (Penington; AEMM 2019).
+* ``lloyd_bound`` / ``complexity_rate`` / ``complexity_growth`` / ``scrambling_time`` —
+  holographic complexity: growth saturating ``dC/dt = 2M/π`` from below (CA late-time
+  rate = the Lloyd bound), linear-forever interior growth, ``t_* = (β/2π)·ln S``.
 
 Null-geodesic honesty: in Schwarzschild-AdS the photon orbital equation is
 ``d²u/dφ² + u = 3Mu²`` — the cosmological constant **drops out of the path shape**
@@ -278,6 +281,48 @@ def page_time(t_evap: float) -> float:
     """The Page time (host-side): the saddle crossing S₀ − S_BH = S_BH happens at
     S_BH = S₀/2, i.e. ``(1 − t/T)^{2/3} = 1/2`` ⇒ ``t_page = T (1 − 2^{−3/2})`` ≈ 0.6464 T."""
     return t_evap * (1.0 - 2.0 ** -1.5)
+
+
+def lloyd_bound(m: float) -> float:
+    """The Lloyd bound on complexity growth (host-side): ``dC/dt ≤ 2M/π`` (ħ=1).
+
+    Brown-Roberts-Susskind-Swingle-Zhao: the late-time action growth of the eternal
+    AdS black hole's Wheeler-DeWitt patch is exactly ``2M/π`` — black holes saturate
+    the fastest-computer bound nature allows.
+    """
+    return 2.0 * m / math.pi
+
+
+def complexity_rate(t: float, m: float, t_ramp: float) -> float:
+    """Growth rate of holographic complexity (host-side model interpolation):
+    ``dC/dt = (2M/π)·tanh(t/t_ramp)`` — zero at t=0, rising monotonically, and
+    approaching the Lloyd bound FROM BELOW at late times (never exceeding it).
+
+    The exact late-time rate is the Lloyd bound; the smooth ramp is a documented
+    visualization interpolation with the qualitatively correct shape (Carmi et al.
+    1709.10184: the rate rises from zero and asymptotes).
+    """
+    return lloyd_bound(m) * math.tanh(t / t_ramp)
+
+
+def complexity_growth(t: float, m: float, t_ramp: float) -> float:
+    """Holographic complexity C(t) of the eternal hole (host-side): the integral of
+    ``complexity_rate`` — ``C(t) = (2M/π)·t_ramp·ln cosh(t/t_ramp)``. Quadratic at
+    early times, LINEAR WITHOUT END at late times: the boundary state looks thermal
+    after a few thermal times, but the Einstein-Rosen interior — and the complexity
+    dual to its volume — keeps growing for exponentially long (Susskind's
+    complexity=volume). Numerically stable for large ``t/t_ramp``.
+    """
+    x = t / t_ramp
+    lncosh = x - math.log(2.0) if x > 20.0 else math.log(math.cosh(x))
+    return lloyd_bound(m) * t_ramp * lncosh
+
+
+def scrambling_time(s: float, t_hawk: float) -> float:
+    """The fast-scrambling time (host-side): ``t_* = (β/2π)·ln S`` — black holes
+    scramble information in a time logarithmic in their entropy (Sekino-Susskind),
+    the fastest scramblers in nature. β = 1/T_Hawking."""
+    return math.log(s) / (2.0 * math.pi * t_hawk)
 
 
 def horizon_radius(m: float, l_ads: float) -> float:
