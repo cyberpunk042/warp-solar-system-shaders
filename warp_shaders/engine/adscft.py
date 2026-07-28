@@ -15,6 +15,15 @@ The engine-level core behind the holography set:
   lattice stereographically projected onto the boundary, with a thermal wash set by the
   black hole's **Hawking temperature** (host-side ``hawking_temperature``) — the bulk hole
   IS a thermal state of the boundary theory (Hawking & Page 1983).
+* ``boundary_cft_dual`` — the SECOND copy of the CFT (complementary palette,
+  counter-rotating flow): the other asymptotic boundary of the eternal black hole, the
+  right factor of the thermofield-double state (Maldacena 2001; ER=EPR).
+* ``rt_geodesic_glow`` — the bulk geodesic anchored on a boundary interval of the Poincaré
+  disk: the Ryu-Takayanagi minimal surface AND (same curve in AdS₃) the static Wilson-loop
+  string. Host-side quantitative dictionary: ``interval_entropy`` (Calabrese-Cardy /
+  RT length), ``mutual_information`` (the min-pairing phase transition),
+  ``string_turning_radius`` / ``screening_angle`` (where the quark string breaks on a
+  horizon — deconfined screening).
 
 Null-geodesic honesty: in Schwarzschild-AdS the photon orbital equation is
 ``d²u/dφ² + u = 3Mu²`` — the cosmological constant **drops out of the path shape**
@@ -120,6 +129,115 @@ def boundary_cft(rd: wp.vec3, time: float, t_hawk: float) -> wp.vec3:
     pulse = 0.75 + 0.25 * wp.sin(2.2 * time + 5.0 * d[1])
     thermal = wp.vec3(1.00, 0.36, 0.10) * t_hawk * pulse * (0.35 + 0.65 * depth)
     return base + lattice + thermal
+
+
+@wp.func
+def rt_geodesic_glow(zd: wp.vec2, th1: float, th2: float, px: float) -> float:
+    """Glow of the bulk geodesic anchored at boundary angles th1, th2 (Poincaré disk).
+
+    The unique circle through both endpoints orthogonal to the unit circle has centre
+    c = (u + v)/(1 + u.v) and radius² = |c|² − 1; its arc inside the disk IS the
+    hyperbolic geodesic — the RT minimal surface for the boundary interval AND the
+    static Wilson-loop string in AdS₃ (both minimize proper length on the slice).
+    """
+    u = wp.vec2(wp.cos(th1), wp.sin(th1))
+    v = wp.vec2(wp.cos(th2), wp.sin(th2))
+    den = 1.0 + u[0] * v[0] + u[1] * v[1]
+    c = wp.vec2((u[0] + v[0]) / den, (u[1] + v[1]) / den)
+    rad = wp.sqrt(wp.max(wp.dot(c, c) - 1.0, 1.0e-8))
+    darc = wp.abs(wp.length(zd - c) - rad)
+    w = wp.max(0.0035, 1.5 * px)
+    glow = wp.exp(-(darc * darc) / (w * w)) + 0.35 * wp.exp(-darc * 26.0)
+    # endpoint dots — the boundary interval's operator insertions
+    de = wp.min(wp.length(zd - u), wp.length(zd - v))
+    glow += 2.2 * wp.exp(-(de * de) / (9.0 * w * w))
+    return glow
+
+
+@wp.func
+def boundary_cft_dual(rd: wp.vec3, time: float, t_hawk: float) -> wp.vec3:
+    """The SECOND copy of the CFT — the other boundary of the eternal black hole.
+
+    The eternal Schwarzschild-AdS hole has two asymptotic regions, dual to TWO copies of
+    the CFT entangled in the thermofield-double state |TFD⟩ = Σ e^{−βE/2}|E⟩_L|E⟩_R
+    (Maldacena 2001). Same `{7,3}` fold, complementary palette and counter-rotating
+    conformal flow — the L/R copies evolve with opposite time orientations in the TFD.
+    """
+    ph = -0.11 * time                      # counter-rotating: H_L = −H_R in the TFD
+    cp = wp.cos(ph)
+    sp = wp.sin(ph)
+    d = wp.vec3(cp * rd[0] + sp * rd[2], rd[1], -sp * rd[0] + cp * rd[2])
+    zs = wp.abs(d[1])
+    sig = wp.vec2(d[0] / (1.0 + zs + 1.0e-6), d[2] / (1.0 + zs + 1.0e-6))
+    s = 1.35 + 0.25 * wp.sin(0.17 * time + 2.6)
+    folded = poincare_fold(sig * s)
+    edge = tile_edge(folded, 0.0025)
+    depth = wp.min(folded[2] / 10.0, 1.0)
+
+    base = wp.vec3(0.007, 0.026, 0.052) * (0.6 + 1.2 * depth)
+    lattice = wp.vec3(0.20, 0.66, 1.00) * edge * (0.55 + 1.0 * depth)
+    pulse = 0.75 + 0.25 * wp.sin(2.2 * time + 5.0 * d[1] + 1.6)
+    thermal = wp.vec3(0.10, 0.42, 1.00) * t_hawk * pulse * (0.35 + 0.65 * depth)
+    return base + lattice + thermal
+
+
+def interval_entropy(dtheta: float, eps: float = 0.05, c_central: float = 1.0) -> float:
+    """Entanglement entropy of a boundary interval of angular size ``dtheta`` (host-side).
+
+    Ryu-Takayanagi in global AdS₃ = the Calabrese-Cardy result for a CFT on a circle:
+    S(A) = (c/3) ln( (2/ε) sin(Δθ/2) ) — the regularized length of the bulk geodesic
+    hanging from the interval's endpoints, in units 4G = 1 (ε is the UV cutoff).
+    Symmetric under Δθ → 2π − Δθ (a pure global state: S_A = S_Ā), maximal at Δθ = π.
+    """
+    return (c_central / 3.0) * math.log((2.0 / eps) * math.sin(0.5 * dtheta))
+
+
+def mutual_information(gap: float, size_a: float, size_b: float,
+                       eps: float = 0.05, c_central: float = 1.0):
+    """Mutual information I(A:B) of two disjoint boundary intervals (host-side).
+
+    A and B have angular sizes ``size_a``/``size_b`` separated by angular ``gap`` (the
+    other gap is 2π − size_a − size_b − gap). RT computes S(A∪B) as the MINIMUM over the
+    two allowed geodesic pairings — each interval capped by its own geodesic
+    (*disconnected*) or the two gaps capped instead (*connected*):
+
+        S_disc = S(size_a) + S(size_b)
+        S_conn = S(gap) + S(2π − size_a − size_b − gap)
+
+    I(A:B) = S_A + S_B − S(A∪B) is exactly 0 in the disconnected phase and jumps on with
+    discontinuous first derivative at S_disc = S_conn — the holographic mutual-information
+    phase transition. Returns ``(I, connected)``.
+    """
+    gap2 = 2.0 * math.pi - size_a - size_b - gap
+    s_disc = interval_entropy(size_a, eps, c_central) + interval_entropy(size_b, eps, c_central)
+    s_conn = interval_entropy(gap, eps, c_central) + interval_entropy(gap2, eps, c_central)
+    connected = s_conn < s_disc
+    return (max(s_disc - s_conn, 0.0), connected)
+
+
+def string_turning_radius(dtheta: float, r_bdy: float) -> float:
+    """Deepest bulk point of the geodesic string between two boundary points (host-side).
+
+    The circle orthogonal to the boundary sphere of radius R through two points at
+    half-angle α = Δθ/2 has centre distance d = R/cos α and radius ρ = R tan α
+    (orthogonality: d² = R² + ρ²), so its closest approach to the origin is
+
+        r_min = d − ρ = R (1 − sin α) / cos α
+
+    → R as Δθ → 0 (a shallow string) and → 0 as Δθ → π (through the centre). In the
+    black-hole phase the connected string exists only while r_min > r_h: once the
+    geodesic would dip inside the horizon the string breaks into two radial segments
+    ending ON the horizon — Debye screening of the quark pair in the deconfined plasma.
+    """
+    a = 0.5 * dtheta
+    return r_bdy * (1.0 - math.sin(a)) / max(math.cos(a), 1.0e-12)
+
+
+def screening_angle(r_h: float, r_bdy: float) -> float:
+    """Quark separation Δθ at which the string breaks, inverting ``string_turning_radius``
+    (host-side): r_min = R(1 − sin α)/cos α = r_h  ⇒  sin α = (R² − r_h²)/(R² + r_h²)."""
+    s = (r_bdy * r_bdy - r_h * r_h) / (r_bdy * r_bdy + r_h * r_h)
+    return 2.0 * math.asin(min(max(s, 0.0), 1.0))
 
 
 def horizon_radius(m: float, l_ads: float) -> float:
