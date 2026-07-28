@@ -721,6 +721,12 @@ follows `min(S₀ − S_BH, S_BH)`; at the closed-form Page time `T(1 − 2^{−
 saddle** wins, a violet quantum extremal surface ignites, and the interior fills with purifying
 cyan light — unitarity watched in real time ([the cycle](docs/engine/ads_page_curve.gif)).
 
+Then the epilogue, `ads_complexity` — **the wormhole grows forever**: the boundary lattice
+thermalizes and freezes in seconds, while inside the shadow the Einstein–Rosen interior keeps
+growing as a violet pillar of light — height `C(t) = (2M/π)·t_r·ln cosh(t/t_r)`, brightness
+pinned to `dC/dt` saturating the **Lloyd bound** `2M/π` (Susskind's complexity=volume; black
+holes as nature's fastest computers — [the cycle](docs/engine/ads_complexity.gif)).
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted

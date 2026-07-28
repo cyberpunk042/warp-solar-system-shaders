@@ -19,6 +19,10 @@ import warp_shaders as ws
 from warp_shaders import lod
 from warp_shaders.engine.adscft import (
     bh_entropy_evaporating,
+    complexity_growth,
+    complexity_rate,
+    lloyd_bound,
+    scrambling_time,
     hawking_page_temperature,
     hawking_temperature,
     horizon_radius,
@@ -255,8 +259,44 @@ def main():
     print(f"  ads_page_curve: OK  (centre pre-Page {lum_h:.3f} -> island {lum_i:.3f}, "
           f"blue-dominant)")
 
-    print("ALL PASSED (7 scenes + LOD sweep + thermodynamics + phase transition "
-          "+ RT dictionary + string screening + Page curve)")
+    # ---- complexity dictionary: the Lloyd bound and eternal growth (closed forms) ----
+    M, TR = 0.5, 3.0
+    bound = lloyd_bound(M)
+    assert abs(bound - 2.0 * M / np.pi) < 1e-15
+    assert complexity_rate(0.0, M, TR) == 0.0, "growth starts at zero"
+    rs = [complexity_rate(float(t), M, TR) for t in np.linspace(0.0, 40.0, 81)]
+    assert all(rs[k] < rs[k + 1] for k in range(80)), "rate must rise monotonically"
+    assert all(r < bound for r in rs), "the Lloyd bound is never exceeded"
+    assert complexity_rate(10.0 * TR, M, TR) > 0.999 * bound, "rate must approach the bound"
+    c0, c1, c2 = (complexity_growth(x, M, TR) for x in (0.0, 1.0, 2.0))
+    assert c2 - c1 > c1 - c0 > 0.0, "C(t) must be convex at early times"
+    late = (complexity_growth(21.0 * TR, M, TR) - complexity_growth(20.0 * TR, M, TR)) / TR
+    assert abs(late - bound) < 1e-3 * bound, "late-time growth must be linear at the bound"
+    big = complexity_growth(1000.0, M, 1.0)
+    assert np.isfinite(big) and abs(big - bound * (1000.0 - np.log(2.0))) < 1e-6, \
+        "large-t path must be numerically stable (ln cosh x -> x - ln 2)"
+    ts1, ts2 = scrambling_time(100.0, 0.2), scrambling_time(10000.0, 0.2)
+    assert abs(ts1 - np.log(100.0) / (2.0 * np.pi * 0.2)) < 1e-12
+    assert ts2 == 2.0 * ts1, "t_* = (beta/2pi) ln S: log scrambling"
+    print(f"  complexity dictionary: OK  (Lloyd bound 2M/pi = {bound:.4f}; rate rises to "
+          f"it, never past; C convex -> linear; t_* log in S)")
+
+    # ---- ads_complexity: boundary freezes, the interior pillar keeps growing ----
+    a = _render("ads_complexity", 1.0)
+    b = _render("ads_complexity", 12.5)
+    ch, cw = a.shape[0], a.shape[1]
+    pil = np.s_[int(ch * 0.30):int(ch * 0.42), cw // 2 - 4:cw // 2 + 4]
+    flank = np.s_[ch // 2 - 10:ch // 2 + 10, int(cw * 0.36):int(cw * 0.40)]
+    pil_a, pil_b = a.mean(axis=2)[pil].mean(), b.mean(axis=2)[pil].mean()
+    assert pil_b > 10.0 * max(pil_a, 1e-4), \
+        f"ads_complexity: the interior pillar must grow ({pil_a:.4f} -> {pil_b:.4f})"
+    assert b.mean(axis=2)[flank].mean() < 0.08, \
+        "ads_complexity: the shadow flanks must stay dark around the pillar"
+    assert np.abs(a - b).mean() > 5e-3, "ads_complexity: epochs do not differ"
+    print(f"  ads_complexity: OK  (pillar {pil_a:.4f} -> {pil_b:.4f}, flanks dark)")
+
+    print("ALL PASSED (8 scenes + LOD sweep + thermodynamics + phase transition "
+          "+ RT dictionary + string screening + Page curve + complexity growth)")
 
 
 if __name__ == "__main__":
