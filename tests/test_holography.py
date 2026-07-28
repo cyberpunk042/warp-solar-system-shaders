@@ -19,10 +19,19 @@ import warp_shaders as ws
 from warp_shaders import lod
 from warp_shaders.engine.adscft import (
     bh_entropy_evaporating,
+    btz_entropy,
+    btz_horizon_radius,
+    btz_qnm,
+    btz_temperature,
     complexity_growth,
     complexity_rate,
+    horizon_translation_length,
     lloyd_bound,
+    plateau_angle,
+    quotient_wall_position,
     scrambling_time,
+    thermal_entanglement,
+    thermal_interval_entropy,
     hawking_page_temperature,
     hawking_temperature,
     horizon_radius,
@@ -295,8 +304,91 @@ def main():
     assert np.abs(a - b).mean() > 5e-3, "ads_complexity: epochs do not differ"
     print(f"  ads_complexity: OK  (pillar {pil_a:.4f} -> {pil_b:.4f}, flanks dark)")
 
-    print("ALL PASSED (8 scenes + LOD sweep + thermodynamics + phase transition "
-          "+ RT dictionary + string screening + Page curve + complexity growth)")
+    # ---- BTZ dictionary: quotient geometry, thermal RT / plateau, exact QNMs ----
+    L = 1.0
+    assert abs(btz_horizon_radius(4.0, L) - 2.0) < 1e-15, "r_h = L sqrt(M)"
+    assert abs(btz_temperature(0.3, L) - 0.3 / (2 * np.pi)) < 1e-15, "T = r_h/(2 pi L^2)"
+    assert abs(btz_entropy(0.3) - 2 * np.pi * 0.3 / 4) < 1e-15, "S = 2 pi r_h / 4G"
+    lam = horizon_translation_length(0.3, L)
+    assert abs(lam - 2 * np.pi * 0.3) < 1e-15, "lambda = 2 pi r_h / L"
+    xs = [quotient_wall_position(n, lam) for n in range(0, 8)]
+    assert xs[0] == 0.0 and all(xs[k] < xs[k + 1] < 1.0 for k in range(7)), \
+        "walls must march monotonically toward the fixed point"
+    assert quotient_wall_position(-3, lam) == -xs[3], "walls are symmetric about the origin"
+
+    T_th, eps, c_c = 0.35, 0.05, 1.0
+    s_small = thermal_interval_entropy(0.01, T_th, eps, c_c)
+    assert abs(s_small - (c_c / 3.0) * np.log(0.01 / eps)) < 2e-4, \
+        "theta << beta must reduce to the vacuum log (UV blind to T)"
+    th_grid = np.linspace(0.5, 2 * np.pi - 0.2, 60)
+    ss = [thermal_interval_entropy(float(x), T_th, eps, c_c) for x in th_grid]
+    assert all(ss[k] < ss[k + 1] for k in range(59)), "S_th must be monotone in theta"
+    slope = (thermal_interval_entropy(40.0, T_th, eps, c_c)
+             - thermal_interval_entropy(39.0, T_th, eps, c_c))
+    assert abs(slope - np.pi * c_c * T_th / 3.0) < 1e-6, \
+        "theta >> beta must be extensive with slope (pi c/3) T"
+
+    S_BH = 1.5
+    th_star = plateau_angle(T_th, S_BH, eps, c_c)
+    assert np.pi < th_star < 2 * np.pi, "the plateau must exist for these parameters"
+    _, w_lo = thermal_entanglement(th_star - 0.01, T_th, S_BH, eps, c_c)
+    _, w_hi = thermal_entanglement(th_star + 0.01, T_th, S_BH, eps, c_c)
+    assert (not w_lo) and w_hi, "the wrapped saddle must take over exactly at theta*"
+    for th in np.linspace(0.3, 2 * np.pi - 0.3, 40):
+        sa, wa = thermal_entanglement(float(th), T_th, S_BH, eps, c_c)
+        sc, _ = thermal_entanglement(float(2 * np.pi - th), T_th, S_BH, eps, c_c)
+        assert abs(sa - sc) <= S_BH + 1e-9, "Araki-Lieb |S(A) - S(A~)| <= S_BH"
+        if wa:
+            assert abs(abs(sa - sc) - S_BH) < 1e-9, \
+                "in the plateau Araki-Lieb must saturate EXACTLY"
+    assert plateau_angle(T_th, 1e9, eps, c_c) == 2 * np.pi, \
+        "an unreachable plateau must report 2 pi"
+
+    om_re, om_im = btz_qnm(2.0, 0, 0.05, delta=2.0)
+    assert om_re == 2.0 and abs(om_im + 4 * np.pi * 0.05) < 1e-15, \
+        "fundamental massless QNM: omega = k - 4 pi i T"
+    _, im1 = btz_qnm(2.0, 1, 0.05, delta=2.0)
+    assert abs((om_im - im1) - 4 * np.pi * 0.05) < 1e-15, "overtones spaced exactly 4 pi T"
+    print(f"  BTZ dictionary: OK  (r_h = L sqrt(M); walls -> fixed points; vacuum/extensive "
+          f"limits; plateau theta* = {th_star:.3f} with exact Araki-Lieb saturation; "
+          f"QNM spacing 4 pi T)")
+
+    # ---- the three BTZ scenes: structural checks ----
+    a = _render("btz_quotient", 0.0)     # cold: small lambda, dense walls
+    b = _render("btz_quotient", 6.0)     # hot: large lambda, sparse walls
+    hh, ww = a.shape[0], a.shape[1]
+    cen = np.s_[hh // 2 - 2:hh // 2 + 2, ww // 2 - 2:ww // 2 + 2]
+    assert a.mean(axis=2)[cen].mean() > 0.5, "btz_quotient: the horizon axis must glow"
+    assert np.abs(a - b).mean() > 5e-3, "btz_quotient: the hole must breathe"
+    print(f"  btz_quotient: OK  (horizon axis {a.mean(axis=2)[cen].mean():.3f}, breathes)")
+
+    a = _render("btz_entanglement", 3.0)     # direct phase
+    b = _render("btz_entanglement", 7.0)     # plateau: wrapped
+    ys, xs2 = np.mgrid[0:hh, 0:ww]
+    rad = np.sqrt((xs2 - ww / 2) ** 2 + (ys - hh / 2) ** 2)
+    ringm = np.abs(rad - 0.30 * 0.43 * hh) < 2
+    ring_a, ring_b = a.mean(axis=2)[ringm].mean(), b.mean(axis=2)[ringm].mean()
+    assert ring_b > 1.4 * ring_a, \
+        f"btz_entanglement: the horizon must ignite when wrapped ({ring_a:.3f} -> {ring_b:.3f})"
+    assert b[..., 2][ringm].mean() > 0.9 * b[..., 0][ringm].mean(), \
+        "btz_entanglement: the claimed horizon should turn violet"
+    print(f"  btz_entanglement: OK  (horizon ring {ring_a:.3f} -> {ring_b:.3f} across the plateau)")
+
+    a = _render("btz_ringdown", 1.2)     # ringing hard
+    b = _render("btz_ringdown", 8.5)     # settled
+    bulk = (rad > 0.36 * 0.43 * hh) & (rad < 0.85 * 0.43 * hh)
+    # the ripple is spatially structured (a cos^2 quadrupole spiral riding on a smooth
+    # base gradient), so damping is measured as the collapse of spatial variance
+    std_a = float(a[..., 2][bulk].std())
+    std_b = float(b[..., 2][bulk].std())
+    assert std_a > 3.0 * std_b, \
+        f"btz_ringdown: the ripples must damp out (blue std {std_a:.4f} -> {std_b:.4f})"
+    assert np.abs(a - b).mean() > 5e-3, "btz_ringdown: epochs do not differ"
+    print(f"  btz_ringdown: OK  (bulk ripple std {std_a:.4f} -> {std_b:.4f}: exact QNM damping)")
+
+    print("ALL PASSED (11 scenes + LOD sweep + thermodynamics + phase transition "
+          "+ RT dictionary + string screening + Page curve + complexity growth "
+          "+ BTZ quotient/plateau/ringdown)")
 
 
 if __name__ == "__main__":

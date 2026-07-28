@@ -254,6 +254,15 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `complexity_rate` | *(host)* `(t, m, t_ramp) -> float` — `(2M/π)·tanh(t/t_ramp)`: rises from zero to the Lloyd bound from below |
 | `complexity_growth` | *(host)* `(t, m, t_ramp) -> float` — `C(t) = (2M/π)·t_ramp·ln cosh(t/t_ramp)`: quadratic early, linear forever after |
 | `scrambling_time` | *(host)* `(s, t_hawk) -> float` — `t_* = (β/2π)·ln S`: black holes as the fastest scramblers |
+| `btz_horizon_radius` / `btz_temperature` / `btz_entropy` | *(host)* the BTZ dictionary, all exact: `r_h = L√M`, `T = r_h/(2πL²)`, `S = 2πr_h/4G` |
+| `horizon_translation_length` | *(host)* `(r_h, l) -> float` — the quotient's translation length `λ = 2πr_h/L`: the horizon is a closed geodesic and entropy is its length |
+| `quotient_wall_position` | *(host)* `(n, λ) -> float` — the n-th fundamental-domain wall crosses the axis at `x_n = tanh(n·λ/2)`, accumulating at the fixed points |
+| `thermal_interval_entropy` | *(host)* `(θ, T, ε, c) -> float` — finite-T Calabrese-Cardy: `(c/3)·ln((β/πε)·sinh(πθ/β))`; vacuum log for `θ ≪ β`, extensive for `θ ≫ β` |
+| `thermal_entanglement` | *(host)* `(θ, T, s_bh, ε, c) -> (S, wrapped)` — RT with homology: `min(S_th(θ), S_th(2π−θ) + S_BH)`, the entanglement plateau |
+| `plateau_angle` | *(host)* `(T, s_bh, ε, c) -> float` — the plateau angle θ* where the wrapped saddle takes over (bisection; 2π if unreachable) |
+| `btz_qnm` | *(host)* `(k, n, T, Δ) -> (ω_re, ω_im)` — exact BTZ quasinormal modes `ω = ±k − 4πiT(n + Δ/2)`: the poles of the dual thermal correlator |
+| `in_boundary_arc` | boundary-arc membership test (wrap-safe), for interval bands on the disk |
+| `geodesic_far_side` | soft mask for the far side of the geodesic capping a boundary arc — entanglement-wedge shading |
 
 ## Post — `engine.post`
 

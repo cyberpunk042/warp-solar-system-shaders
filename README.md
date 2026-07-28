@@ -727,6 +727,19 @@ growing as a violet pillar of light — height `C(t) = (2M/π)·t_r·ln cosh(t/t
 pinned to `dC/dt` saturating the **Lloyd bound** `2M/π` (Susskind's complexity=volume; black
 holes as nature's fastest computers — [the cycle](docs/engine/ads_complexity.gif)).
 
+And the coda where everything is exact — the **BTZ set**
+([research 48](docs/research/48-btz-black-hole-on-the-disk.md)): 3D gravity's black hole
+built live as a quotient of the Poincaré disk (`btz_quotient` — the horizon is a closed
+geodesic whose *length is the entropy*), finite-temperature RT with the homology constraint
+(`btz_entanglement` — the entanglement plateau, Araki–Lieb saturated exactly as the
+interval's wedge swallows the hole), and the only black hole whose ringdown is known in
+closed form (`btz_ringdown` — `ω = ±k − 4πiT(n + Δ/2)`: ringdown *is* boundary
+thermalization).
+
+| btz_quotient — entropy as length | btz_entanglement — the plateau | btz_ringdown — the exact ring |
+|---|---|---|
+| ![btz_quotient](docs/engine/btz_quotient.png) | ![btz_entanglement](docs/engine/btz_entanglement.gif) | ![btz_ringdown](docs/engine/btz_ringdown.png) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted

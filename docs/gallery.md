@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (319 scenes).
+`python render.py --list` for the full, current list (322 scenes).
 
 ## Engine showcase
 
@@ -207,6 +207,47 @@ nature's fastest computers — still computing long after everything visible has
 One thermalization cycle — the lattice freezes, the pillar keeps growing:
 
 ![the complexity cycle](engine/ads_complexity.gif)
+
+### The BTZ set — the black hole on the disk
+
+`btz_quotient` — **a black hole with no curvature**
+([Research 48, Part I](research/48-btz-black-hole-on-the-disk.md)). 3D gravity has no
+local degrees of freedom, so its black hole is a **global identification**: the Poincaré
+disk quotiented by one hyperbolic isometry. The axis geodesic glows as the horizon — a
+closed curve whose *length is the entropy* `S = λL/4G = 2πr_h/4G` (the one Strominger
+counted with the Cardy formula) — while the fundamental-domain walls at
+`x_n = tanh(n·λ/2)` accumulate at the isometry's two boundary fixed points. The hole
+breathes once per cycle: entropy as geometry, watched.
+
+![btz_quotient — the identification](engine/btz_quotient.png)
+
+![the breathing quotient](engine/btz_quotient.gif)
+
+`btz_entanglement` — **the entanglement plateau**
+([Research 48, Part II](research/48-btz-black-hole-on-the-disk.md)). Finite-temperature
+RT with the homology constraint: a boundary interval's entropy is the minimum of the
+direct geodesic (`S_th(θ)` — the finite-T Calabrese–Cardy form, vacuum log for `θ ≪ β`,
+extensive with slope `(πc/3)T` for `θ ≫ β`) and the complement's geodesic **plus the
+horizon it must wrap** (`S_th(2π−θ) + S_BH`). At the bisected plateau angle θ* the saddles
+swap — the fourth saddle competition of the arc — the horizon ring ignites violet, and
+Araki–Lieb `|S(A) − S(Ā)| ≤ S_BH` saturates *exactly*: the interval's wedge now contains
+the entire black hole.
+
+![btz_entanglement — the plateau](engine/btz_entanglement.png)
+
+![through the plateau and back](engine/btz_entanglement.gif)
+
+`btz_ringdown` — **the only black hole that rings in closed form**
+([Research 48, Part III](research/48-btz-black-hole-on-the-disk.md)). BTZ quasinormal
+modes are exact: `ω = ±k − 4πiT(n + Δ/2)` — frequency = momentum, damping set only by
+temperature, overtones spaced exactly `4πT`. A quadrupole kick deforms the horizon, cyan
+ripples carry the perturbation out along retarded time, and the boundary settles at the
+very same rate — because QNM frequencies ARE the poles of the dual CFT's thermal
+correlator: ringdown *equals* thermalization.
+
+![btz_ringdown — the kick](engine/btz_ringdown.png)
+
+![one kick, one full decay](engine/btz_ringdown.gif)
 
 ## Warp compression — three compressions of the card's visual information
 
