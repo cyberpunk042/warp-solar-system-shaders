@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (337 scenes).
+`python render.py --list` for the full, current list (340 scenes).
 
 ## Engine showcase
 
@@ -423,6 +423,39 @@ Hulse–Taylor is mid-flight on this curve.
 ![gw_orbits — circularization](engine/gw_orbits.png)
 
 ![one circularizing inspiral](engine/gw_orbits.gif)
+
+### The lensing set — light bent, exactly
+
+`lens_arcs` — **arcs and the Einstein ring**
+([Research 54, Part I](research/54-gravitational-lensing.md)). Every pixel runs the
+exact lens equation backwards (`β = θ(1−θ_E²/|θ|²)`, surface brightness conserved): a
+spiral galaxy shears into a tangential arc plus a parity-flipped counter-image, then
+wraps into the full ring at alignment — Einstein's "no hope of observing this," now
+photographed by the hundreds.
+
+![lens_arcs — the ring](engine/lens_arcs.png)
+
+![one transit behind the lens](engine/lens_arcs.gif)
+
+`lens_microlensing` — **the Paczyński light curve**
+([Research 54, Part II](research/54-gravitational-lensing.md)). The two unresolvable
+images slide (exact `θ±`, brightness ∝ exact `|μ|`; the signed sum rule `μ₊+μ₋ = 1`
+asserted) while the exact `A(u) = (u²+2)/(u√(u²+4))` reveals below: flat, achromatic
+rise, peak, symmetric fall — the signature OGLE hunts, and how worlds are found.
+
+![lens_microlensing — the event](engine/lens_microlensing.png)
+
+![one microlensing transit](engine/lens_microlensing.gif)
+
+`lens_fermat` — **images live at stationary points of arrival time**
+([Research 54, Part III](research/54-gravitational-lensing.md)). The arrival-time
+surface `τ = |θ−β|²/2 − θ_E²ln|θ|` as live contours: cyan image in the valley (first
+light), magenta on the saddle (late) — both asserted stationary — while the amber
+ledger tracks the exact delay Refsdal 1964 turned into a measurement of H₀.
+
+![lens_fermat — the landscape](engine/lens_fermat.png)
+
+![the landscape tilting](engine/lens_fermat.gif)
 
 ## Warp compression — three compressions of the card's visual information
 

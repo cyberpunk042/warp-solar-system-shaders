@@ -319,6 +319,17 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `strain_amplitude` | `h ∝ M_c^{5/3}f^{2/3}/D` — louder as it climbs (asserted) |
 | `peters_dadt` / `peters_dedt` / `evolve_peters` | the exact 1964 system + RK2 integration — circularization asserted (e monotone, dies fractionally faster than a) |
 
+### `engine.lensing` — gravitational lensing (host-side, all test-asserted)
+
+| Function | What it is |
+|---|---|
+| `einstein_radius` | `θ_E = √(4M·D_LS/D_L D_S)` — the lens's natural angular unit |
+| `lens_equation` / `image_positions` | `β = θ − θ_E²/θ` and its exact two-image solution `θ±` (lens eq satisfied, asserted) |
+| `magnification` / `magnifications` | `μ = 1/(1−(θ_E/θ)⁴)` — the signed sum rule `μ₊+μ₋ = 1` asserted exactly |
+| `paczynski_magnification` | `A(u) = (u²+2)/(u√(u²+4))` = `|μ₊|+|μ₋|` (asserted); `A(1) = 3/√5` (asserted) |
+| `fermat_potential` / `fermat_potential_2d` | `τ = |θ−β|²/2 − θ_E²ln|θ|` — images asserted to sit at `dτ/dθ = 0`; inner image asserted a saddle |
+| `time_delay` | `Δτ = τ(θ₋)−τ(θ₊) > 0` (asserted) — the saddle arrives late; Refsdal's H₀ probe |
+
 ## Post — `engine.post`
 
 Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with

@@ -815,6 +815,21 @@ circular, and the curve Hulse–Taylor is falling along right now.
 |---|---|---|
 | ![gw_inspiral](docs/engine/gw_inspiral.gif) | ![gw_chirp](docs/engine/gw_chirp.png) | ![gw_orbits](docs/engine/gw_orbits.gif) |
 
+The **lensing set** ([research 54](docs/research/54-gravitational-lensing.md)) plays
+GR's other observational triumph on the exactly-solvable point lens. `lens_arcs` runs
+the lens equation backwards per pixel (`β = θ(1−θ_E²/|θ|²)`, surface brightness
+conserved — inverse ray shooting IS one line of shader): a galaxy shears into arcs, a
+parity-flipped counter-image, then the full Einstein ring. `lens_microlensing` draws
+the exact Paczyński curve `A(u) = (u²+2)/(u√(u²+4))` live under the sliding image pair
+— with the point lens's prettiest identity asserted: the *signed* magnifications
+always sum to exactly 1. `lens_fermat` draws the arrival-time landscape whose
+stationary points ARE the images (asserted: minimum, saddle, and the saddle's late
+arrival) — Refsdal's time-delay cosmography, the geometry-and-patience route to H₀.
+
+| lens_arcs — the ring | lens_microlensing — the light curve | lens_fermat — arrival time |
+|---|---|---|
+| ![lens_arcs](docs/engine/lens_arcs.gif) | ![lens_microlensing](docs/engine/lens_microlensing.png) | ![lens_fermat](docs/engine/lens_fermat.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
