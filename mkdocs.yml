@@ -107,6 +107,7 @@ nav:
       - de Sitter, the cosmic horizon (Gibbons-Hawking, inflation, the thermal sky): research/51-desitter-cosmic-horizon.md
       - The quantum vacuum (Unruh, Casimir, Schwinger): research/52-quantum-vacuum.md
       - The chirp (gravitational waves, Peters, GW150914): research/53-gravitational-waves.md
+      - Light bent exactly (lensing, Paczynski, Fermat): research/54-gravitational-lensing.md
 
 markdown_extensions:
   - admonition

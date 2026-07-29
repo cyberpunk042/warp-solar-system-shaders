@@ -28,6 +28,16 @@ from warp_shaders.engine.desitter import (
     mode_crossing_time,
     spectral_tilt,
 )
+from warp_shaders.engine.lensing import (
+    einstein_radius,
+    fermat_potential,
+    fermat_potential_2d,
+    image_positions,
+    lens_equation,
+    magnifications,
+    paczynski_magnification,
+    time_delay,
+)
 from warp_shaders.engine.gw import (
     chirp_frequency,
     chirp_mass,
@@ -768,13 +778,72 @@ def main():
         f"gw_orbits: the eccentricity bar must collapse ({amb_a:.4f} -> {amb_b:.4f})"
     print(f"  gw_orbits: OK  (e-ledger {amb_a:.4f} -> {amb_b:.4f} as the waves iron it round)")
 
-    print("ALL PASSED (26 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- gravitational lensing: the exact point lens ----
+    te = 1.0
+    for bb in (0.05, 0.3, 1.0, 2.5):
+        tp, tm = image_positions(bb, te)
+        assert abs(lens_equation(tp, te) - bb) < 1e-12 and abs(lens_equation(tm, te) - bb) < 1e-12, \
+            "both images must satisfy the lens equation exactly"
+        assert tp > te and -te < tm < 0, "one image outside the ring, one inside, inverted"
+        mp, mm = magnifications(bb, te)
+        assert abs(mp + mm - 1.0) < 1e-9, \
+            f"the point-lens SIGNED sum rule mu+ + mu- = 1 must hold (got {mp+mm})"
+        assert abs(paczynski_magnification(bb) - (abs(mp) + abs(mm))) < 1e-9, \
+            "Paczynski A(u) must equal |mu+| + |mu-|"
+    assert abs(paczynski_magnification(1.0) - 3.0 / np.sqrt(5.0)) < 1e-12, "A(1) = 3/sqrt(5)"
+    assert abs(paczynski_magnification(50.0) - 1.0) < 1e-3, "A -> 1 far from the lens"
+    # Fermat: images sit at stationary points of arrival time
+    bb = 0.4
+    tp, tm = image_positions(bb, te)
+    hh = 1e-7
+    for t0 in (tp, tm):
+        d1 = (fermat_potential(t0 + hh, bb, te) - fermat_potential(t0 - hh, bb, te)) / (2 * hh)
+        assert abs(d1) < 1e-6, f"image at {t0} must be a stationary point of arrival time"
+    # the inner image is a SADDLE: negative tangential curvature
+    ty = 1e-5
+    d2t = (fermat_potential_2d(tm, ty, bb, 0.0, te) - 2 * fermat_potential_2d(tm, 0.0, bb, 0.0, te)
+           + fermat_potential_2d(tm, -ty, bb, 0.0, te)) / ty ** 2
+    assert d2t < 0, "the inner image must be a saddle of the arrival-time surface"
+    assert time_delay(bb, te) > 0, "the saddle image arrives LATE"
+    assert time_delay(0.8, te) > time_delay(0.2, te), "delay grows with misalignment"
+    assert abs(einstein_radius(1.0, 1.0, 2.0) - np.sqrt(2.0)) < 1e-15
+    print(f"  gravitational lensing: OK  (lens eq exact; mu+ + mu- = 1; A(1)=3/sqrt5; "
+          f"Fermat stationary + saddle curv {d2t:.3f}<0; delay(0.4)={time_delay(0.4, 1.0):.4f})")
+
+    # ---- the three lensing scenes: structural checks ----
+    a = _render("lens_arcs", 1.0)            # source far: nearly unlensed
+    b = _render("lens_arcs", 7.8)            # near-alignment: Einstein ring
+    assert float(b.mean()) > 1.3 * float(a.mean()), \
+        f"lens_arcs: the ring must blaze at alignment ({a.mean():.3f} vs {b.mean():.3f})"
+    print(f"  lens_arcs: OK  (mean {float(a.mean()):.3f} -> {float(b.mean()):.3f} at the ring)")
+
+    a = _render("lens_microlensing", 1.5)    # far wings: baseline
+    b = _render("lens_microlensing", 8.0)    # peak: curve high, images bright
+    hk, wk = a.shape[0], a.shape[1]
+    sky_a = a[:hk // 2, :]
+    sky_b = b[:hk // 2, :]
+    assert float(sky_b.mean()) > float(sky_a.mean()), \
+        "lens_microlensing: the image pair must brighten at closest approach"
+    print(f"  lens_microlensing: OK  (sky {float(sky_a.mean()):.4f} -> {float(sky_b.mean()):.4f} at peak)")
+
+    a = _render("lens_fermat", 0.4)          # nearly aligned: short delay ledger
+    b = _render("lens_fermat", 8.0)          # max offset: long delay ledger
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    amb_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    amb_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert amb_b > amb_a, \
+        f"lens_fermat: the delay ledger must grow with misalignment ({amb_a:.4f} -> {amb_b:.4f})"
+    print(f"  lens_fermat: OK  (delay ledger {amb_a:.4f} -> {amb_b:.4f} as the landscape tilts)")
+
+    print("ALL PASSED (29 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
           "+ Kerr horizons/area-theorem/superradiance "
           "+ de Sitter T=H/2pi/S=A/4/log-crossings/red-tilt "
           "+ vacuum trilogy/Casimir-16x/Schwinger-threshold "
-          "+ GW chirp -3/8/T~a^4/f_gw=2f_orb/circularization)")
+          "+ GW chirp -3/8/T~a^4/f_gw=2f_orb/circularization "
+          "+ lensing sum-rule/Paczynski/Fermat-stationary)")
 
 
 if __name__ == "__main__":
