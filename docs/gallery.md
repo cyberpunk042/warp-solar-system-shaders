@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (334 scenes).
+`python render.py --list` for the full, current list (337 scenes).
 
 ## Engine showcase
 
@@ -389,6 +389,40 @@ collapse, quiet. The vacuum has a breakdown voltage.
 ![schwinger_pairs — the avalanche](engine/schwinger_pairs.png)
 
 ![charge, avalanche, breakdown](engine/schwinger_pairs.gif)
+
+### The gravitational-wave set — the chirp, exactly
+
+`gw_inspiral` — **the last orbits**
+([Research 53, Part I](research/53-gravitational-waves.md)). The pair rides the exact
+Peters trajectory `a(t) = (256/5·m₁m₂M(t_c−t))^{1/4}` (halve the separation,
+sixteenfold less time — asserted), radiating a two-armed spiral — quadrupole:
+`f_gw = 2f_orb`, asserted — that winds tighter and brighter to merger, flash, and
+ringdown.
+
+![gw_inspiral — the spiral](engine/gw_inspiral.png)
+
+![one inspiral, merger and ringdown](engine/gw_inspiral.gif)
+
+`gw_chirp` — **LIGO's waveform, generated not sampled**
+([Research 53, Part II](research/53-gravitational-waves.md)). Top: the frequency track
+`f ∝ M_c^{−5/8}(t_c−t)^{−3/8}` (exponent asserted; identical to Kepler on the Peters
+trajectory, asserted to 10⁻⁹). Bottom: the strain, faster AND louder together, then
+the damped ringdown. The curve black-hole masses are read from.
+
+![gw_chirp — the chirp](engine/gw_chirp.png)
+
+![one chirp, revealed live](engine/gw_chirp.gif)
+
+`gw_orbits` — **why the orbits are round**
+([Research 53, Part III](research/53-gravitational-waves.md)). The exact coupled
+Peters ODEs, integrated and played: the ellipse shrinks through ghost epochs, flaring
+orange at pericenter where the radiation leaves, while the amber eccentricity ledger
+collapses (asserted: e strictly decreasing, dying fractionally faster than a).
+Hulse–Taylor is mid-flight on this curve.
+
+![gw_orbits — circularization](engine/gw_orbits.png)
+
+![one circularizing inspiral](engine/gw_orbits.gif)
 
 ## Warp compression — three compressions of the card's visual information
 

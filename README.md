@@ -798,6 +798,23 @@ absence of everything; it is the thing that remains.
 |---|---|---|
 | ![unruh_horizon](docs/engine/unruh_horizon.png) | ![casimir_plates](docs/engine/casimir_plates.gif) | ![schwinger_pairs](docs/engine/schwinger_pairs.png) |
 
+After ten rounds of spacetimes standing still, the **gravitational-wave set**
+([research 53](docs/research/53-gravitational-waves.md)) draws spacetime *ringing* —
+and everything LIGO needed to weigh its first black holes is closed form.
+`gw_inspiral` rides the exact Peters trajectory `a(t) ∝ (t_c−t)^{1/4}` (fourth-power
+law: halve the separation, sixteenfold less time — asserted) while radiating a
+two-armed quadrupole spiral (`f_gw = 2f_orb`, asserted). `gw_chirp` generates THE
+waveform from the closed forms — the frequency track `f ∝ M_c^{−5/8}(t_c−t)^{−3/8}`
+(exponent asserted, and asserted identical to Kepler on the Peters trajectory) with
+the strain climbing as `f^{2/3}`: faster and louder together, then ringdown.
+`gw_orbits` integrates Peters' exact 1964 ODEs and shows the waves ironing an
+eccentric orbit round (circularization asserted) — why LIGO's binaries all arrive
+circular, and the curve Hulse–Taylor is falling along right now.
+
+| gw_inspiral — the last orbits | gw_chirp — the waveform | gw_orbits — ironed round |
+|---|---|---|
+| ![gw_inspiral](docs/engine/gw_inspiral.gif) | ![gw_chirp](docs/engine/gw_chirp.png) | ![gw_orbits](docs/engine/gw_orbits.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
