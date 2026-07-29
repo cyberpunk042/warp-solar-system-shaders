@@ -28,6 +28,16 @@ from warp_shaders.engine.desitter import (
     mode_crossing_time,
     spectral_tilt,
 )
+from warp_shaders.engine.gw import (
+    chirp_frequency,
+    chirp_mass,
+    evolve_peters,
+    gw_frequency,
+    orbital_frequency,
+    peters_merger_time,
+    separation_of_time_left,
+    strain_amplitude,
+)
 from warp_shaders.engine.vacuum import (
     allowed_modes,
     casimir_energy,
@@ -691,12 +701,80 @@ def main():
     assert float(c.mean()) > 1.6 * float(a.mean()), "schwinger_pairs: the breakdown must flash"
     print(f"  schwinger_pairs: OK  (pair signature {mag_a:.4f} -> {mag_b:.4f}, then breakdown)")
 
-    print("ALL PASSED (23 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- gravitational waves: the chirp, exactly ----
+    mc = chirp_mass(1.0, 1.0)
+    assert abs(chirp_mass(3.0, 1.0) - chirp_mass(1.0, 3.0)) < 1e-15, "M_c symmetric"
+    assert abs(gw_frequency(4.0, 2.0) - 2.0 * orbital_frequency(4.0, 2.0)) < 1e-15, \
+        "quadrupole: the wave oscillates at TWICE the orbital frequency"
+    assert abs(peters_merger_time(1.0, 1, 1) / peters_merger_time(0.5, 1, 1) - 16.0) < 1e-9, \
+        "T ~ a^4: halve the separation, SIXTEENFOLD less time left"
+    a0 = 1.3
+    assert abs(separation_of_time_left(peters_merger_time(a0, 1, 1), 1, 1) - a0) < 1e-12, \
+        "a(T(a)) must invert exactly"
+    ratio = chirp_frequency(0.5, mc) / chirp_frequency(1.0, mc)
+    assert abs(ratio - 2.0 ** 0.375) < 1e-12, \
+        f"the chirp must run as (tc-t)^(-3/8) ({ratio} vs {2.0**0.375})"
+    # consistency: the chirp law IS Kepler on the Peters trajectory
+    t_left = 0.37
+    f_a = gw_frequency(separation_of_time_left(t_left, 1, 1), 2.0)
+    f_c = chirp_frequency(t_left, mc)
+    assert abs(f_a / f_c - 1.0) < 1e-9, "chirp_frequency must equal f_gw(a(t_left))"
+    assert strain_amplitude(2.0, mc, 10.0) > strain_amplitude(1.0, mc, 10.0), \
+        "the chirp gets LOUDER as it climbs"
+    traj = evolve_peters(1.0, 0.6, 1.0, 1.0, 1e-5, 20000)
+    e_seq = [e for _, e in traj]
+    a_seq = [a for a, _ in traj]
+    assert all(e_seq[k + 1] <= e_seq[k] + 1e-15 for k in range(len(e_seq) - 1)), \
+        "Peters: eccentricity only ever decreases"
+    assert all(a_seq[k + 1] < a_seq[k] for k in range(len(a_seq) - 1)), \
+        "Peters: the orbit only ever shrinks"
+    assert e_seq[-1] / e_seq[0] < a_seq[-1] / a_seq[0], \
+        "circularization: e must die fractionally faster than a over the inspiral"
+    print(f"  gravitational waves: OK  (Mc sym; f_gw=2f_orb; T-ratio 16; chirp "
+          f"(tc-t)^-3/8; f-consistency; e {e_seq[0]:.2f}->{e_seq[-1]:.3f} vs "
+          f"a {a_seq[0]:.2f}->{a_seq[-1]:.3f})")
+
+    # ---- the three GW scenes: structural checks ----
+    a = _render("gw_inspiral", 4.0)          # early inspiral: wide, dim wave
+    b = _render("gw_inspiral", 12.4)         # endgame: tight, bright spiral
+    c = _render("gw_inspiral", 13.6)         # post-merger ringdown
+    assert float(b.mean()) > 1.2 * float(a.mean()), \
+        f"gw_inspiral: the wave must brighten toward merger ({a.mean():.3f} vs {b.mean():.3f})"
+    assert float(c.mean()) > 0.01, "gw_inspiral: ringdown must render"
+    print(f"  gw_inspiral: OK  (mean {float(a.mean()):.3f} -> {float(b.mean()):.3f} into merger)")
+
+    a = _render("gw_chirp", 3.0)             # early: low hum revealed
+    b = _render("gw_chirp", 13.5)            # full chirp + ringdown revealed
+    hk, wk = a.shape[0], a.shape[1]
+    right_a = a[:, 2 * wk // 3:]
+    right_b = b[:, 2 * wk // 3:]
+    assert float(right_b.mean()) > 1.5 * float(right_a.mean()), \
+        "gw_chirp: the reveal must sweep left-to-right"
+    # the f-track climbs: upper-panel brightness near the top-right appears late
+    top_right_b = b[:hk // 4, 3 * wk // 4:]
+    top_right_a = a[:hk // 4, 3 * wk // 4:]
+    assert float(top_right_b.mean()) > float(top_right_a.mean()) + 0.005, \
+        "gw_chirp: the frequency track must scream upward at the end"
+    print(f"  gw_chirp: OK  (right-panel {float(right_a.mean()):.4f} -> {float(right_b.mean()):.4f})")
+
+    a = _render("gw_orbits", 1.0)            # eccentric: wide ellipse
+    b = _render("gw_orbits", 15.0)           # late: small, round
+    # amber eccentricity ledger (R-G contrast in the bar zone, bottom-left)
+    zone_a = a[3 * hk // 5:, :wk // 5]
+    zone_b = b[3 * hk // 5:, :wk // 5]
+    amb_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    amb_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert amb_b < amb_a, \
+        f"gw_orbits: the eccentricity bar must collapse ({amb_a:.4f} -> {amb_b:.4f})"
+    print(f"  gw_orbits: OK  (e-ledger {amb_a:.4f} -> {amb_b:.4f} as the waves iron it round)")
+
+    print("ALL PASSED (26 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
           "+ Kerr horizons/area-theorem/superradiance "
           "+ de Sitter T=H/2pi/S=A/4/log-crossings/red-tilt "
-          "+ vacuum trilogy/Casimir-16x/Schwinger-threshold)")
+          "+ vacuum trilogy/Casimir-16x/Schwinger-threshold "
+          "+ GW chirp -3/8/T~a^4/f_gw=2f_orb/circularization)")
 
 
 if __name__ == "__main__":

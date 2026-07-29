@@ -106,6 +106,7 @@ nav:
       - Kerr, the spinning black hole (ergosphere, Penrose mine, the bomb): research/50-kerr-spinning-black-hole.md
       - de Sitter, the cosmic horizon (Gibbons-Hawking, inflation, the thermal sky): research/51-desitter-cosmic-horizon.md
       - The quantum vacuum (Unruh, Casimir, Schwinger): research/52-quantum-vacuum.md
+      - The chirp (gravitational waves, Peters, GW150914): research/53-gravitational-waves.md
 
 markdown_extensions:
   - admonition

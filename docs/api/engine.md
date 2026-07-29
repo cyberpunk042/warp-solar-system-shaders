@@ -308,6 +308,17 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `allowed_modes` | the standing waves `k_n = nπ/d` that survive between the mirrors |
 | `schwinger_critical_field` / `schwinger_rate` | `E_c = m²/e`; `Γ ∝ E²e^{−πE_c/E}` — subcritical suppression `e^{−10π}` asserted |
 
+### `engine.gw` — gravitational waves (host-side, all test-asserted)
+
+| Function | What it is |
+|---|---|
+| `chirp_mass` | `M_c = (m₁m₂)^{3/5}/M^{1/5}` — what the waveform measures (symmetry asserted) |
+| `orbital_frequency` / `gw_frequency` | Kepler; `f_gw = 2f_orb` (the quadrupole factor of two, asserted) |
+| `peters_merger_time` / `separation_of_time_left` | `T = 5a⁴/256m₁m₂M` (halve a → 16×, asserted) and its exact inverse (asserted) |
+| `chirp_frequency` | `f ∝ M_c^{−5/8}(t_c−t)^{−3/8}` — the −3/8 exponent asserted; ≡ Kepler on the Peters trajectory (asserted) |
+| `strain_amplitude` | `h ∝ M_c^{5/3}f^{2/3}/D` — louder as it climbs (asserted) |
+| `peters_dadt` / `peters_dedt` / `evolve_peters` | the exact 1964 system + RK2 integration — circularization asserted (e monotone, dies fractionally faster than a) |
+
 ## Post — `engine.post`
 
 Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with
