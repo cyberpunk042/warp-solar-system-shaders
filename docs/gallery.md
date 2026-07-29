@@ -457,6 +457,43 @@ ledger tracks the exact delay Refsdal 1964 turned into a measurement of H₀.
 
 ![the landscape tilting](engine/lens_fermat.gif)
 
+### The classic tests — Mercury, the late echo, and the clocks
+
+`gr_precession` — **the rosette**
+([Research 55, Part I](research/55-classic-tests.md)). The exact bound geodesic,
+integrated live (RK4 on `u″+u = M/L²+3Mu²` — the `3Mu²` term IS general relativity)
+in a strong field where each orbit visibly walks its perihelion around the mass:
+Newton's gray closed ellipse ghosts behind the precessing cyan trail, and the ledger
+shows the measured advance overshooting Einstein's first-order formula (asserted;
+for the real Mercury the engine returns 42.98″/century, asserted to 0.1″).
+
+![gr_precession — the rosette](engine/gr_precession.png)
+
+![five orbits of walking perihelion](engine/gr_precession.gif)
+
+`gr_shapiro` — **the late echo**
+([Research 55, Part II](research/55-classic-tests.md)). A radar pulse to Mars sweeps
+through superior conjunction, visibly slowing in the well (its speed IS the metric's
+`1−2M/r`) while the panel draws the exact excess `4M[ln(4r₁r₂/b²)+1]` — the
+logarithmic spike as b crosses the limb, ≈ 250 μs for Earth-Mars (asserted; Viking
+verified to 0.1%, Cassini to 10⁻⁵) — and the link blacks out through occultation.
+
+![gr_shapiro — conjunction](engine/gr_shapiro.png)
+
+![one conjunction sweep](engine/gr_shapiro.gif)
+
+`gr_clocks` — **the clock lattice**
+([Research 55, Part III](research/55-classic-tests.md)). Four real clocks around one
+planet: the Pound-Rebka tower pair (upper clock fast, gh/c² = 2.46×10⁻¹⁵ over 22.5 m,
+asserted), a low orbiter running SLOW below the dashed break-even ring `r = 3R/2`
+(mass-independent, asserted), a high orbiter running FAST above it (+38.5 μs/day for
+real GPS, asserted) — hands at the exact rates `√(1−2M/r)` / `√(1−3M/r)`, drift
+ledgers accumulating live.
+
+![gr_clocks — the lattice](engine/gr_clocks.png)
+
+![the hands diverging](engine/gr_clocks.gif)
+
 ## Warp compression — three compressions of the card's visual information
 
 Virtual compression of the **actual card**: the real RTX 6000 Pro board (`gpu_board`) is compressed

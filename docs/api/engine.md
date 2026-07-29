@@ -330,6 +330,20 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `fermat_potential` / `fermat_potential_2d` | `τ = |θ−β|²/2 − θ_E²ln|θ|` — images asserted to sit at `dτ/dθ = 0`; inner image asserted a saddle |
 | `time_delay` | `Δτ = τ(θ₋)−τ(θ₊) > 0` (asserted) — the saddle arrives late; Refsdal's H₀ probe |
 
+### `engine.geodesics` — the classic tests (host-side, all test-asserted)
+
+| Function | What it is |
+|---|---|
+| `veff_sq` | `V²(r) = (1−2M/r)(1+L²/r²)` — the whole solar system on one curve |
+| `circular_angular_momentum` / `circular_energy` | `L = r√(M/(r−3M))`, `E = (1−2M/r)/√(1−3M/r)` — asserted to sit at `V′ = 0` exactly |
+| `isco_radius` / `photon_sphere` / `critical_impact_parameter` | `6M` (E = √(8/9), L = 2√3M asserted) / `3M` / `3√3M` — the strong-field anchors |
+| `integrate_orbit` / `measured_precession` | RK4 on the Binet equation `u″+u = M/L²+3Mu²`; the read-off apsidal advance matches `6πM/(a(1−e²))` weak-field (asserted), exceeds it strong-field (asserted) |
+| `precession_per_orbit` / `mercury_precession_arcsec_century` | Einstein 1915 — the real Mercury returns 42.98″/century (asserted to 0.1″) |
+| `deflection_angle` | `α = 4M/b` — Eddington's 1.75″ at the solar limb (asserted) |
+| `shapiro_roundtrip_excess` / `coordinate_light_speed` | `Δ(ct) = 4M[ln(4r₁r₂/b²)+1]` — Earth-Mars ≈ 250 μs (asserted); `c(r) = 1−2M/r` |
+| `clock_rate_static` / `clock_rate_orbit` / `clock_crossover_radius` | `√(1−2M/r)` / `√(1−3M/r)` / the mass-independent break-even `r = 3R/2` (asserted) |
+| `gps_daily_drift_us` / `pound_rebka_shift` | +38.5 μs/day for real GPS (asserted); `gh/c² = 2.46×10⁻¹⁵` over 22.5 m (asserted) |
+
 ## Post — `engine.post`
 
 Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with
