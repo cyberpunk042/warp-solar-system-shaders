@@ -2,7 +2,7 @@
 
 Every scene is one module in `warp_shaders/scenes/`, rendered with
 `python render.py --scene NAME --quality high -o out.png`. Run
-`python render.py --list` for the full, current list (331 scenes).
+`python render.py --list` for the full, current list (334 scenes).
 
 ## Engine showcase
 
@@ -355,6 +355,40 @@ warms, and the ledger drops: a hotter universe holds less.
 ![ds_thermal — the ledger](engine/ds_thermal.png)
 
 ![one sweep of the cosmological constant](engine/ds_thermal.gif)
+
+### The quantum-vacuum set — the vacuum is alive
+
+`unruh_horizon` — **the third temperature**
+([Research 52, Part I](research/52-quantum-vacuum.md)). A live spacetime diagram: the
+observer rides the exact hyperbola `x² − t² = 1/a²` while their violet Rindler horizon
+(a horizon with no black hole anywhere) trails at distance `1/a`; as the acceleration
+ramps, the bath around them brightens at exactly `T = a/2π` — the flat-space member of
+the κ/2π, H/2π, a/2π trilogy, asserted as one identity.
+
+![unruh_horizon — the bath](engine/unruh_horizon.png)
+
+![one ramp of acceleration](engine/unruh_horizon.gif)
+
+`casimir_plates` — **the vacuum pushes**
+([Research 52, Part II](research/52-quantum-vacuum.md)). Outside the mirrors, the full
+continuum; between them, only `k_n = nπ/d` survives — the modes are evicted one by one
+as the gap squeezes, and the amber arrows grow as exactly `1/d⁴` (halve the gap,
+sixteenfold the force — asserted). Attraction from literally nothing, measured to ~1%.
+
+![casimir_plates — the squeeze](engine/casimir_plates.png)
+
+![one squeeze cycle](engine/casimir_plates.gif)
+
+`schwinger_pairs` — **the vacuum breaks down**
+([Research 52, Part III](research/52-quantum-vacuum.md)). The field ramps toward
+`E_c = m²/e` on the exact rate `Γ ∝ E²e^{−πE_c/E}`: silence (subcritical suppression
+`e^{−10π}` asserted), a drizzle, then the avalanche — cyan electrons and magenta
+positrons torn from empty space — until the created charge shorts the gap: flash,
+collapse, quiet. The vacuum has a breakdown voltage.
+
+![schwinger_pairs — the avalanche](engine/schwinger_pairs.png)
+
+![charge, avalanche, breakdown](engine/schwinger_pairs.gif)
 
 ## Warp compression — three compressions of the card's visual information
 
