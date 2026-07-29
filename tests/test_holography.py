@@ -38,6 +38,29 @@ from warp_shaders.engine.lensing import (
     paczynski_magnification,
     time_delay,
 )
+from warp_shaders.engine.geodesics import (
+    AU_KM,
+    C_KM_S,
+    M_SUN_KM,
+    R_SUN_KM,
+    circular_angular_momentum,
+    circular_energy,
+    clock_crossover_radius,
+    clock_rate_orbit,
+    clock_rate_static,
+    coordinate_light_speed,
+    critical_impact_parameter,
+    deflection_angle,
+    gps_daily_drift_us,
+    isco_radius,
+    measured_precession,
+    mercury_precession_arcsec_century,
+    photon_sphere,
+    pound_rebka_shift,
+    precession_per_orbit,
+    shapiro_roundtrip_excess,
+    veff_sq,
+)
 from warp_shaders.engine.gw import (
     chirp_frequency,
     chirp_mass,
@@ -836,14 +859,104 @@ def main():
         f"lens_fermat: the delay ledger must grow with misalignment ({amb_a:.4f} -> {amb_b:.4f})"
     print(f"  lens_fermat: OK  (delay ledger {amb_a:.4f} -> {amb_b:.4f} as the landscape tilts)")
 
-    print("ALL PASSED (29 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- the classic tests: the Schwarzschild geodesic dictionary ----
+    # circular orbits sit at stationary points of the effective potential
+    for r0 in (7.0, 10.0, 25.0):
+        l0 = circular_angular_momentum(r0, 1.0)
+        hh = 1e-6
+        dv = (veff_sq(r0 + hh, l0, 1.0) - veff_sq(r0 - hh, l0, 1.0)) / (2 * hh)
+        assert abs(dv) < 1e-9, f"circular orbit at r={r0} must sit at V' = 0 (got {dv})"
+        assert abs(circular_energy(r0, 1.0) ** 2 - veff_sq(r0, l0, 1.0)) < 1e-12, \
+            "on a circular orbit E^2 must equal V^2"
+    assert isco_radius(1.0) == 6.0, "the ISCO is at r = 6M exactly"
+    assert abs(circular_energy(6.0, 1.0) - np.sqrt(8.0 / 9.0)) < 1e-12, \
+        "ISCO energy sqrt(8/9): 5.7% of rest mass radiated on the way down"
+    assert abs(circular_angular_momentum(6.0, 1.0) - 2.0 * np.sqrt(3.0)) < 1e-9, \
+        "ISCO angular momentum 2 sqrt(3) M"
+    assert photon_sphere(1.0) == 3.0 and abs(critical_impact_parameter(1.0) - 3.0 * np.sqrt(3.0)) < 1e-12
+
+    # the integrated geodesic reproduces Einstein's formula in the weak field...
+    adv_w = measured_precession(2000.0, 0.2, 1.0)
+    frm_w = precession_per_orbit(2000.0, 0.2, 1.0)
+    assert abs(adv_w - frm_w) / frm_w < 0.02, \
+        f"weak-field precession must match 6piM/(a(1-e^2)) (got {adv_w} vs {frm_w})"
+    # ...and EXCEEDS it in the strong field (the higher orders all add)
+    adv_s = measured_precession(26.0, 0.5, 1.0)
+    frm_s = precession_per_orbit(26.0, 0.5, 1.0)
+    assert adv_s > 1.2 * frm_s, \
+        f"strong-field advance must exceed first order ({adv_s} vs {frm_s})"
+    # Mercury: the number that convinced Einstein
+    merc = mercury_precession_arcsec_century()
+    assert abs(merc - 42.98) < 0.1, f"Mercury must precess 42.98 arcsec/century (got {merc})"
+    # Eddington 1919: 1.75 arcsec at the solar limb
+    edd = deflection_angle(R_SUN_KM, M_SUN_KM) * (180.0 / np.pi) * 3600.0
+    assert abs(edd - 1.751) < 0.01, f"light must bend 1.75 arcsec at the limb (got {edd})"
+    # Shapiro: Earth-Mars radar echo at superior conjunction, ~250 microseconds
+    shap = shapiro_roundtrip_excess(AU_KM, 1.524 * AU_KM, R_SUN_KM, M_SUN_KM) / C_KM_S * 1e6
+    assert 200.0 < shap < 300.0, f"Earth-Mars Shapiro excess must be ~250 us (got {shap})"
+    assert shapiro_roundtrip_excess(AU_KM, 1.524 * AU_KM, 2.0 * R_SUN_KM, M_SUN_KM) < \
+        shapiro_roundtrip_excess(AU_KM, 1.524 * AU_KM, R_SUN_KM, M_SUN_KM), \
+        "the delay must fall as the ray clears the Sun"
+    assert coordinate_light_speed(3.0, 1.0) < coordinate_light_speed(30.0, 1.0) < 1.0, \
+        "light's coordinate speed is slower deeper in the well"
+    # clocks: the crossover at r = 3R/2 is exact and mass-independent
+    for mm, rr in ((1e-6, 6371.0), (0.02, 0.52), (1.0, 10.0)):
+        rx = clock_crossover_radius(rr)
+        assert abs(clock_rate_orbit(rx, mm) - clock_rate_static(rr, mm)) < 1e-12, \
+            "an orbiting clock at 3R/2 must tick at exactly the ground rate"
+    assert clock_rate_orbit(1.15 * 6371.0, 4.4347e-6) < clock_rate_static(6371.0, 4.4347e-6), \
+        "below the crossover (ISS) the orbiting clock runs SLOW"
+    gps = gps_daily_drift_us()
+    assert 38.0 < gps < 39.5, f"GPS clocks must gain ~38.5 us/day (got {gps})"
+    pr = pound_rebka_shift()
+    assert abs(pr - 2.46e-15) < 0.05e-15, f"Pound-Rebka: gh/c^2 = 2.46e-15 (got {pr})"
+    print(f"  classic tests: OK  (ISCO E=sqrt(8/9); Mercury {merc:.2f} as/cy; "
+          f"Eddington {edd:.3f} as; Shapiro {shap:.0f} us; GPS +{gps:.1f} us/day; "
+          f"Pound-Rebka {pr:.2e}; crossover 3R/2 exact)")
+
+    # ---- the three classic-test scenes: structural checks ----
+    a = _render("gr_precession", 0.6)        # first orbit: short trail
+    b = _render("gr_precession", 15.4)       # rosette complete: long trail + full ledger
+    assert float(b.mean()) > float(a.mean()), \
+        f"gr_precession: the rosette must fill in ({a.mean():.4f} -> {b.mean():.4f})"
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    amb_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    amb_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert amb_b > amb_a, \
+        f"gr_precession: the advance ledger must fill ({amb_a:.4f} -> {amb_b:.4f})"
+    print(f"  gr_precession: OK  (rosette {float(a.mean()):.4f} -> {float(b.mean()):.4f}; "
+          f"ledger {amb_a:.4f} -> {amb_b:.4f})")
+
+    a = _render("gr_shapiro", 0.3)           # far wing: small excess
+    b = _render("gr_shapiro", 6.2)           # near conjunction: the spike
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    amb_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    amb_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert amb_b > amb_a, \
+        f"gr_shapiro: the excess ledger must spike near conjunction ({amb_a:.4f} -> {amb_b:.4f})"
+    print(f"  gr_shapiro: OK  (delay ledger {amb_a:.4f} -> {amb_b:.4f} into conjunction)")
+
+    a = _render("gr_clocks", 0.4)            # start: drift bars empty
+    b = _render("gr_clocks", 15.2)           # late: GPS gained, ISS lost
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    amb_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    amb_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert amb_b > amb_a, \
+        f"gr_clocks: the drift ledgers must accumulate ({amb_a:.4f} -> {amb_b:.4f})"
+    print(f"  gr_clocks: OK  (drift ledger {amb_a:.4f} -> {amb_b:.4f} over the cycle)")
+
+    print("ALL PASSED (32 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
           "+ Kerr horizons/area-theorem/superradiance "
           "+ de Sitter T=H/2pi/S=A/4/log-crossings/red-tilt "
           "+ vacuum trilogy/Casimir-16x/Schwinger-threshold "
           "+ GW chirp -3/8/T~a^4/f_gw=2f_orb/circularization "
-          "+ lensing sum-rule/Paczynski/Fermat-stationary)")
+          "+ lensing sum-rule/Paczynski/Fermat-stationary "
+          "+ classic tests Mercury-42.98/Eddington-1.75/Shapiro-250us/GPS-38.5)")
 
 
 if __name__ == "__main__":

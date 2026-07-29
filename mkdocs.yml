@@ -108,6 +108,7 @@ nav:
       - The quantum vacuum (Unruh, Casimir, Schwinger): research/52-quantum-vacuum.md
       - The chirp (gravitational waves, Peters, GW150914): research/53-gravitational-waves.md
       - Light bent exactly (lensing, Paczynski, Fermat): research/54-gravitational-lensing.md
+      - The classic tests (Mercury, Shapiro, GPS clocks): research/55-classic-tests.md
 
 markdown_extensions:
   - admonition

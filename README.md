@@ -830,6 +830,22 @@ arrival) — Refsdal's time-delay cosmography, the geometry-and-patience route t
 |---|---|---|
 | ![lens_arcs](docs/engine/lens_arcs.gif) | ![lens_microlensing](docs/engine/lens_microlensing.png) | ![lens_fermat](docs/engine/lens_fermat.gif) |
 
+The **classic-tests set** ([research 55](docs/research/55-classic-tests.md)) plays the
+measurements that made GR, on the exact Schwarzschild geodesics. `gr_precession`
+integrates the exact bound orbit live (RK4 on the Binet equation, whose `3Mu²` term
+IS general relativity) into a rosette past Newton's ghost ellipse — the suite asserts
+the integration matches `6πM/(a(1−e²))` in the weak field, exceeds it in the strong,
+and returns Mercury's 42.98″/century. `gr_shapiro` sends radar to Mars through
+superior conjunction — the pulse wades at the metric's `1−2M/r` while the panel draws
+the exact ≈ 250 μs logarithmic spike (asserted). `gr_clocks` runs Pound-Rebka,
+ISS-slow, and GPS-fast clocks around the mass-independent break-even orbit `r = 3R/2`
+(exact, asserted; GPS +38.5 μs/day asserted). ISCO `E = √(8/9)`, photon sphere, and
+`b_c = 3√3M` anchor the dictionary.
+
+| gr_precession — the rosette | gr_shapiro — the late echo | gr_clocks — the lattice |
+|---|---|---|
+| ![gr_precession](docs/engine/gr_precession.gif) | ![gr_shapiro](docs/engine/gr_shapiro.png) | ![gr_clocks](docs/engine/gr_clocks.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
