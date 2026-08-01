@@ -61,6 +61,22 @@ from warp_shaders.engine.geodesics import (
     shapiro_roundtrip_excess,
     veff_sq,
 )
+from warp_shaders.engine.cosmology import (
+    OMEGA_L,
+    OMEGA_M,
+    acceleration_onset,
+    age_at_scale_factor,
+    age_of_universe,
+    comoving_distance_gly,
+    distance_modulus,
+    distance_modulus_matter_only,
+    event_horizon_gly,
+    hubble_h0_per_gyr,
+    lookback_time,
+    matter_lambda_equality,
+    particle_horizon_gly,
+    scale_factor,
+)
 from warp_shaders.engine.gw import (
     chirp_frequency,
     chirp_mass,
@@ -948,7 +964,88 @@ def main():
         f"gr_clocks: the drift ledgers must accumulate ({amb_a:.4f} -> {amb_b:.4f})"
     print(f"  gr_clocks: OK  (drift ledger {amb_a:.4f} -> {amb_b:.4f} over the cycle)")
 
-    print("ALL PASSED (32 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- the expanding universe: the exact flat-LCDM dictionary ----
+    t0 = age_of_universe()
+    assert abs(t0 - 13.8) < 0.14, f"the universe must be 13.8 Gyr old (got {t0})"
+    assert abs(scale_factor(t0) - 1.0) < 1e-12, "a(t0) = 1 by construction"
+    # the closed form must satisfy the Friedmann equation numerically
+    h0g = hubble_h0_per_gyr()
+    for tt in (2.0, 7.0, 13.0, 25.0):
+        aa = scale_factor(tt)
+        hh = 1e-5
+        dadt = (scale_factor(tt + hh) - scale_factor(tt - hh)) / (2 * hh)
+        rhs = aa * h0g * np.sqrt(OMEGA_M / aa ** 3 + OMEGA_L)
+        assert abs(dadt - rhs) / rhs < 1e-6, \
+            f"a(t) must satisfy the Friedmann equation at t={tt}"
+    # acceleration onset: a-double-dot flips sign at (Om/2OL)^(1/3), z ~ 0.63
+    a_acc = acceleration_onset()
+    z_acc = 1.0 / a_acc - 1.0
+    assert abs(z_acc - 0.632) < 0.01, f"acceleration onset at z=0.63 (got {z_acc})"
+    t_acc = age_at_scale_factor(a_acc)
+    def _addot(tq):
+        hq = 1e-4
+        return (scale_factor(tq + hq) - 2 * scale_factor(tq) + scale_factor(tq - hq)) / hq ** 2
+    assert _addot(0.8 * t_acc) < 0.0 < _addot(1.2 * t_acc), \
+        "the universe must decelerate before the onset and accelerate after"
+    z_eq = 1.0 / matter_lambda_equality() - 1.0
+    assert abs(z_eq - 0.295) < 0.01, f"matter-Lambda equality at z=0.30 (got {z_eq})"
+    # the 1998 discovery: exact LCDM sits ABOVE matter-only at every z
+    for zz in (0.2, 0.5, 1.0, 1.4):
+        assert distance_modulus(zz) > distance_modulus_matter_only(zz), \
+            "LCDM supernovae must be dimmer than matter-only at every z"
+    gap1 = distance_modulus(1.0) - distance_modulus_matter_only(1.0)
+    assert gap1 > 0.4, f"the z=1 LCDM-matter gap must exceed 0.4 mag (got {gap1})"
+    assert comoving_distance_gly(1.0) > comoving_distance_gly(0.5) > 0.0
+    # horizons: the observable universe and the finite future
+    d_ph = particle_horizon_gly()
+    assert 44.0 < d_ph < 47.5, f"particle horizon ~46 Gly comoving (got {d_ph})"
+    d_eh = event_horizon_gly()
+    assert 16.0 < d_eh < 17.5, f"event horizon ~16.7 Gly (got {d_eh})"
+    assert particle_horizon_gly(30.0) > d_ph, "the particle horizon only grows"
+    assert event_horizon_gly(30.0) < d_eh, "the comoving event horizon only shrinks"
+    lb1 = lookback_time(1.0)
+    assert abs(lb1 - 7.95) < 0.15, f"z=1 light left ~7.9 Gyr ago (got {lb1})"
+    print(f"  expanding universe: OK  (t0={t0:.2f} Gyr; Friedmann exact; "
+          f"z_acc={z_acc:.3f}; z_eq={z_eq:.3f}; gap(z=1)={gap1:.2f} mag; "
+          f"D_PH={d_ph:.1f} Gly; D_EH={d_eh:.1f} Gly)")
+
+    # ---- the three cosmology scenes: structural checks ----
+    a = _render("cosmo_expansion", 0.8)      # early: small a, short ledger
+    b = _render("cosmo_expansion", 15.2)     # late: Lambda runaway, full ledger
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    amb_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    amb_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert amb_b > amb_a, \
+        f"cosmo_expansion: the a(t) ledger must grow ({amb_a:.4f} -> {amb_b:.4f})"
+    print(f"  cosmo_expansion: OK  (a-ledger {amb_a:.4f} -> {amb_b:.4f} over 32 Gyr)")
+
+    a = _render("cosmo_hubble", 1.0)         # shallow survey: few points, small gap
+    b = _render("cosmo_hubble", 15.0)        # deep survey: full diagram
+    assert float(b.mean()) > float(a.mean()), \
+        f"cosmo_hubble: the survey must fill in ({a.mean():.4f} -> {b.mean():.4f})"
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    amb_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    amb_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert amb_b > amb_a, \
+        f"cosmo_hubble: the LCDM-matter gap ledger must grow ({amb_a:.4f} -> {amb_b:.4f})"
+    print(f"  cosmo_hubble: OK  (survey {float(a.mean()):.4f} -> {float(b.mean()):.4f}; "
+          f"gap ledger {amb_a:.4f} -> {amb_b:.4f})")
+
+    a = _render("cosmo_horizons", 0.6)       # early: big event horizon
+    b = _render("cosmo_horizons", 15.4)      # late: collapsed, sky reddened
+    hk2, wk2 = a.shape[0], a.shape[1]
+    # magenta EH ledger (right column, R-G contrast) must SHRINK
+    zone_a = a[:, 9 * wk2 // 10:]
+    zone_b = b[:, 9 * wk2 // 10:]
+    mag_a = float((zone_a[..., 0] - zone_a[..., 1]).clip(0).mean())
+    mag_b = float((zone_b[..., 0] - zone_b[..., 1]).clip(0).mean())
+    assert mag_b < mag_a, \
+        f"cosmo_horizons: the event-horizon ledger must shrink ({mag_a:.4f} -> {mag_b:.4f})"
+    print(f"  cosmo_horizons: OK  (EH ledger {mag_a:.4f} -> {mag_b:.4f} as the sky empties)")
+
+    print("ALL PASSED (35 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
           "+ Kerr horizons/area-theorem/superradiance "
@@ -956,7 +1053,8 @@ def main():
           "+ vacuum trilogy/Casimir-16x/Schwinger-threshold "
           "+ GW chirp -3/8/T~a^4/f_gw=2f_orb/circularization "
           "+ lensing sum-rule/Paczynski/Fermat-stationary "
-          "+ classic tests Mercury-42.98/Eddington-1.75/Shapiro-250us/GPS-38.5)")
+          "+ classic tests Mercury-42.98/Eddington-1.75/Shapiro-250us/GPS-38.5 "
+          "+ LCDM t0-13.8/Friedmann-exact/z_acc-0.63/gap-0.58mag/horizons-46-16.7)")
 
 
 if __name__ == "__main__":

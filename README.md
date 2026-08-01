@@ -846,6 +846,22 @@ ISS-slow, and GPS-fast clocks around the mass-independent break-even orbit `r = 
 |---|---|---|
 | ![gr_precession](docs/engine/gr_precession.gif) | ![gr_shapiro](docs/engine/gr_shapiro.png) | ![gr_clocks](docs/engine/gr_clocks.gif) |
 
+The **cosmology set** ([research 56](docs/research/56-expanding-universe.md)) plays
+the expanding universe on the exact flat-ΛCDM solution
+`a(t) ∝ sinh^{2/3}(3/2·√Ω_Λ H₀ t)` with the real Planck numbers asserted
+throughout: `cosmo_expansion` rides galaxies on the stretching comoving grid while
+the exact curve leaves the matter-forever ghost (Friedmann ODE asserted; t₀ = 13.8
+Gyr asserted; ä = 0 at z = 0.63 asserted). `cosmo_hubble` rebuilds the 1998
+supernova Hubble diagram from the exact distance integrals — ΛCDM asserted dimmer
+than matter-only at every z (0.58 mag at z = 1): the gap that won the 2011 Nobel.
+`cosmo_horizons` draws both causal edges as exact integrals — the growing 46 Gly
+particle horizon and the shrinking 16.7 Gly event horizon (both asserted): the sky
+is slowly emptying.
+
+| cosmo_expansion — a(t) | cosmo_hubble — the 1998 plot | cosmo_horizons — the two edges |
+|---|---|---|
+| ![cosmo_expansion](docs/engine/cosmo_expansion.gif) | ![cosmo_hubble](docs/engine/cosmo_hubble.png) | ![cosmo_horizons](docs/engine/cosmo_horizons.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
