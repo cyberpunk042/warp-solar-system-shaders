@@ -912,6 +912,18 @@ through r = 0 simultaneously every π (asserted): the explosion that un-explodes
 |---|---|
 | ![wisp_box_3d](docs/engine/wisp_box_3d.gif) | ![wisp_swarm_3d](docs/engine/wisp_swarm_3d.gif) |
 
+**Stages 2 and 3 in 3D** complete the arc in the ball: `wisp_body_3d` grows,
+climbs, and hovers against a full shell-sphere before cutting the flame on the
+`L = r²` orbit — the companion mote free-orbiting a *different plane* and staying
+in step anyway (ω = 1 at every radius in every plane, asserted); `wisp_navigate_3d`
+runs the trip and then opens the geodesic lens in its true dimension — 12 motes in
+different planes through the release point blossom into a 3D flower that the ball
+folds back to the one antipodal point at t = π and home at t = 2π (asserted).
+
+| wisp_body_3d — in the ball | wisp_navigate_3d — the lens flower |
+|---|---|
+| ![wisp_body_3d](docs/engine/wisp_body_3d.gif) | ![wisp_navigate_3d](docs/engine/wisp_navigate_3d.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted

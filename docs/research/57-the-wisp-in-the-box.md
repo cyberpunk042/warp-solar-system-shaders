@@ -241,6 +241,24 @@ dispersion breathing; amber shell area (the exponential the motes climb);
 magenta the live `2·V/A` rising toward its white ½-asymptote line and never
 touching it — the skin theorem, animated.
 
+## Stages 2 and 3 in 3D — the arc, complete in the ball
+
+The body and the trip replay inside the ball with nothing to re-derive — the
+laws were dimension-blind all along — and two things become visible that the
+flat scenes could only assert:
+
+* **`wisp_body_3d`** — the companion mote now free-orbits a *different plane*
+  on its lower shell, and stays in step with the body lap for lap anyway:
+  ω = 1 at every radius *in every plane* (the same assert, now seen in depth).
+  The hover shell is a full translucent sphere the body holds altitude
+  against; the hull grows as a bubble around the core.
+* **`wisp_navigate_3d`** — the geodesic lens in its true dimension: the 12
+  motes are launched in *different planes* through the release point (every
+  geodesic lies in its own plane through the center — angular momentum
+  conservation), so the fan blossoms into a genuinely 3D flower — and the ball
+  still folds all of it back to the single antipodal point at t = π and home
+  at t = 2π. The lens was never a trick of the plane; it is the geometry.
+
 ## The stages, complete
 
 * **Stage 1 — the drives** *(built)*: coast, burn, fall — trapped by geometry,

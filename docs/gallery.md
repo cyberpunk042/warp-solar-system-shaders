@@ -602,6 +602,31 @@ touches it: hyperbolic space is all skin and no core.
 
 ![spread, collapse, spread — the un-explosion](engine/wisp_swarm_3d.gif)
 
+`wisp_body_3d` — **stage 2 in 3D**
+([Research 57](research/57-the-wisp-in-the-box.md)). The body grows inside the
+ball, climbs the cosh cliff, hovers against a full translucent shell-sphere
+(amber thrust pinned at `tanh ρ` under the white engine-max line), then tips into
+the `L = r²` orbit and cuts the flame — while the companion mote free-orbits a
+DIFFERENT plane on a lower shell and stays in step lap for lap anyway: ω = 1 at
+every radius in every plane (asserted). The whole ball turns in step.
+
+![wisp_body_3d — hover against the shell-sphere](engine/wisp_body_3d.png)
+
+![grow, climb, hover, orbit — in the ball](engine/wisp_body_3d.gif)
+
+`wisp_navigate_3d` — **stage 3 in 3D: the lens flower**
+([Research 57](research/57-the-wisp-in-the-box.md)). The trip replayed in the
+ball (exact transfer constants, path-independent fare, π/2 subway — all
+asserted), and then the geodesic lens in its true dimension: 12 motes launched
+in DIFFERENT PLANES through the release point blossom into a 3D flower — and the
+ball folds all of it back to the single antipodal point at t = π (violet halo)
+and home at t = 2π (green halo), the body arriving in step. The lens was never a
+trick of the plane; it is the geometry.
+
+![wisp_navigate_3d — the flower folds back](engine/wisp_navigate_3d.png)
+
+![boost, coast, circularize, the 3D lens](engine/wisp_navigate_3d.gif)
+
 ## Warp compression — three compressions of the card's visual information
 
 Virtual compression of the **actual card**: the real RTX 6000 Pro board (`gpu_board`) is compressed

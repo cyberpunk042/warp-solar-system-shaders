@@ -1300,7 +1300,50 @@ def main():
     print(f"  wisp_swarm_3d: OK  (dispersion {cy_d3:.4f} spread -> {cy_e3:.4f} collapse; "
           f"skin ledger {mg_d3:.4f} -> {mg_e3:.4f})")
 
-    print("ALL PASSED (40 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- stages 2 + 3 in 3D: structural checks ----
+    a = _render("wisp_body_3d", 9.0)         # hover: amber thrust bar lit
+    b = _render("wisp_body_3d", 14.0)        # orbit: engines silent
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    am_a3 = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    am_b3 = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert am_a3 > am_b3, \
+        f"wisp_body_3d: hover burns (amber {am_a3:.4f}) but orbit coasts ({am_b3:.4f})"
+    c = _render("wisp_body_3d", 0.5)         # early growth
+    d = _render("wisp_body_3d", 3.5)         # late growth
+    zone_c = c[:, 4 * wk // 5:]
+    zone_d = d[:, 4 * wk // 5:]
+    gr_c3 = float((zone_c[..., 1] - zone_c[..., 0]).clip(0).mean())
+    gr_d3 = float((zone_d[..., 1] - zone_d[..., 0]).clip(0).mean())
+    assert gr_d3 > gr_c3, \
+        f"wisp_body_3d: the growth ledger must fill ({gr_c3:.4f} -> {gr_d3:.4f})"
+    print(f"  wisp_body_3d: OK  (thrust {am_a3:.4f} hover -> {am_b3:.4f} orbit; "
+          f"growth {gr_c3:.4f} -> {gr_d3:.4f})")
+
+    a = _render("wisp_navigate_3d", 2.55)    # boost: burn spike
+    b = _render("wisp_navigate_3d", 5.0)     # coast: engines silent
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    am_a4 = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    am_b4 = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert am_a4 > am_b4, \
+        f"wisp_navigate_3d: the boost burns (amber {am_a4:.4f}) but the arc coasts ({am_b4:.4f})"
+    c = _render("wisp_navigate_3d", 1.0)     # before: reserve full, low shell
+    d = _render("wisp_navigate_3d", 8.5)     # after both burns: fare paid, high shell
+    zone_c = c[:, 4 * wk // 5:]
+    zone_d = d[:, 4 * wk // 5:]
+    mg_c4 = float((zone_c[..., 0] - zone_c[..., 1]).clip(0).mean())
+    mg_d4 = float((zone_d[..., 0] - zone_d[..., 1]).clip(0).mean())
+    assert mg_d4 < mg_c4, \
+        f"wisp_navigate_3d: the fare must be paid ({mg_c4:.4f} -> {mg_d4:.4f})"
+    cy_c4 = float((zone_c[..., 2] - zone_c[..., 0]).clip(0).mean())
+    cy_d4 = float((zone_d[..., 2] - zone_d[..., 0]).clip(0).mean())
+    assert cy_d4 > cy_c4, \
+        f"wisp_navigate_3d: altitude must be gained ({cy_c4:.4f} -> {cy_d4:.4f})"
+    print(f"  wisp_navigate_3d: OK  (burn {am_a4:.4f} -> {am_b4:.4f}; "
+          f"fare {mg_c4:.4f} -> {mg_d4:.4f}; altitude {cy_c4:.4f} -> {cy_d4:.4f})")
+
+    print("ALL PASSED (42 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
           "+ Kerr horizons/area-theorem/superradiance "
