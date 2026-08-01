@@ -862,6 +862,21 @@ is slowly emptying.
 |---|---|---|
 | ![cosmo_expansion](docs/engine/cosmo_expansion.gif) | ![cosmo_hubble](docs/engine/cosmo_hubble.png) | ![cosmo_horizons](docs/engine/cosmo_horizons.gif) |
 
+**The wisp in the box** ([research 57](docs/research/57-the-wisp-in-the-box.md), stage 1)
+plays confinement-by-geometry on the exact AdS machinery: a wisp inside a magic
+circle whose rim sits at finite map radius and infinite proper distance
+(`2·atanh r`, asserted) — the box corners visible, forever unreachable. `wisp_box`
+runs one coast-burn-fall cycle: the exact closed-form geodesic
+`r(t) = r_max sin t/√(E²cos²t+sin²t)` (RK4-asserted; period 2π at EVERY amplitude —
+isochrony asserted), the drive stalling against the `tanh(ρ/2)` map compression
+while proper distance climbs, and the energy reserve draining on the `cosh ρ` cliff
+(asserted divergent) — hovering is cheap (`a = tanh ρ < c²/L`, asserted), leaving
+is infinitely expensive. Stages 2 (the body) and 3 (navigation) are named in the doc.
+
+| wisp_box — the burn | wisp_box — the whole cycle |
+|---|---|
+| ![wisp_box still](docs/engine/wisp_box.png) | ![wisp_box](docs/engine/wisp_box.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted

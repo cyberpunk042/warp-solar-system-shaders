@@ -356,6 +356,16 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `particle_horizon_gly` / `event_horizon_gly` | `c∫₀ᵗdt/a` ≈ 46 Gly (asserted, grows) / `c∫ₜ^∞dt/a` ≈ 16.7 Gly (asserted finite, shrinks) |
 | `lookback_time` / `e_of_z` / `hubble_h0_per_gyr` | when the light left (z = 1 → 7.95 Gyr, asserted); `E(z)`; unit plumbing |
 
+### `engine.wisp` — the wisp in the box (host-side, all test-asserted)
+
+| Function | What it is |
+|---|---|
+| `proper_distance` / `disk_radius` | `ρ = 2·atanh(r)` diverges at the rim (asserted); `tanh(ρ/2) < 1` — arrival never comes (asserted) |
+| `radial_geodesic` / `radial_geodesic_closed` | free fall through the bubble: RK4 + the exact `r(t) = r_max sin t/√(E²cos²t+sin²t)` (agreement asserted) |
+| `geodesic_period` | 2π at EVERY amplitude (asserted at 1.5 and 4.0) — AdS is an isochronous trap |
+| `hover_acceleration` | `a = tanh(ρ) < c²/L` (bound asserted) — hovering anywhere is cheap |
+| `static_energy` / `climb_energy` | `E = cosh(ρ)` diverges (asserted) — the fuel wall; `ΔE = cosh ρ₂ − cosh ρ₁` is the bill |
+
 ## Post — `engine.post`
 
 Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with
