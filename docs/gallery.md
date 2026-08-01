@@ -643,6 +643,46 @@ the bubble — it is the bubble.
 
 ![coast slosh, burn spike, conserved total](engine/wisp_shadow.gif)
 
+## The Ising model, exactly — theorems and a live simulation in one frame
+
+`ising_quench` — **through Onsager's critical point, live**
+([Research 58](research/58-ising-exactly.md)). A 256² Ising lattice simulated
+LIVE on the Warp lattice (deterministic seeded Metropolis) while the temperature
+sweeps through `T_c = 2/ln(1+√2)` (self-duality `sinh(2/T_c) = 1` asserted at
+machine precision): paramagnetic snow when hot, correlated clusters at EVERY
+scale as T_c approaches, then symmetry breaking and coarsening domains. Ledgers:
+amber T with the white T_c line, cyan Yang's exact M(T) (exact β = 1/8,
+asserted), magenta the live measured order parameter chasing the theorem.
+
+![ising_quench — critical clusters at every scale](engine/ising_quench.png)
+
+![hot, critical, cold, reheat](engine/ising_quench.gif)
+
+`ising_magnetization` — **nine live lattices land on Yang's curve**
+([Research 58](research/58-ising-exactly.md)). Yang's closed form
+`M = (1 − sinh(2/T)^−4)^(1/8)` drawn in cyan, Onsager's T_c in white — and nine
+independent live Metropolis lattices as amber dots at (T_k, |M_k|), rising from
+random disorder and LANDING on the theorem as they equilibrate (the suite runs
+the same seeded dynamics headless and asserts it: |M_sim − Yang| < 0.03). The
+cyan ledger is the mean simulation-vs-theorem error, and it shrinks.
+
+![ising_magnetization — the dots land on the theorem](engine/ising_magnetization.png)
+
+![watching Yang's curve get confirmed](engine/ising_magnetization.gif)
+
+`ising_duality` — **Kramers-Wannier, live**
+([Research 58](research/58-ising-exactly.md)). Two lattices locked by the 1941
+duality `sinh(2/T)·sinh(2/T*) = 1` (product asserted = 1; involution asserted):
+the left sweeps cold → hot → cold, the right always at the dual — when one is
+ordered the other is disordered, and they cross T_c TOGETHER, the unique
+self-dual rendezvous that pinned the critical point three years before Onsager
+solved the model. The magenta ledger is the live product, pinned at 1 under its
+white line, never moving.
+
+![ising_duality — order and disorder, the same model read twice](engine/ising_duality.png)
+
+![the dual pair meeting at the self-dual point](engine/ising_duality.gif)
+
 ## Warp compression — three compressions of the card's visual information
 
 Virtual compression of the **actual card**: the real RTX 6000 Pro board (`gpu_board`) is compressed

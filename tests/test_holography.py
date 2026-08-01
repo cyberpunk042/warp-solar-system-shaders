@@ -103,6 +103,14 @@ from warp_shaders.engine.wisp import (
     transfer_orbit,
     volume_area_ratio,
 )
+from warp_shaders.engine.ising import (
+    critical_temperature,
+    dual_temperature,
+    ellipk_agm,
+    internal_energy_exact,
+    magnetization_exact,
+    simulate_magnetization,
+)
 from warp_shaders.engine.gw import (
     chirp_frequency,
     chirp_mass,
@@ -1400,7 +1408,90 @@ def main():
     print(f"  wisp_shadow: OK  (width {cy_a:.4f} -> {cy_b:.4f} shrinks; contrast "
           f"{am_a:.4f} -> {am_b:.4f} grows; total {mg_a:.4f} ~ {mg_b:.4f} conserved)")
 
-    print("ALL PASSED (43 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- the 2D Ising model, exactly: Onsager, Yang, Kramers-Wannier ----
+    tc_i = critical_temperature()
+    assert abs(tc_i - 2.0 / _m.log(1.0 + _m.sqrt(2.0))) < 1e-15
+    assert abs(_m.sinh(2.0 / tc_i) - 1.0) < 1e-14, \
+        "Onsager's Tc is the self-dual point: sinh(2/Tc) = 1 EXACTLY"
+    # Yang's magnetization: limits + the EXACT critical exponent beta = 1/8
+    assert abs(magnetization_exact(0.5) - 1.0) < 1e-6 and \
+        magnetization_exact(tc_i + 1e-9) == 0.0
+    e1_i, e2_i = 1e-4, 1e-6
+    beta_i = (_m.log(magnetization_exact(tc_i - e1_i)) -
+              _m.log(magnetization_exact(tc_i - e2_i))) / \
+        (_m.log(e1_i) - _m.log(e2_i))
+    assert abs(beta_i - 0.125) < 1e-4, f"the exact beta is 1/8, got {beta_i}"
+    # Onsager's energy: ground state -2, EXACTLY -sqrt(2) at Tc, ~ -2/T hot
+    assert abs(ellipk_agm(0.0) - _m.pi / 2.0) < 1e-14
+    assert abs(internal_energy_exact(0.5) + 2.0) < 1e-5
+    assert abs(internal_energy_exact(tc_i) + _m.sqrt(2.0)) < 1e-9, \
+        "U(Tc) = -sqrt(2) exactly: the elliptic coefficient vanishes at criticality"
+    assert abs(internal_energy_exact(50.0) + 2.0 / 50.0) < 1e-3
+    # Kramers-Wannier: product = 1, involution, unique fixed point
+    for t_i in (1.2, 3.5):
+        td_i = dual_temperature(t_i)
+        assert abs(_m.sinh(2.0 / t_i) * _m.sinh(2.0 / td_i) - 1.0) < 1e-12
+        assert abs(dual_temperature(td_i) - t_i) < 1e-9, "duality is an involution"
+    assert abs(dual_temperature(tc_i) - tc_i) < 1e-9, "Tc maps to itself"
+    # measured, not asserted: the seeded simulation lands on Yang's closed form
+    m_sim_cold = simulate_magnetization(64, 1.5, 400)
+    assert abs(m_sim_cold - magnetization_exact(1.5)) < 0.03, \
+        f"the simulation must land on Yang: {m_sim_cold} vs {magnetization_exact(1.5)}"
+    m_sim_hot = simulate_magnetization(64, 3.5, 300)
+    assert m_sim_hot < 0.15, f"no order above Tc: {m_sim_hot}"
+    print(f"  Ising exactly: OK  (Tc self-dual at machine precision; beta = "
+          f"{beta_i:.5f}; U(Tc) = -sqrt2; duality involution; sim M(1.5) = "
+          f"{m_sim_cold:.4f} vs Yang {magnetization_exact(1.5):.4f})")
+
+    # ---- the Ising scenes: structural checks ----
+    a = _render("ising_quench", 1.0)         # hot: T high, order low
+    b = _render("ising_quench", 12.5)        # cold: T low, order high
+    zone_a = a[:, 9 * wk // 10:]
+    zone_b = b[:, 9 * wk // 10:]
+    am_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    am_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert am_a > am_b, \
+        f"ising_quench: the temperature must fall ({am_a:.4f} -> {am_b:.4f})"
+    mg_a = float((zone_a[..., 0] - zone_a[..., 1]).clip(0).mean())
+    mg_b = float((zone_b[..., 0] - zone_b[..., 1]).clip(0).mean())
+    assert mg_b > mg_a, \
+        f"ising_quench: the live order parameter must rise ({mg_a:.4f} -> {mg_b:.4f})"
+    print(f"  ising_quench: OK  (T ledger {am_a:.4f} -> {am_b:.4f}; "
+          f"live |M| {mg_a:.4f} -> {mg_b:.4f})")
+
+    a = _render("ising_magnetization", 1.0)  # early: dots off the curve
+    b = _render("ising_magnetization", 14.0)  # late: landed on Yang
+    zone_a = a[:, 9 * wk // 10:]
+    zone_b = b[:, 9 * wk // 10:]
+    cy_a = float((zone_a[..., 2] - zone_a[..., 0]).clip(0).mean())
+    cy_b = float((zone_b[..., 2] - zone_b[..., 0]).clip(0).mean())
+    assert cy_b < cy_a, \
+        f"ising_magnetization: the sim-vs-Yang error must SHRINK ({cy_a:.4f} -> {cy_b:.4f})"
+    mg_a = float((zone_a[..., 0] - zone_a[..., 1]).clip(0).mean())
+    mg_b = float((zone_b[..., 0] - zone_b[..., 1]).clip(0).mean())
+    assert mg_b > mg_a, \
+        f"ising_magnetization: more lattices must converge ({mg_a:.4f} -> {mg_b:.4f})"
+    print(f"  ising_magnetization: OK  (error {cy_a:.4f} -> {cy_b:.4f} shrinks; "
+          f"converged {mg_a:.4f} -> {mg_b:.4f})")
+
+    a = _render("ising_duality", 1.0)        # left cold, right hot
+    b = _render("ising_duality", 8.0)        # left hot, right cold
+    zone_a = a[:, 9 * wk // 10:]
+    zone_b = b[:, 9 * wk // 10:]
+    cy_a = float((zone_a[..., 2] - zone_a[..., 0]).clip(0).mean())
+    cy_b = float((zone_b[..., 2] - zone_b[..., 0]).clip(0).mean())
+    am_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    am_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert cy_b > cy_a and am_a > am_b, \
+        f"ising_duality: T and T* must mirror ({cy_a:.4f}->{cy_b:.4f} vs {am_a:.4f}->{am_b:.4f})"
+    mg_a = float((zone_a[..., 0] - zone_a[..., 1]).clip(0).mean())
+    mg_b = float((zone_b[..., 0] - zone_b[..., 1]).clip(0).mean())
+    assert abs(mg_a - mg_b) < 0.35 * max(mg_a, mg_b), \
+        f"ising_duality: the product ledger must stay pinned at 1 ({mg_a:.4f} vs {mg_b:.4f})"
+    print(f"  ising_duality: OK  (T {cy_a:.4f}->{cy_b:.4f} vs T* {am_a:.4f}->{am_b:.4f} "
+          f"mirror; product {mg_a:.4f} ~ {mg_b:.4f} pinned)")
+
+    print("ALL PASSED (46 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
           "+ Kerr horizons/area-theorem/superradiance "
@@ -1416,7 +1507,9 @@ def main():
           "/lens-refocus-pi-2pi "
           "+ 3D-ball dV=A-exact/area-e2-growth/skin-theorem-V-over-A-half"
           "/firework-refocus "
-          "+ shadow contrast-e2Drho-exact/total-2pi-conserved/width-UVIR-e-rho)")
+          "+ shadow contrast-e2Drho-exact/total-2pi-conserved/width-UVIR-e-rho "
+          "+ Ising Tc-self-dual/Yang-beta-1-8/U(Tc)=-sqrt2/KW-involution"
+          "/sim-lands-on-Yang)")
 
 
 if __name__ == "__main__":

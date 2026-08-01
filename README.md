@@ -938,6 +938,26 @@ the bubble.
 |---|---|
 | ![wisp_shadow still](docs/engine/wisp_shadow.png) | ![wisp_shadow](docs/engine/wisp_shadow.gif) |
 
+## The Ising model, exactly — theorems and a live simulation in one frame
+
+The crown jewel of exactly-solvable statistical mechanics
+([research 58](docs/research/58-ising-exactly.md)), with LIVE seeded Metropolis
+dynamics on the Warp lattice measured against the closed forms — in the scenes
+*and* in the suite. `ising_quench` sweeps a 256² lattice through **Onsager's**
+`T_c = 2/ln(1+√2)` (self-duality `sinh(2/T_c) = 1` asserted at machine
+precision): snow, then critical clusters at every scale, then coarsening
+domains. `ising_magnetization` is the money plot — nine live lattices rising
+from disorder and landing on **Yang's** exact
+`M = (1 − sinh(2/T)^−4)^(1/8)` (exact β = 1/8, asserted; the suite asserts the
+simulation lands within 0.03 of the theorem). `ising_duality` locks two
+lattices by **Kramers-Wannier** `sinh(2/T)·sinh(2/T*) = 1` (asserted): order
+and disorder are the same model read twice, crossing T_c together. Onsager's
+energy rides along: `U(T_c) = −√2` exactly (asserted, elliptic K by AGM).
+
+| ising_quench — through T_c | ising_magnetization — landing on Yang | ising_duality — the dual pair |
+|---|---|---|
+| ![ising_quench](docs/engine/ising_quench.gif) | ![ising_magnetization](docs/engine/ising_magnetization.gif) | ![ising_duality](docs/engine/ising_duality.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted
