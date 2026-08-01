@@ -924,6 +924,20 @@ folds back to the one antipodal point at t = π and home at t = 2π (asserted).
 |---|---|
 | ![wisp_body_3d](docs/engine/wisp_body_3d.gif) | ![wisp_navigate_3d](docs/engine/wisp_navigate_3d.gif) |
 
+**The boundary sees everything** — the AdS/CFT half of the brief ("because of
+AdS/CFT"): `wisp_shadow` paints the wisp's exact boundary imprint — the
+bulk-to-boundary propagator `K = (cosh ρ − sinh ρ cos θ)^−Δ` — live on the rim.
+Contrast `e^{2Δρ}` exact (asserted at machine precision); width shrinking as
+`2e^{−ρ}` (asserted — the UV/IR correspondence made quantitative); and the live
+integral of the shadow pinned at 2π at every altitude (asserted): climbing
+concentrates the imprint but cannot change its total. The boundary never loses
+track of the wisp — holography is not surveillance added to the bubble; it is
+the bubble.
+
+| wisp_shadow — the spike under burn | wisp_shadow — slosh, sharpen, conserve |
+|---|---|
+| ![wisp_shadow still](docs/engine/wisp_shadow.png) | ![wisp_shadow](docs/engine/wisp_shadow.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted

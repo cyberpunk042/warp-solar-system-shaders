@@ -376,6 +376,10 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `sphere_area` | the 3D ball: `A = 4π sinh²ρ` — exponential (A(ρ+1)/A(ρ) → e², asserted); Euclidean `4πρ²` only at small ρ (asserted) |
 | `ball_volume` | `V = π(sinh 2ρ − 2ρ)` — exactly `∫A dρ` (dV/dρ = A asserted); Euclidean `4πρ³/3` at small ρ (asserted) |
 | `volume_area_ratio` | the skin theorem: `V/A → 1/2` (asserted at 10⁻¹⁰) — all of hyperbolic volume lives within one unit of the surface |
+| `shadow_kernel` | the wisp's boundary shadow: the exact bulk-to-boundary propagator `K = (cosh ρ − sinh ρ cos θ)^−Δ` |
+| `shadow_contrast` | peak-to-antipode contrast `e^{2Δρ}` EXACT (asserted at machine precision) — altitude sharpens the boundary's knowledge exponentially |
+| `shadow_width` | closed-form half-max width `acos[(cosh ρ − 2^{1/Δ}e^{−ρ})/sinh ρ]` (asserted); `θ_½·e^ρ → 2√(2^{1/Δ}−1)` — UV/IR quantified |
+| the conserved imprint | for Δ = 1, `∫K dθ = 2π` at EVERY ρ (asserted) — the boundary never loses track of the wisp |
 
 ## Post — `engine.post`
 

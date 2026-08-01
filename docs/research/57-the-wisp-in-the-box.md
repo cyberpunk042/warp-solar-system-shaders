@@ -259,6 +259,49 @@ flat scenes could only assert:
   still folds all of it back to the single antipodal point at t = π and home
   at t = 2π. The lens was never a trick of the plane; it is the geometry.
 
+## The boundary sees everything — the wisp's shadow
+
+> "you can never reach those corner **because of AdS/CFT** since you are in a
+> sphererical magic circle / bubble"
+
+The brief's *reason* for the trap was holography, and holography has a second
+face: the bubble has a boundary theory living on its rim, and the wisp casts an
+exact shadow on it. The bulk-to-boundary propagator of global AdS₃, for a
+boundary operator of dimension Δ, is
+
+```
+K(ρ, θ) = (cosh ρ − sinh ρ · cos θ)^(−Δ)
+```
+
+with θ the boundary angle measured from the wisp's direction. Three exact laws
+follow, each test-asserted:
+
+1. **The contrast law.** The shadow's peak-to-antipode contrast is `e^{2Δρ}`
+   *exactly* (asserted at machine precision, from `cosh ρ ± sinh ρ = e^{±ρ}`).
+   The higher the wisp climbs, the more sharply the boundary knows where it
+   is — exponentially.
+2. **The width law — UV/IR made quantitative.** The half-max angular width has
+   the closed form `θ_½ = acos[(cosh ρ − 2^{1/Δ}e^{−ρ})/sinh ρ]` (asserted
+   against the numeric half-max), shrinking as `2√(2^{1/Δ}−1)·e^{−ρ}`
+   (asserted: `θ_½·e^ρ → 2` for Δ = 1). Bulk depth *is* boundary resolution:
+   a deeper wisp is a finer boundary feature.
+3. **The conserved imprint.** For Δ = 1, the total shadow `∫K dθ = 2π` at
+   *every* ρ (asserted at 10⁻⁶ — exactly, since `cosh²ρ − sinh²ρ = 1`).
+   Climbing concentrates the imprint; it cannot change its total. The boundary
+   never loses track of the wisp — holography is not surveillance added to
+   the bubble; it *is* the bubble.
+
+## The scene: `wisp_shadow`
+
+The stage-1 cycle replayed with its boundary imprint live on the rim: coasting,
+the shadow sloshes around the whole circle — uniform at the instant the wisp
+crosses the center (ρ = 0 lights the entire boundary at once), then gathering
+over the near side; burning, it sharpens into a spike riding just over the
+stalled wisp; falling, it relaxes. The cyan ledger is the closed-form width
+(shrinks), the amber ledger the log-contrast `2Δρ` (grows) — and the magenta
+ledger is the *live numerical integral* of the shadow, pinned under its white
+conservation line and never moving.
+
 ## The stages, complete
 
 * **Stage 1 — the drives** *(built)*: coast, burn, fall — trapped by geometry,

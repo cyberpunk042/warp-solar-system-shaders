@@ -627,6 +627,22 @@ trick of the plane; it is the geometry.
 
 ![boost, coast, circularize, the 3D lens](engine/wisp_navigate_3d.gif)
 
+`wisp_shadow` — **the boundary sees everything**
+([Research 57](research/57-the-wisp-in-the-box.md)). The AdS/CFT half of the
+brief: the wisp's EXACT boundary shadow — the bulk-to-boundary propagator
+`K = (cosh ρ − sinh ρ cos θ)^−Δ` — painted live on the rim through the stage-1
+cycle. Coasting, the shadow sloshes (uniform when the wisp crosses the center);
+burning, it sharpens exponentially: contrast `e^{2Δρ}` exact at machine precision
+(asserted), width closed-form shrinking as `2e^{−ρ}` (asserted — UV/IR: bulk depth
+IS boundary resolution). And the magenta ledger holds the LIVE integral of the
+shadow, pinned at 2π under its white conservation line at every ρ (asserted): the
+boundary never loses track of the wisp. Holography is not surveillance added to
+the bubble — it is the bubble.
+
+![wisp_shadow — the shadow sharpens under burn](engine/wisp_shadow.png)
+
+![coast slosh, burn spike, conserved total](engine/wisp_shadow.gif)
+
 ## Warp compression — three compressions of the card's visual information
 
 Virtual compression of the **actual card**: the real RTX 6000 Pro board (`gpu_board`) is compressed

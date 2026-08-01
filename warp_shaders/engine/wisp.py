@@ -101,11 +101,33 @@ the trap, and it is monstrous:
   own ray, so the whole swarm passes through r = 0 SIMULTANEOUSLY every π
   (asserted): the explosion that un-explodes, twice per period.
 
+The boundary sees everything — the shadow. The brief's reason for the trap was
+"because of AdS/CFT": the bubble has a boundary theory, and the wisp casts an
+exact shadow on it. The bulk-to-boundary propagator in global AdS₃ for a boundary
+operator of dimension Δ is
+
+    K(ρ, θ) = (cosh ρ − sinh ρ · cos θ)^(−Δ)
+
+(θ = boundary angle from the wisp's direction), and three exact laws follow:
+
+* ``shadow_contrast`` — the shadow's peak-to-antipode contrast is ``e^{2Δρ}``
+  EXACTLY (asserted at machine precision): the higher the wisp climbs, the
+  sharper the boundary knows where it is — exponentially.
+* ``shadow_width`` — the half-max angular width has the closed form
+  ``θ_½ = acos[(cosh ρ − 2^{1/Δ} e^{−ρ})/sinh ρ]`` (asserted against numeric
+  half-max), with ``θ_½ · e^ρ → 2√(2^{1/Δ}−1)`` (asserted): the UV/IR
+  correspondence, quantified — bulk depth IS boundary resolution.
+* ``the conserved imprint`` — for Δ = 1 the TOTAL shadow ``∫K dθ = 2π`` for
+  EVERY ρ (asserted at 10⁻⁶): climbing concentrates the imprint but never
+  changes its total. The boundary never loses track of the wisp; it cannot.
+  Holography is not surveillance added to the bubble — it is the bubble.
+
 Stage 1: coast (the trap always returns you), burn (the drive climbs, the map
 compresses), fall back (the fuel wall wins). Stage 2: grow, climb, hover on flame,
 tip into orbit — the body holds altitude for free. Stage 3: boost, ride the
 quarter-period arc, circularize — and watch the lens refocus everything you
-release. See ``docs/research/57-the-wisp-in-the-box.md``.
+release. And through all of it, the shadow on the rim tells the boundary exactly
+where the wisp is. See ``docs/research/57-the-wisp-in-the-box.md``.
 """
 
 import math
@@ -238,6 +260,35 @@ def volume_area_ratio(rho: float) -> float:
     of its surface. Hyperbolic space is all skin and no core; the bulk lives
     at its boundary."""
     return ball_volume(rho) / sphere_area(rho)
+
+
+def shadow_kernel(rho: float, theta: float, delta: float = 1.0) -> float:
+    """The wisp's boundary shadow (host-side): the exact bulk-to-boundary
+    propagator of global AdS₃, ``K = (cosh ρ − sinh ρ cos θ)^{−Δ}`` — θ measured
+    from the wisp's direction. Uniform at ρ = 0; a spike as ρ grows."""
+    return (math.cosh(rho) - math.sinh(rho) * math.cos(theta)) ** (-delta)
+
+
+def shadow_contrast(rho: float, delta: float = 1.0) -> float:
+    """Peak-to-antipode contrast of the shadow (host-side): ``e^{2Δρ}`` EXACTLY
+    (asserted at machine precision against the kernel) — the boundary's
+    knowledge of the wisp's position sharpens exponentially with altitude."""
+    return math.exp(2.0 * delta * rho)
+
+
+def shadow_width(rho: float, delta: float = 1.0) -> float:
+    """Half-max angular width of the shadow (host-side), closed form:
+    ``θ_½ = acos[(cosh ρ − 2^{1/Δ} e^{−ρ})/sinh ρ]`` (asserted against the
+    numeric half-max), with ``θ_½ · e^ρ → 2√(2^{1/Δ}−1)`` (asserted) — the
+    UV/IR correspondence: bulk depth IS boundary resolution. Returns π (fully
+    spread) when the kernel never falls to half peak."""
+    sh = math.sinh(rho)
+    if sh < 1e-12:
+        return math.pi
+    c = (math.cosh(rho) - 2.0 ** (1.0 / delta) * math.exp(-rho)) / sh
+    if c < -1.0:
+        return math.pi
+    return math.acos(min(c, 1.0))
 
 
 def transfer_orbit(rho1: float, rho2: float):

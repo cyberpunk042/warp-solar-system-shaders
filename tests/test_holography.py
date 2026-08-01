@@ -93,6 +93,9 @@ from warp_shaders.engine.wisp import (
     proper_distance,
     radial_geodesic,
     radial_geodesic_closed,
+    shadow_contrast,
+    shadow_kernel,
+    shadow_width,
     sphere_area,
     static_energy,
     transfer_cost,
@@ -1343,7 +1346,54 @@ def main():
     print(f"  wisp_navigate_3d: OK  (burn {am_a4:.4f} -> {am_b4:.4f}; "
           f"fare {mg_c4:.4f} -> {mg_d4:.4f}; altitude {cy_c4:.4f} -> {cy_d4:.4f})")
 
-    print("ALL PASSED (42 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- the wisp's shadow: the boundary sees everything, exactly ----
+    # peak-to-antipode contrast is e^{2 Delta rho} EXACTLY
+    for rho_s, del_s in ((0.8, 1.0), (2.0, 1.0), (1.5, 2.0)):
+        ratio = shadow_kernel(rho_s, 0.0, del_s) / shadow_kernel(rho_s, _m.pi, del_s)
+        assert abs(ratio - shadow_contrast(rho_s, del_s)) < 1e-9 * ratio, \
+            "the shadow's contrast must be e^{2 Delta rho} exactly"
+    # the conserved imprint: for Delta = 1, the total shadow is 2 pi at EVERY rho
+    n_i = 4096
+    for rho_s in (0.5, 2.0, 5.0):
+        tot = sum(shadow_kernel(rho_s, 2.0 * _m.pi * (k + 0.5) / n_i)
+                  for k in range(n_i)) * 2.0 * _m.pi / n_i
+        assert abs(tot - 2.0 * _m.pi) < 1e-6, \
+            f"the boundary never loses track: total = {tot}, must be 2 pi at rho={rho_s}"
+    # the closed-form half-max width, checked against the kernel directly
+    for rho_s in (1.0, 2.5):
+        w_half = shadow_width(rho_s)
+        k_half = shadow_kernel(rho_s, w_half)
+        assert abs(k_half - 0.5 * shadow_kernel(rho_s, 0.0)) < 1e-9, \
+            "shadow_width must be the exact half-max angle"
+    # UV/IR: width * e^rho -> 2 sqrt(2^{1/Delta} - 1) = 2 for Delta = 1
+    assert abs(shadow_width(6.0) * _m.exp(6.0) - 2.0) < 1e-2, \
+        "bulk depth IS boundary resolution: theta_1/2 ~ 2 e^{-rho}"
+    assert shadow_width(3.0) < shadow_width(1.5) < shadow_width(0.5), "monotone sharpening"
+    print(f"  wisp's shadow: OK  (contrast e^(2 D rho) exact; total 2pi conserved at "
+          f"rho=0.5/2/5; width closed-form half-max; "
+          f"width*e^6 = {shadow_width(6.0) * _m.exp(6.0):.4f} -> 2 UV/IR)")
+
+    # ---- the shadow scene: structural checks (9/10 zone: bars only) ----
+    a = _render("wisp_shadow", 1.0)          # coast: shadow wide, contrast low
+    b = _render("wisp_shadow", 11.5)         # deep burn: narrow, contrast high
+    zone_a = a[:, 9 * wk // 10:]
+    zone_b = b[:, 9 * wk // 10:]
+    cy_a = float((zone_a[..., 2] - zone_a[..., 0]).clip(0).mean())
+    cy_b = float((zone_b[..., 2] - zone_b[..., 0]).clip(0).mean())
+    assert cy_a > cy_b, \
+        f"wisp_shadow: the width ledger must SHRINK under burn ({cy_a:.4f} -> {cy_b:.4f})"
+    am_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    am_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert am_b > am_a, \
+        f"wisp_shadow: the contrast ledger must grow ({am_a:.4f} -> {am_b:.4f})"
+    mg_a = float((zone_a[..., 0] - zone_a[..., 1]).clip(0).mean())
+    mg_b = float((zone_b[..., 0] - zone_b[..., 1]).clip(0).mean())
+    assert abs(mg_a - mg_b) < 0.35 * max(mg_a, mg_b), \
+        f"wisp_shadow: the total-imprint ledger must stay FLAT ({mg_a:.4f} vs {mg_b:.4f})"
+    print(f"  wisp_shadow: OK  (width {cy_a:.4f} -> {cy_b:.4f} shrinks; contrast "
+          f"{am_a:.4f} -> {am_b:.4f} grows; total {mg_a:.4f} ~ {mg_b:.4f} conserved)")
+
+    print("ALL PASSED (43 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
           "+ Kerr horizons/area-theorem/superradiance "
@@ -1358,7 +1408,8 @@ def main():
           "+ navigate E=coshcosh-L=sinhsinh/fare-telescopes/subway-pi-over-2"
           "/lens-refocus-pi-2pi "
           "+ 3D-ball dV=A-exact/area-e2-growth/skin-theorem-V-over-A-half"
-          "/firework-refocus)")
+          "/firework-refocus "
+          "+ shadow contrast-e2Drho-exact/total-2pi-conserved/width-UVIR-e-rho)")
 
 
 if __name__ == "__main__":
