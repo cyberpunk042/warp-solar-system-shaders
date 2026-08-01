@@ -82,6 +82,10 @@ from warp_shaders.engine.wisp import (
     disk_radius,
     geodesic_period,
     hover_acceleration,
+    local_gravity,
+    orbit_angular_momentum,
+    orbit_angular_velocity,
+    orbit_energy,
     proper_distance,
     radial_geodesic,
     radial_geodesic_closed,
@@ -1102,7 +1106,63 @@ def main():
     print(f"  wisp_box: OK  (rho ledger {cy_a:.4f} -> {cy_b:.4f} under burn; "
           f"reserve {mag_c:.4f} -> {mag_b:.4f} on the cosh cliff)")
 
-    print("ALL PASSED (36 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- the wisp's body: circular orbits are free hover ----
+    # L = r^2 makes the effective potential stationary (a genuine circular orbit)
+    for r0 in (0.5, 1.5, 3.0):
+        ll = orbit_angular_momentum(r0)
+        assert abs(ll - r0 * r0) < 1e-12, "circular orbit needs L = r^2"
+        # V(r) = (1+r^2)(1+L^2/r^2); dV/dr = 0 at r0 when L = r0^2
+        dr = 1e-6
+        def _veff(r, L=ll):
+            return (1.0 + r * r) * (1.0 + L * L / (r * r))
+        dv = (_veff(r0 + dr) - _veff(r0 - dr)) / (2.0 * dr)
+        assert abs(dv) < 1e-5, f"V'(r0)={dv}: the orbit must sit at the potential's minimum"
+        d2v = (_veff(r0 + dr) - 2.0 * _veff(r0) + _veff(r0 - dr)) / (dr * dr)
+        assert d2v > 0.0, "every circular orbit in the bubble is stable (V'' = 8 > 0)"
+        # the universal clock: dphi/dt = 1 exactly, at EVERY radius
+        om = orbit_angular_velocity(r0)
+        assert abs(om - 1.0) < 1e-12, \
+            f"AdS is the perfect merry-go-round: omega(r={r0}) = {om}, must be 1"
+    # orbit energy E = 1 + r^2 = cosh^2(rho): the rent, paid as motion
+    import math as _m
+    rho0 = 1.5
+    assert abs(orbit_energy(rho0) - _m.cosh(rho0) ** 2) < 1e-12, "E_orbit = cosh^2(rho)"
+    # equivalence principle: released from rest at rho_d, the exact geodesic is
+    # SHM in proper time, r(dtau) = r_d cos(dtau) with r = sinh(rho).  For a
+    # short fall the proper drop must match Newton, (1/2) g tau^2 with
+    # g = tanh(rho_d) — the same g the hover engine fights.
+    rho_d, tau = 1.2, 0.12
+    r_d = _m.sinh(rho_d)
+    r_at = r_d * _m.cos(tau)
+    drop = _m.asinh(r_d) - _m.asinh(r_at)
+    newton = 0.5 * local_gravity(rho_d) * tau * tau
+    assert abs(drop - newton) / newton < 2e-3, \
+        f"equivalence principle: fall {drop} vs (1/2) g tau^2 = {newton}"
+    print(f"  wisp's body: OK  (L=r^2 stationary; omega=1 at r=0.5/1.5/3.0; "
+          f"E=cosh^2(rho); V''>0; local fall matches 1/2 g tau^2 to "
+          f"{abs(drop - newton) / newton * 100:.2f}%)")
+
+    # ---- the body scene: structural checks ----
+    a = _render("wisp_body", 9.0)            # hover: amber thrust bar lit
+    b = _render("wisp_body", 14.0)           # orbit: thrust off, engines silent
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    am_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    am_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert am_a > am_b, \
+        f"wisp_body: hover burns (amber {am_a:.4f}) but orbit coasts ({am_b:.4f})"
+    c = _render("wisp_body", 0.5)            # early growth: hull barely started
+    d = _render("wisp_body", 3.5)            # late growth: hull nearly complete
+    zone_c = c[:, 4 * wk // 5:]
+    zone_d = d[:, 4 * wk // 5:]
+    gr_c = float((zone_c[..., 1] - zone_c[..., 0]).clip(0).mean())
+    gr_d = float((zone_d[..., 1] - zone_d[..., 0]).clip(0).mean())
+    assert gr_d > gr_c, \
+        f"wisp_body: the growth ledger must fill ({gr_c:.4f} -> {gr_d:.4f})"
+    print(f"  wisp_body: OK  (thrust {am_a:.4f} hover -> {am_b:.4f} orbit; "
+          f"growth {gr_c:.4f} -> {gr_d:.4f})")
+
+    print("ALL PASSED (37 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
           "+ Kerr horizons/area-theorem/superradiance "
@@ -1112,7 +1172,8 @@ def main():
           "+ lensing sum-rule/Paczynski/Fermat-stationary "
           "+ classic tests Mercury-42.98/Eddington-1.75/Shapiro-250us/GPS-38.5 "
           "+ LCDM t0-13.8/Friedmann-exact/z_acc-0.63/gap-0.58mag/horizons-46-16.7 "
-          "+ wisp isochrony-2pi/hover-bounded/cosh-fuel-wall/rim-at-infinity)")
+          "+ wisp isochrony-2pi/hover-bounded/cosh-fuel-wall/rim-at-infinity "
+          "+ body L=r2/omega=1-universal/E=cosh2-rho/no-ISCO/equivalence-principle)")
 
 
 if __name__ == "__main__":

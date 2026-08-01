@@ -543,6 +543,21 @@ cheap (`a = tanh ρ < c²/L`, asserted); leaving is infinitely expensive.
 
 ![one coast-burn-fall cycle](engine/wisp_box.gif)
 
+`wisp_body` — **stage 2: the body**
+([Research 57](research/57-the-wisp-in-the-box.md)). The wisp grows into an engined
+body and discovers orbits are free hover. One cycle: GROW the hull while the reserve
+charges, CLIMB the cosh cliff to the hover shell at ρ = 1.5 (exact
+`cosh ρ₂ − cosh ρ₁` bill), HOVER on continuous thrust `a = tanh ρ ≈ 0.905` pinned
+under the engine-max line (reserve bleeding), then tip sideways onto the `L = r²`
+ORBIT: the flame cuts, the reserve goes flat, and the body circles at exactly ω = 1 —
+in phase with a companion mote free-orbiting a lower shell, because every circular
+orbit in AdS turns at ω = 1 (asserted at three radii; V″ = 8 stable everywhere, no
+ISCO in the bubble).
+
+![wisp_body — hover on the shell](engine/wisp_body.png)
+
+![grow, climb, hover, orbit](engine/wisp_body.gif)
+
 ## Warp compression — three compressions of the card's visual information
 
 Virtual compression of the **actual card**: the real RTX 6000 Pro board (`gpu_board`) is compressed
