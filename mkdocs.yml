@@ -110,6 +110,7 @@ nav:
       - Light bent exactly (lensing, Paczynski, Fermat): research/54-gravitational-lensing.md
       - The classic tests (Mercury, Shapiro, GPS clocks): research/55-classic-tests.md
       - The expanding universe (Friedmann, 1998, horizons): research/56-expanding-universe.md
+      - The wisp in the box (AdS bubble, drives, the fuel wall): research/57-the-wisp-in-the-box.md
 
 markdown_extensions:
   - admonition

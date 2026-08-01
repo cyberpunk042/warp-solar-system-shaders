@@ -528,6 +528,21 @@ visible forever, reachable never. The sky is slowly emptying.
 
 ![2 to 60 Gyr](engine/cosmo_horizons.gif)
 
+### The wisp in the box — trapped by geometry
+
+`wisp_box` — **stage 1: the drives**
+([Research 57](research/57-the-wisp-in-the-box.md)). A wisp in the simulation box
+that can never reach the corners: its AdS bubble's rim is at finite map radius but
+infinite proper distance (`2·atanh r`, divergence asserted). One cycle: COAST on
+the exact closed-form geodesic (period 2π at every amplitude — isochrony asserted),
+BURN outward while the map compresses as `tanh(ρ/2)` and the energy reserve drains
+on the `cosh ρ` cliff (asserted), FALL back when the fuel wall wins. Hovering is
+cheap (`a = tanh ρ < c²/L`, asserted); leaving is infinitely expensive.
+
+![wisp_box — the burn](engine/wisp_box.png)
+
+![one coast-burn-fall cycle](engine/wisp_box.gif)
+
 ## Warp compression — three compressions of the card's visual information
 
 Virtual compression of the **actual card**: the real RTX 6000 Pro board (`gpu_board`) is compressed

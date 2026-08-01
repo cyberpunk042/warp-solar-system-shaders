@@ -77,6 +77,16 @@ from warp_shaders.engine.cosmology import (
     particle_horizon_gly,
     scale_factor,
 )
+from warp_shaders.engine.wisp import (
+    climb_energy,
+    disk_radius,
+    geodesic_period,
+    hover_acceleration,
+    proper_distance,
+    radial_geodesic,
+    radial_geodesic_closed,
+    static_energy,
+)
 from warp_shaders.engine.gw import (
     chirp_frequency,
     chirp_mass,
@@ -1045,7 +1055,54 @@ def main():
         f"cosmo_horizons: the event-horizon ledger must shrink ({mag_a:.4f} -> {mag_b:.4f})"
     print(f"  cosmo_horizons: OK  (EH ledger {mag_a:.4f} -> {mag_b:.4f} as the sky empties)")
 
-    print("ALL PASSED (35 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- the wisp in the box: trapped by geometry, exactly ----
+    # the rim is at finite map radius but infinite proper distance
+    assert proper_distance(0.99) > 5.0 and proper_distance(0.999999) > 14.0, \
+        "proper distance must diverge toward the rim"
+    assert disk_radius(20.0) < 1.0 and disk_radius(30.0) < 1.0, \
+        "however far the wisp flies, tanh(rho/2) < 1: the rim never arrives"
+    assert abs(proper_distance(disk_radius(3.7)) - 3.7) < 1e-12, "map <-> distance inverse"
+    # isochrony: every coasting amplitude oscillates in exactly 2 pi
+    for rm in (1.5, 4.0):
+        pd = geodesic_period(rm)
+        assert abs(pd - 2.0 * np.pi) < 5e-3, \
+            f"the bubble is an isochronous trap (r_max={rm}: period {pd})"
+    # the RK4 integrator must agree with the exact closed form
+    ts_g, rs_g = radial_geodesic(4.0, 12.0, 48000)
+    err = max(abs(rs_g[k] - radial_geodesic_closed(4.0, ts_g[k]))
+              for k in range(0, len(ts_g), 400))
+    assert err < 0.02, f"RK4 must track the closed-form geodesic (max err {err})"
+    # hovering is cheap: a = tanh(rho) bounded by c^2/L = 1
+    assert hover_acceleration(10.0) < 1.0 and hover_acceleration(15.0) < 1.0, \
+        "hover thrust is bounded: any real engine can hold any altitude"
+    assert hover_acceleration(2.0) > hover_acceleration(1.0), "but deeper hovering is harder"
+    # leaving is not: E = cosh(rho) diverges — the fuel wall
+    assert static_energy(10.0) > 100.0 * static_energy(5.0) / 2.0 and \
+        static_energy(10.0) > static_energy(5.0), "the energy cost explodes outward"
+    assert abs(climb_energy(0.0, 3.0) - (np.cosh(3.0) - 1.0)) < 1e-12
+    print(f"  wisp in the box: OK  (rim at infinite distance; isochrony 2pi at "
+          f"r_max=1.5/4.0; RK4-vs-closed err {err:.4f}; hover a<1; "
+          f"E(10)={static_energy(10.0):.0f} — the fuel wall)")
+
+    # ---- the wisp scene: structural checks ----
+    a = _render("wisp_box", 1.0)             # coast: ledgers near zero, reserve full
+    b = _render("wisp_box", 11.5)            # deep burn: rho + map bars high
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    cy_a = float((zone_a[..., 2] - zone_a[..., 0]).clip(0).mean())
+    cy_b = float((zone_b[..., 2] - zone_b[..., 0]).clip(0).mean())
+    assert cy_b > cy_a, \
+        f"wisp_box: the proper-distance ledger must climb under burn ({cy_a:.4f} -> {cy_b:.4f})"
+    c = _render("wisp_box", 7.0)             # early burn: reserve almost full
+    zone_c = c[:, 4 * wk // 5:]
+    mag_c = float((zone_c[..., 0] - zone_c[..., 1]).clip(0).mean())
+    mag_b = float((zone_b[..., 0] - zone_b[..., 1]).clip(0).mean())
+    assert mag_b < mag_c, \
+        f"wisp_box: the energy reserve must drain on the cosh cliff ({mag_c:.4f} -> {mag_b:.4f})"
+    print(f"  wisp_box: OK  (rho ledger {cy_a:.4f} -> {cy_b:.4f} under burn; "
+          f"reserve {mag_c:.4f} -> {mag_b:.4f} on the cosh cliff)")
+
+    print("ALL PASSED (36 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
           "+ Kerr horizons/area-theorem/superradiance "
@@ -1054,7 +1111,8 @@ def main():
           "+ GW chirp -3/8/T~a^4/f_gw=2f_orb/circularization "
           "+ lensing sum-rule/Paczynski/Fermat-stationary "
           "+ classic tests Mercury-42.98/Eddington-1.75/Shapiro-250us/GPS-38.5 "
-          "+ LCDM t0-13.8/Friedmann-exact/z_acc-0.63/gap-0.58mag/horizons-46-16.7)")
+          "+ LCDM t0-13.8/Friedmann-exact/z_acc-0.63/gap-0.58mag/horizons-46-16.7 "
+          "+ wisp isochrony-2pi/hover-bounded/cosh-fuel-wall/rim-at-infinity)")
 
 
 if __name__ == "__main__":
