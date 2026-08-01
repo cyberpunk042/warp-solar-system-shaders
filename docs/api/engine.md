@@ -365,6 +365,10 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `geodesic_period` | 2π at EVERY amplitude (asserted at 1.5 and 4.0) — AdS is an isochronous trap |
 | `hover_acceleration` | `a = tanh(ρ) < c²/L` (bound asserted) — hovering anywhere is cheap |
 | `static_energy` / `climb_energy` | `E = cosh(ρ)` diverges (asserted) — the fuel wall; `ΔE = cosh ρ₂ − cosh ρ₁` is the bill |
+| `orbit_angular_momentum` | `L = r²` closes the circular orbit — `V′(r₀) = 0` (asserted); `V″ = 8 > 0` everywhere: no ISCO in the bubble (asserted) |
+| `orbit_energy` | `E = 1 + r² = cosh²ρ` — the rent, paid once as kinetic energy you keep (asserted) |
+| `orbit_angular_velocity` | exactly 1 at EVERY radius (asserted at 0.5/1.5/3.0) — AdS is the perfect merry-go-round |
+| `local_gravity` | `g = tanh(ρ)`: released from rest, the proper fall is `½gτ²` — matches the exact geodesic to 0.1% (asserted) |
 
 ## Post — `engine.post`
 

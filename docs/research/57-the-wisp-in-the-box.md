@@ -72,11 +72,72 @@ simulation boundary, visible and irrelevant):
   released from rest, the wisp whips back through the center, fastest where the
   map is loosest — the hyperbolic signature.
 
+## Stage 2 — the body: orbits are free hover
+
+> "The wisp is like the hand of the mind and the body is an engined you growth
+> into and hover."
+
+Stage 1 was a bare point with a drive. Stage 2 grows the body — and the body's
+first discovery is that the geometry gives hovering away for free, if you move.
+
+Hovering *still* at proper altitude ρ costs continuous thrust `a = tanh ρ`
+(bounded, but forever: cut the engine and you fall). But add sideways motion
+and let the centrifugal term carry the weight. The effective radial potential
+for angular momentum L is
+
+```
+V(r) = (1 + r²)(1 + L²/r²)          (r = sinh ρ, metric radial coordinate)
+```
+
+and it is stationary — a genuine circular orbit — exactly when
+
+```
+L = r²        E = 1 + r² = cosh² ρ        V″ = 8  (always stable)
+```
+
+Three exact facts, each test-asserted:
+
+1. **`L = r²` closes the orbit.** Not an approximation — `V′(r₀) = 0`
+   identically, and `V″ = 8 > 0` at *every* radius: there is no ISCO in the
+   bubble. Every circular orbit, however deep or high, is stable.
+2. **`ω = dφ/dt = 1` universally.** The angular velocity of every circular
+   orbit is exactly 1 (in units of c/L), independent of radius. AdS is the
+   perfect merry-go-round: two bodies orbiting at different altitudes stay
+   forever in phase. This is the orbital face of the same isochrony that made
+   every stage-1 coast take exactly 2π.
+3. **The rent is `E = cosh² ρ`.** Hovering statically costs `cosh ρ` (the
+   stage-1 fuel wall); orbiting at the same shell "costs" `cosh² ρ` — but as
+   *kinetic energy you keep*, not thrust you burn. Once paid, the engine goes
+   silent and the altitude holds itself.
+
+And the equivalence principle closes the loop: released from rest at ρ, the
+exact geodesic is SHM in proper time (`r(τ) = r₀ cos τ`), and for short falls
+the proper drop is `½ g τ²` with `g = tanh ρ` — the *same* g the hover engine
+fights. Checked against the closed form to 0.1%.
+
+## The scene: `wisp_body`
+
+One 16-second cycle of the stage-2 life:
+
+* **grow** (0–4 s) — the hull assembles around the mote, dash by dash, while
+  the green growth ledger fills and the energy reserve charges;
+* **climb** (4–7 s) — the drive lights and the body climbs the cosh cliff from
+  ρ = 0.35 to the chosen hover shell at ρ = 1.5, reserve draining by the exact
+  `cosh ρ₂ − cosh ρ₁` bill;
+* **hover** (7–11 s) — engines pinned at `a = tanh 1.5 ≈ 0.905` (the amber
+  thrust bar sits just under its white "engine max" line), reserve bleeding —
+  altitude held, expensively;
+* **orbit** (11–16 s) — the body tips sideways onto the `L = r²` orbit: the
+  flame cuts, the thrust bar drops to zero, the reserve goes *flat*, and the
+  body circles the shell at ω = 1 — in step with a companion mote that has
+  been free-orbiting a lower shell all along, because ω = 1 there too.
+
 ## The stages ahead (named, not built — "we do not want to overdo it")
 
-* **Stage 2 — the body**: the wisp grows into an engine it hovers with:
-  persistent structure, hover shells at chosen ρ (each shell's `tanh ρ` thrust
-  budget and `cosh ρ` rent), energy harvesting and retention between burns.
+* **Stage 2 — the body** *(built above)*: the wisp grows into an engine it
+  hovers with: persistent structure, hover shells at chosen ρ (each shell's
+  `tanh ρ` thrust budget and `cosh ρ` rent), and the orbital discovery that
+  motion makes hovering free.
 * **Stage 3 — navigation**: moving forward through the simulation on drives:
   hyperbolic waypoints, geodesic transfers between hover shells, the cost
   algebra of getting anywhere in a space that resists arrival.

@@ -33,10 +33,28 @@ L = 1; global coordinates ``ds² = −(1+r²)dt² + dr²/(1+r²)``, Poincaré-di
   asserted to agree, and the closed form makes the 2π isochrony MANIFEST: the
   period never depends on E.
 
-Stage 1 of the wisp's story: coast (the trap always returns you), burn (the drive
-climbs, the map compresses), fall back (the fuel wall wins). Stage 2 — growing into
-a body — and stage 3 — navigation — come later. See
-``docs/research/57-the-wisp-in-the-box.md``.
+Stage 2 — the body the wisp grows into and hovers with — adds the orbit dictionary
+(``ds² = −(1+r²)dt² + dr²/(1+r²) + r²dφ²``):
+
+* ``orbit_angular_momentum`` — circular geodesics sit at ``V′ = 0`` exactly when
+  ``L = r²`` (asserted), and they are STABLE (``V″ = 8``, radius-independent,
+  asserted).
+* ``orbit_energy`` — a body on a circular orbit at proper distance ρ carries
+  ``E = 1 + r² = cosh²ρ`` (asserted): more than the ``cosh ρ`` of static hover —
+  the kinetic surcharge — but it buys:
+* ``orbit_angular_velocity`` — ``ω = (L/r²)(1+r²)/E = 1`` EXACTLY, at every
+  radius (asserted at three radii): all circular orbits complete in 2π. Orbiting
+  is FREE HOVER — zero thrust, forever — and the whole bubble turns in step.
+* ``local_gravity`` — the g a hovering body feels is ``tanh ρ`` (the same as its
+  hover thrust — the equivalence principle): a body released from rest falls
+  ``½·tanh(ρ)·τ²`` in its own proper time (asserted against the closed-form
+  geodesic). Retention runs the fuel bill in reverse: lowering mass from ρ₂ to
+  ρ₁ BANKS ``cosh ρ₂ − cosh ρ₁`` — AdS is conservative; altitude is a battery.
+
+Stage 1: coast (the trap always returns you), burn (the drive climbs, the map
+compresses), fall back (the fuel wall wins). Stage 2: grow, climb, hover on flame,
+tip into orbit — the body holds altitude for free. Stage 3 — navigation — comes
+later. See ``docs/research/57-the-wisp-in-the-box.md``.
 """
 
 import math
@@ -115,6 +133,37 @@ def radial_geodesic_closed(r_max: float, t: float) -> float:
     e = math.sqrt(1.0 + r_max * r_max)
     st, ct = math.sin(t), math.cos(t)
     return r_max * st / math.sqrt(e * e * ct * ct + st * st)
+
+
+def orbit_angular_momentum(r: float) -> float:
+    """Angular momentum of the circular orbit at global radius r (host-side):
+    ``L = r²`` — the exact stationary point of ``V² = (1+r²)(1+L²/r²)``
+    (``V′ = 0`` asserted; ``V″ = 8 > 0``: stable at every radius, asserted)."""
+    return r * r
+
+
+def orbit_energy(rho: float) -> float:
+    """Energy of a unit-mass body on a circular orbit at proper distance ρ
+    (host-side): ``E = 1 + r² = cosh²ρ`` (asserted) — the kinetic surcharge over
+    static hover's ``cosh ρ``, paid once, and then the thrust bill is zero."""
+    return math.cosh(rho) ** 2
+
+
+def orbit_angular_velocity(r: float) -> float:
+    """The universal clock (host-side): ``ω = (L/r²)·(1+r²)/E = 1`` EXACTLY for
+    every circular orbit (asserted at three radii): the whole bubble orbits in
+    step, one lap per 2π — free hover with the same isochrony as free fall."""
+    ell = orbit_angular_momentum(r)
+    e = math.sqrt((1.0 + r * r) * (1.0 + ell * ell / (r * r)))
+    return (ell / (r * r)) * (1.0 + r * r) / e
+
+
+def local_gravity(rho: float) -> float:
+    """The g a hovering body feels at proper distance ρ (host-side): ``tanh ρ`` —
+    identical to its hover thrust (the equivalence principle): released from
+    rest it falls ``½·tanh(ρ)·τ²`` in proper time (asserted against the exact
+    geodesic)."""
+    return math.tanh(rho)
 
 
 def geodesic_period(r_max: float) -> float:

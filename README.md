@@ -871,11 +871,21 @@ runs one coast-burn-fall cycle: the exact closed-form geodesic
 isochrony asserted), the drive stalling against the `tanh(ρ/2)` map compression
 while proper distance climbs, and the energy reserve draining on the `cosh ρ` cliff
 (asserted divergent) — hovering is cheap (`a = tanh ρ < c²/L`, asserted), leaving
-is infinitely expensive. Stages 2 (the body) and 3 (navigation) are named in the doc.
+is infinitely expensive. **Stage 2** grows the body: `wisp_body` runs
+grow → climb → hover → orbit, and the orbit is the discovery — `L = r²` makes the
+effective potential stationary (asserted), `V″ = 8 > 0` everywhere so there is no
+ISCO (asserted), the orbit energy is `E = cosh²ρ` (asserted), and every circular
+orbit turns at exactly ω = 1 regardless of radius (asserted at three radii): motion
+makes hovering free, and two bodies on different shells stay forever in phase.
+Stage 3 (navigation) is named in the doc.
 
 | wisp_box — the burn | wisp_box — the whole cycle |
 |---|---|
 | ![wisp_box still](docs/engine/wisp_box.png) | ![wisp_box](docs/engine/wisp_box.gif) |
+
+| wisp_body — hover on the shell | wisp_body — grow, climb, hover, orbit |
+|---|---|
+| ![wisp_body still](docs/engine/wisp_body.png) | ![wisp_body](docs/engine/wisp_body.gif) |
 
 ## Engine leap — global illumination
 
