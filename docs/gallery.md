@@ -494,6 +494,40 @@ ledgers accumulating live.
 
 ![the hands diverging](engine/gr_clocks.gif)
 
+### The expanding universe — Friedmann, 1998, and the two horizons
+
+`cosmo_expansion` — **the exact scale factor**
+([Research 56, Part I](research/56-expanding-universe.md)). Flat ΛCDM is exactly
+solvable: `a(t) = (Ω_m/Ω_Λ)^{1/3} sinh^{2/3}(3/2·√Ω_Λ H₀ t)` (Friedmann ODE
+asserted; t₀ = 13.8 Gyr asserted with real Planck numbers). Galaxies ride the
+stretching comoving grid while the panel draws the curve past the matter-forever
+ghost, through the ä = 0 inflection at z ≈ 0.63 (asserted).
+
+![cosmo_expansion — the curve](engine/cosmo_expansion.png)
+
+![32 Gyr of expansion](engine/cosmo_expansion.gif)
+
+`cosmo_hubble` — **the plot that discovered dark energy**
+([Research 56, Part II](research/56-expanding-universe.md)). The 1998 Hubble
+diagram rebuilt from the exact integrals: μ(z) for ΛCDM (amber) asserted ABOVE the
+exact matter-only closed form (gray) at every z — 0.58 mag at z = 1 — while
+supernovae light up along the curve as the survey deepens. The gap is the Nobel.
+
+![cosmo_hubble — the diagram](engine/cosmo_hubble.png)
+
+![the survey deepening](engine/cosmo_hubble.gif)
+
+`cosmo_horizons` — **what we can see vs what we can ever reach**
+([Research 56, Part III](research/56-expanding-universe.md)). Both horizons as
+exact integrals of the closed-form a(t): the cyan particle horizon grows (46 Gly
+today, asserted — the observable universe), the magenta event horizon shrinks
+(16.7 Gly, asserted finite — pure Λ); galaxies it passes flare amber and go red —
+visible forever, reachable never. The sky is slowly emptying.
+
+![cosmo_horizons — the two circles](engine/cosmo_horizons.png)
+
+![2 to 60 Gyr](engine/cosmo_horizons.gif)
+
 ## Warp compression — three compressions of the card's visual information
 
 Virtual compression of the **actual card**: the real RTX 6000 Pro board (`gpu_board`) is compressed

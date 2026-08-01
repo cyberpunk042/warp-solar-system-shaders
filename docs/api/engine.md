@@ -344,6 +344,18 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `clock_rate_static` / `clock_rate_orbit` / `clock_crossover_radius` | `√(1−2M/r)` / `√(1−3M/r)` / the mass-independent break-even `r = 3R/2` (asserted) |
 | `gps_daily_drift_us` / `pound_rebka_shift` | +38.5 μs/day for real GPS (asserted); `gh/c² = 2.46×10⁻¹⁵` over 22.5 m (asserted) |
 
+### `engine.cosmology` — the expanding universe (host-side, all test-asserted, Planck 2018)
+
+| Function | What it is |
+|---|---|
+| `scale_factor` | the EXACT flat-ΛCDM `a(t) = (Ω_m/Ω_Λ)^{1/3} sinh^{2/3}(3/2·√Ω_Λ H₀ t)` — asserted to satisfy the Friedmann ODE |
+| `age_of_universe` / `age_at_scale_factor` | `t₀ = (2/3√Ω_Λ H₀)·asinh(√(Ω_Λ/Ω_m))` = 13.8 Gyr (asserted) + the closed-form inverse |
+| `acceleration_onset` / `matter_lambda_equality` | `ä = 0` at `(Ω_m/2Ω_Λ)^{1/3}` (z ≈ 0.63, sign flip asserted) / `ρ_m = ρ_Λ` at z ≈ 0.30 (asserted) |
+| `comoving_distance_gly` / `luminosity_distance_gly` / `distance_modulus` | the Hubble-diagram machinery `D_C = (c/H₀)∫dz/E`, `D_L = (1+z)D_C`, `μ = 5log₁₀(D_L/10pc)` |
+| `distance_modulus_matter_only` | the Ω_m = 1 ghost (exact closed form) — ΛCDM asserted ABOVE it at every z; 0.58 mag gap at z = 1 (the 1998 discovery) |
+| `particle_horizon_gly` / `event_horizon_gly` | `c∫₀ᵗdt/a` ≈ 46 Gly (asserted, grows) / `c∫ₜ^∞dt/a` ≈ 16.7 Gly (asserted finite, shrinks) |
+| `lookback_time` / `e_of_z` / `hubble_h0_per_gyr` | when the light left (z = 1 → 7.95 Gyr, asserted); `E(z)`; unit plumbing |
+
 ## Post — `engine.post`
 
 Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with
