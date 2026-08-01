@@ -102,7 +102,8 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), width: int, height: int, time
     tcc = wp.dot(cp, rd)
     if tcc > 0.0:
         perp2 = wp.dot(cp, cp) - tcc * tcc
-        col = col + wp.vec3(0.75, 0.85, 0.65) * (0.75 * wp.exp(-perp2 / 0.0005))
+        att = wp.min(wp.max(12.0 / wp.dot(cp, cp), 0.45), 1.8)
+        col = col + wp.vec3(0.75, 0.85, 0.65) * (0.75 * att * wp.exp(-perp2 / 0.0005))
 
     # ---- the drive flame (climb + hover) ----
     if flame > 0.0:
@@ -110,19 +111,22 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), width: int, height: int, time
         tcf = wp.dot(fp, rd)
         if tcf > 0.0:
             perp2 = wp.dot(fp, fp) - tcf * tcf
-            col = col + wp.vec3(1.00, 0.60, 0.20) * (1.5 * flame * wp.exp(-perp2 / 0.004))
+            att = wp.min(wp.max(12.0 / wp.dot(fp, fp), 0.45), 1.8)
+            col = col + wp.vec3(1.00, 0.60, 0.20) * \
+                (1.5 * att * flame * wp.exp(-perp2 / 0.004))
 
     # ---- the body: wisp core + hull bubble growing around it ----
     wpr = wpos - cam
     tcw = wp.dot(wpr, rd)
     if tcw > 0.0:
         perp2 = wp.dot(wpr, wpr) - tcw * tcw
-        col = col + wp.vec3(0.80, 0.95, 1.00) * (1.9 * wp.exp(-perp2 / 0.0011))
+        att = wp.min(wp.max(12.0 / wp.dot(wpr, wpr), 0.45), 1.8)
+        col = col + wp.vec3(0.80, 0.95, 1.00) * (1.9 * att * wp.exp(-perp2 / 0.0011))
         if hull > 0.01:
             dpw = wp.sqrt(perp2)
             d_h = wp.abs(dpw - 0.075)
             col = col + wp.vec3(0.55, 0.90, 0.75) * \
-                (1.0 * hull * wp.exp(-(d_h * d_h) / 0.00016))
+                (1.0 * att * hull * wp.exp(-(d_h * d_h) / 0.00016))
 
     # ---- the ledgers: growth / thrust (with max line) / reserve ----
     if x > 1.42 and x < 1.48 and y > -1.05 and y < -1.05 + 2.0 * grow_frac:

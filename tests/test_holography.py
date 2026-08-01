@@ -91,6 +91,7 @@ from warp_shaders.engine.wisp import (
     orbit_energy,
     orbit_geodesic,
     proper_distance,
+    metric_to_disk,
     radial_geodesic,
     radial_geodesic_closed,
     shadow_contrast,
@@ -1189,18 +1190,24 @@ def main():
         _bst, _crc, tot = transfer_cost(rho1, rho2)
         assert abs(tot - (orbit_energy(rho2) - orbit_energy(rho1))) < 1e-12, \
             "no clever route exists: the bill telescopes to the energy difference"
-    # the isochronous subway: EVERY transfer takes dt = pi/2 and sweeps pi/2
-    e_t, l_t = transfer_orbit(0.8, 1.6)
-    rlo, rhi = apsides(e_t, l_t)
-    ts_n, rs_n, ps_n = orbit_geodesic(e_t, l_t, rlo + 1e-9, 0.0, 1.0, 2.0, 100000)
-    t_arr, p_arr = None, None
-    for tt, rr, pp in zip(ts_n, rs_n, ps_n):
-        if rr >= rhi - 1e-6:
-            t_arr, p_arr = tt, pp
-            break
-    assert t_arr is not None and abs(t_arr - _m.pi / 2.0) < 5e-3, \
-        f"the subway timetable: dt = pi/2, got {t_arr}"
-    assert abs(p_arr - _m.pi / 2.0) < 5e-3, f"a quarter turn exactly, got {p_arr}"
+    # the coordinate conversion every scene plots through — exact identity
+    for rho_c in (0.4, 1.6, 3.0):
+        assert abs(metric_to_disk(_m.sinh(rho_c)) - disk_radius(rho_c)) < 1e-15, \
+            "metric_to_disk(sinh rho) must equal disk_radius(rho) exactly"
+    # the isochronous subway: EVERY transfer takes dt = pi/2 and sweeps pi/2 —
+    # checked at a NEAR pair and a FAR pair: same timetable, different fares
+    for rho_lo, rho_hi in ((0.8, 1.6), (0.4, 2.4)):
+        e_t, l_t = transfer_orbit(rho_lo, rho_hi)
+        rlo, rhi = apsides(e_t, l_t)
+        ts_n, rs_n, ps_n = orbit_geodesic(e_t, l_t, rlo + 1e-9, 0.0, 1.0, 2.0, 100000)
+        t_arr, p_arr = None, None
+        for tt, rr, pp in zip(ts_n, rs_n, ps_n):
+            if rr >= rhi - 1e-6:
+                t_arr, p_arr = tt, pp
+                break
+        assert t_arr is not None and abs(t_arr - _m.pi / 2.0) < 5e-3, \
+            f"the subway timetable: dt = pi/2 for {rho_lo}->{rho_hi}, got {t_arr}"
+        assert abs(p_arr - _m.pi / 2.0) < 5e-3, f"a quarter turn exactly, got {p_arr}"
     # the closed form u(tau) = ubar - A cos 2tau breathes between the apsides
     us = [geodesic_u(e_t, l_t, 0.01 * k) for k in range(315)]
     assert abs(min(us) - rlo * rlo) < 1e-4 and abs(max(us) - rhi * rhi) < 1e-4

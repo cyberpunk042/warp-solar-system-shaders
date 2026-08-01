@@ -35,6 +35,7 @@ import warp as wp
 
 from ..engine import post
 from ..engine.wisp import (
+    metric_to_disk,
     orbit_geodesic,
     transfer_cost,
     transfer_orbit,
@@ -52,7 +53,7 @@ _N_ROUTE = 36
 
 def _to_disk(r_metric: float) -> float:
     """Global radius r = sinh(rho) -> Poincare-disk display radius."""
-    return math.tanh(0.5 * math.asinh(r_metric)) * _R_BUBBLE
+    return metric_to_disk(r_metric) * _R_BUBBLE
 
 
 _CACHE = None

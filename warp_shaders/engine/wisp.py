@@ -145,6 +145,14 @@ def disk_radius(rho: float) -> float:
     return math.tanh(0.5 * rho)
 
 
+def metric_to_disk(r_metric: float) -> float:
+    """Convert the global metric radius ``r = sinh ρ`` (the coordinate the
+    geodesic integrators use) to the Poincaré map radius ``tanh(ρ/2)``
+    (host-side): the one conversion every scene plots through. Identity
+    asserted: ``metric_to_disk(sinh ρ) == disk_radius(ρ)`` exactly."""
+    return math.tanh(0.5 * math.asinh(r_metric))
+
+
 def hover_acceleration(rho: float) -> float:
     """Proper acceleration needed to hang motionless at proper distance ρ
     (host-side): ``a = tanh(ρ)`` — BOUNDED by c²/L = 1 (asserted): hovering

@@ -15,6 +15,19 @@ way possible: not by walls, but by geometry. Every law below is exact and
 test-asserted. New engine module: `warp_shaders/engine/wisp.py`. Scene:
 `wisp_box`. This is **stage 1** of the wisp's story — the drives.
 
+## The wisp at a glance
+
+The whole arc, one row per piece of the brief (every law test-asserted in
+`tests/test_holography.py`; all engine functions in `warp_shaders/engine/wisp.py`):
+
+| Brief | Scenes | The exact laws |
+|---|---|---|
+| Stage 1 — the drives ("trapped / limited to") | `wisp_box`, `wisp_box_3d` | rim at `tanh(ρ/2) < 1` yet `ρ → ∞`; free fall `r(t) = r_max sin t/√(E²cos²t+sin²t)`, period 2π at every amplitude; hover `tanh ρ < 1`; fuel wall `cosh ρ` |
+| Stage 2 — the body ("an engined you growth into and hover") | `wisp_body`, `wisp_body_3d` | orbit at `L = r²` (V′ = 0, V″ = 8, no ISCO); `E = cosh²ρ`; ω = 1 at every radius in every plane; equivalence principle `½ tanh(ρ) τ²` |
+| Stage 3 — navigation ("use your drives, your engines") | `wisp_navigate`, `wisp_navigate_3d` | transfer `E = cosh ρ₁cosh ρ₂`, `L = sinh ρ₁sinh ρ₂`; fare `cosh²ρ₂ − cosh²ρ₁` path-independent; every trip Δt = Δφ = π/2; the lens: refocus at π, home at 2π |
+| The spherical bubble ("sphererical magic circle") | `wisp_swarm_3d` | `A = 4π sinh²ρ` (e² per unit); `V = ∫A dρ` exact; skin theorem `V/A → ½`; the firework: all amplitudes refocus at π together |
+| Because of AdS/CFT (the boundary) | `wisp_shadow` | `K = (cosh ρ − sinh ρ cos θ)^−Δ`; contrast `e^{2Δρ}` exact; width `→ 2√(2^{1/Δ}−1)·e^{−ρ}` (UV/IR); imprint `∫K dθ = 2π` conserved |
+
 ## The dictionary
 
 ```

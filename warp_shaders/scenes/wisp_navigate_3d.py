@@ -32,6 +32,7 @@ import warp as wp
 
 from ..engine import post
 from ..engine.wisp import (
+    metric_to_disk,
     orbit_geodesic,
     transfer_cost,
     transfer_orbit,
@@ -55,7 +56,7 @@ _V_PLANE = np.cross(_N_PLANE, _U_PLANE)
 
 
 def _to_disk(r_metric: float) -> float:
-    return math.tanh(0.5 * math.asinh(r_metric)) * _R_BUBBLE
+    return metric_to_disk(r_metric) * _R_BUBBLE
 
 
 _CACHE = None
@@ -133,18 +134,20 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), width: int, height: int, time
             tcr = wp.dot(p, rd)
             if tcr > 0.0:
                 perp2 = wp.dot(p, p) - tcr * tcr
+                att = wp.min(wp.max(12.0 / wp.dot(p, p), 0.45), 1.8)
                 col = col + wp.vec3(0.40, 0.75, 0.85) * \
-                    (0.35 * route_glow * wp.exp(-perp2 / 0.0004))
+                    (0.35 * att * route_glow * wp.exp(-perp2 / 0.0004))
 
-    # ---- the geodesic lens: the 3D mote flower ----
+    # ---- the geodesic lens: the 3D mote flower (near bright, far dim) ----
     if mote_glow > 0.0:
         for m in range(n_motes):
             p = motes[m] - cam
             tcm = wp.dot(p, rd)
             if tcm > 0.0:
                 perp2 = wp.dot(p, p) - tcm * tcm
+                att = wp.min(wp.max(12.0 / wp.dot(p, p), 0.45), 1.8)
                 col = col + wp.vec3(0.95, 0.85, 0.50) * \
-                    (0.8 * mote_glow * wp.exp(-perp2 / 0.0006))
+                    (0.8 * att * mote_glow * wp.exp(-perp2 / 0.0006))
 
     # ---- refocus halos: antipode at t = pi, home at t = 2 pi ----
     if ping_a > 0.001:

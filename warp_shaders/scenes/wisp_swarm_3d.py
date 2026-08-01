@@ -93,14 +93,15 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), width: int, height: int, time
             d_q = wp.abs(dc - rq)
             col = col + wp.vec3(0.14, 0.17, 0.30) * (0.5 * wp.exp(-(d_q * d_q) / 0.00016))
 
-    # ---- the swarm ----
+    # ---- the swarm (near bright, far dim: the fireworks read in depth) ----
     for m in range(n_motes):
         p = motes[m] - cam
         tc = wp.dot(p, rd)
         if tc > 0.0:
             perp2 = wp.dot(p, p) - tc * tc
-            col = col + wp.vec3(0.95, 0.82, 0.45) * (0.85 * wp.exp(-perp2 / 0.0006))
-            col = col + wp.vec3(0.80, 0.60, 0.30) * (0.20 * wp.exp(-perp2 / 0.005))
+            att = wp.min(wp.max(11.0 / wp.dot(p, p), 0.45), 1.8)
+            col = col + wp.vec3(0.95, 0.82, 0.45) * (0.85 * att * wp.exp(-perp2 / 0.0006))
+            col = col + wp.vec3(0.80, 0.60, 0.30) * (0.20 * att * wp.exp(-perp2 / 0.005))
 
     # ---- the ledgers: dispersion / shell area / the skin theorem ----
     if x > 1.42 and x < 1.48 and y > -1.05 and y < -1.05 + 2.0 * disp_frac:

@@ -115,13 +115,14 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), width: int, height: int, time
             d_q = wp.abs(dc - rq)
             col = col + wp.vec3(0.14, 0.17, 0.30) * (0.5 * wp.exp(-(d_q * d_q) / 0.00016))
 
-    # ---- the box: corner brackets hanging in depth ----
+    # ---- the box: corner brackets hanging in depth (near bright, far dim) ----
     for m in range(n_brk):
         p = brackets[m] - cam
         tc = wp.dot(p, rd)
         if tc > 0.0:
             perp2 = wp.dot(p, p) - tc * tc
-            col = col + wp.vec3(0.45, 0.50, 0.60) * (0.55 * wp.exp(-perp2 / 0.0009))
+            att = wp.min(wp.max(12.0 / wp.dot(p, p), 0.45), 1.8)
+            col = col + wp.vec3(0.45, 0.50, 0.60) * (0.7 * att * wp.exp(-perp2 / 0.0005))
 
     # ---- the trail: the wisp's recent past, fading ----
     for k in range(n_trail):
@@ -129,8 +130,9 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), width: int, height: int, time
         tc2 = wp.dot(tp, rd)
         if tc2 > 0.0:
             perp2 = wp.dot(tp, tp) - tc2 * tc2
+            att = wp.min(wp.max(12.0 / wp.dot(tp, tp), 0.45), 1.8)
             col = col + wp.vec3(0.55, 0.85, 0.95) * \
-                (0.5 * trail[k][3] * wp.exp(-perp2 / 0.0007))
+                (0.5 * att * trail[k][3] * wp.exp(-perp2 / 0.0007))
 
     # ---- the drive flame: exhaust toward the center of the ball ----
     if flame > 0.0:
@@ -138,15 +140,18 @@ def _render_kernel(img: wp.array2d(dtype=wp.vec3), width: int, height: int, time
         tcf = wp.dot(fp, rd)
         if tcf > 0.0:
             perp2 = wp.dot(fp, fp) - tcf * tcf
-            col = col + wp.vec3(1.00, 0.60, 0.20) * (1.5 * flame * wp.exp(-perp2 / 0.004))
+            att = wp.min(wp.max(12.0 / wp.dot(fp, fp), 0.45), 1.8)
+            col = col + wp.vec3(1.00, 0.60, 0.20) * \
+                (1.5 * att * flame * wp.exp(-perp2 / 0.004))
 
     # ---- the wisp ----
     wpr = wpos - cam
     tcw = wp.dot(wpr, rd)
     if tcw > 0.0:
         perp2 = wp.dot(wpr, wpr) - tcw * tcw
-        col = col + wp.vec3(0.80, 0.95, 1.00) * (2.0 * wp.exp(-perp2 / 0.0011))
-        col = col + wp.vec3(0.40, 0.70, 1.00) * (0.5 * wp.exp(-perp2 / 0.010))
+        att = wp.min(wp.max(12.0 / wp.dot(wpr, wpr), 0.45), 1.8)
+        col = col + wp.vec3(0.80, 0.95, 1.00) * (2.0 * att * wp.exp(-perp2 / 0.0011))
+        col = col + wp.vec3(0.40, 0.70, 1.00) * (0.5 * att * wp.exp(-perp2 / 0.010))
 
     # ---- the ledgers (screen space): rho / map radius + rim line / reserve ----
     if x > 1.42 and x < 1.48 and y > -1.05 and y < -1.05 + 2.0 * rho_frac:
