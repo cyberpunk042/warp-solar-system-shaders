@@ -78,6 +78,29 @@ length in time:
   and return HOME at ``t = 2π`` (asserted for three different (E, L) at 1e-6).
   In the bubble you cannot get lost — only be early with more fuel.
 
+Stage 1 in 3D — the ball. The magic circle becomes a magic SPHERE (the Poincaré
+ball, the spatial slice of global AdS₄), and every stage-1 law carries over
+UNCHANGED, because the radial equation never mentioned dimension: the rim is still
+at ``tanh(ρ/2) < 1``, the isochrony is still 2π, the fuel wall is still ``cosh ρ``,
+and every free flight is planar (angular momentum is conserved), so the closed
+forms apply verbatim in each geodesic's own plane. What 3D adds is the SIZE of
+the trap, and it is monstrous:
+
+* ``sphere_area`` — the geodesic sphere at proper radius ρ has area
+  ``A = 4π sinh²ρ`` — EXPONENTIAL growth (asserted: A(ρ+1)/A(ρ) → e²); the
+  Euclidean ``4πρ²`` only survives as the small-ρ limit (asserted).
+* ``ball_volume`` — the ball's volume is ``V = π(sinh 2ρ − 2ρ)`` — exactly the
+  integral of the area (``dV/dρ = A``, asserted), Euclidean ``4πρ³/3`` at small
+  ρ (asserted).
+* ``volume_area_ratio`` — ``V/A → 1/2`` as ρ → ∞ (asserted): however huge the
+  ball grows, essentially ALL of its volume lies within ONE unit of its surface.
+  Hyperbolic space is all skin and no core — the geometric seed of holography:
+  the bulk lives at its boundary.
+* ``the isochronous firework`` — release motes from the center in EVERY
+  direction with EVERY amplitude: each follows the same closed form along its
+  own ray, so the whole swarm passes through r = 0 SIMULTANEOUSLY every π
+  (asserted): the explosion that un-explodes, twice per period.
+
 Stage 1: coast (the trap always returns you), burn (the drive climbs, the map
 compresses), fall back (the fuel wall wins). Stage 2: grow, climb, hover on flame,
 tip into orbit — the body holds altitude for free. Stage 3: boost, ride the
@@ -192,6 +215,29 @@ def local_gravity(rho: float) -> float:
     rest it falls ``½·tanh(ρ)·τ²`` in proper time (asserted against the exact
     geodesic)."""
     return math.tanh(rho)
+
+
+def sphere_area(rho: float) -> float:
+    """Area of the geodesic sphere at proper radius ρ in the 3D ball
+    (host-side): ``A = 4π sinh²ρ`` — EXPONENTIAL (asserted A(ρ+1)/A(ρ) → e²);
+    the Euclidean 4πρ² survives only as the small-ρ limit (asserted)."""
+    s = math.sinh(rho)
+    return 4.0 * math.pi * s * s
+
+
+def ball_volume(rho: float) -> float:
+    """Volume of the ball of proper radius ρ (host-side):
+    ``V = π(sinh 2ρ − 2ρ)`` — exactly the integral of ``sphere_area``
+    (dV/dρ = A, asserted); Euclidean 4πρ³/3 at small ρ (asserted)."""
+    return math.pi * (math.sinh(2.0 * rho) - 2.0 * rho)
+
+
+def volume_area_ratio(rho: float) -> float:
+    """The skin theorem (host-side): ``V/A → 1/2`` as ρ → ∞ (asserted) —
+    however huge the ball, essentially all of its volume lies within one unit
+    of its surface. Hyperbolic space is all skin and no core; the bulk lives
+    at its boundary."""
+    return ball_volume(rho) / sphere_area(rho)
 
 
 def transfer_orbit(rho1: float, rho2: float):

@@ -193,6 +193,54 @@ One 16-second cycle of the stage-3 life:
   halo) at t = π, home ping (green halo) at t = 2π, the body arriving in step
   because its own orbit is one more geodesic through the release point.
 
+## Stage 1 in 3D — the ball
+
+> "you are in a sphererical magic circle / bubble"
+
+The brief said *spherical* from the start. The magic circle becomes a magic
+sphere — the Poincaré ball, the spatial slice of global AdS₄ — floating inside
+the 3D simulation box, corner brackets hanging in depth around it, the camera
+orbiting once per cycle. And the first discovery is that *nothing has to
+change*: the radial equation never mentioned dimension. The rim is still at
+`tanh(ρ/2) < 1`, the isochrony is still 2π, the fuel wall is still `cosh ρ`,
+and every free flight is planar (angular momentum is conserved), so the 2D
+closed forms apply verbatim in each geodesic's own plane. The wisp's whole
+stage-1 life — coast, burn, fall — replays inside the ball, law for law.
+
+What 3D adds is the **size** of the trap, and it is monstrous (all
+test-asserted):
+
+* **Areas explode.** The geodesic sphere at proper radius ρ has area
+  `A = 4π sinh²ρ` — each shell one unit further out is e² ≈ 7.39× larger
+  (asserted). The Euclidean `4πρ²` survives only as the small-ρ limit.
+* **The volume is exactly the integral of the area.** `V = π(sinh 2ρ − 2ρ)`,
+  with `dV/dρ = A` holding to 10⁻⁸ (asserted), Euclidean `4πρ³/3` at small ρ.
+* **The skin theorem.** `V/A → 1/2` as ρ → ∞ (asserted at 10⁻¹⁰): however huge
+  the ball grows, essentially *all* of its volume lies within one unit of its
+  surface. Hyperbolic space is all skin and no core — the geometric seed of
+  holography, visible in a ledger: the bulk lives at its boundary.
+* **The isochronous firework.** Release motes from the center in every
+  direction with every amplitude: each follows the same closed form along its
+  own ray, so the whole swarm passes back through r = 0 *simultaneously* every
+  π (asserted). The explosion that un-explodes. The trap is not just perfect
+  for one wisp — it is perfect for all of them at once, forever.
+
+## The scenes: `wisp_box_3d` and `wisp_swarm_3d`
+
+`wisp_box_3d` replays the stage-1 cycle in depth: the glowing ball with its
+nested equal-ρ shells, the corner brackets of the box hanging in space, the
+wisp coasting through the center of the sphere on the exact geodesic, burning
+outward to stall just inside the rim (amber ledger pinned under its violet rim
+line, magenta reserve draining on the cosh cliff), then falling back when the
+fuel wall wins — while the camera orbits the whole trap once per cycle.
+
+`wisp_swarm_3d` is the firework: 40 motes launched from the center in every
+direction with every amplitude, spreading through the exponentially growing
+shells and then folding back to a single point, twice per cycle. Ledgers: cyan
+dispersion breathing; amber shell area (the exponential the motes climb);
+magenta the live `2·V/A` rising toward its white ½-asymptote line and never
+touching it — the skin theorem, animated.
+
 ## The stages, complete
 
 * **Stage 1 — the drives** *(built)*: coast, burn, fall — trapped by geometry,

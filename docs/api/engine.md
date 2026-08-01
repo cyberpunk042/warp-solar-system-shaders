@@ -373,6 +373,9 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `transfer_cost` | boost + circularize; total telescopes to `cosh²ρ₂ − cosh²ρ₁` — the fare is path-independent (asserted) |
 | `apsides` / `geodesic_u` | turning radii `√(ū ∓ A)`; the exact arc `u(τ) = ū − A cos 2τ` (SHM in u; asserted) |
 | `orbit_geodesic` | coordinate-time RK4 for the free arc — asserts the π/2 subway (every transfer: Δt = Δφ = π/2) and the geodesic lens (antipodal refocus at t = π, home at 2π) |
+| `sphere_area` | the 3D ball: `A = 4π sinh²ρ` — exponential (A(ρ+1)/A(ρ) → e², asserted); Euclidean `4πρ²` only at small ρ (asserted) |
+| `ball_volume` | `V = π(sinh 2ρ − 2ρ)` — exactly `∫A dρ` (dV/dρ = A asserted); Euclidean `4πρ³/3` at small ρ (asserted) |
+| `volume_area_ratio` | the skin theorem: `V/A → 1/2` (asserted at 10⁻¹⁰) — all of hyperbolic volume lives within one unit of the surface |
 
 ## Post — `engine.post`
 

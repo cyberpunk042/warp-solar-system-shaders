@@ -574,6 +574,34 @@ all reconverge at the antipode at t = π (violet ping) and come home at t = 2π
 
 ![boost, coast, circularize, lens](engine/wisp_navigate.gif)
 
+`wisp_box_3d` — **stage 1 in 3D: the ball**
+([Research 57](research/57-the-wisp-in-the-box.md)). The magic circle becomes a
+magic SPHERE — the Poincaré ball floating inside the 3D simulation box, corner
+brackets hanging in depth, camera orbiting once per cycle. The same exact laws,
+because the radial equation never mentioned dimension: coast through the center of
+the ball on the closed-form geodesic (free flight is planar, so the 2D closed form
+applies verbatim in the tilted flight plane), burn to a stall just inside the
+glowing rim, fall back when the fuel wall wins. The nested translucent shells are
+the equal-ρ spheres whose areas grow as `4π sinh²ρ` (e² per unit — asserted).
+
+![wisp_box_3d — the burn, in depth](engine/wisp_box_3d.png)
+
+![one coast-burn-fall cycle, camera orbiting](engine/wisp_box_3d.gif)
+
+`wisp_swarm_3d` — **the isochronous firework**
+([Research 57](research/57-the-wisp-in-the-box.md)). 40 motes released from the
+center of the ball in every direction with every amplitude — and because the
+period is 2π at EVERY amplitude (isochrony asserted), the whole swarm passes back
+through r = 0 simultaneously every π: an explosion that un-explodes, twice per
+cycle. The ledgers carry the 3D dictionary: shell areas `4π sinh²ρ` (exponential,
+asserted), volume exactly `∫A dρ` (asserted), and the skin theorem `V/A → 1/2`
+(asserted) — the magenta bar rises toward its white asymptote line and never
+touches it: hyperbolic space is all skin and no core.
+
+![wisp_swarm_3d — the spread](engine/wisp_swarm_3d.png)
+
+![spread, collapse, spread — the un-explosion](engine/wisp_swarm_3d.gif)
+
 ## Warp compression — three compressions of the card's visual information
 
 Virtual compression of the **actual card**: the real RTX 6000 Pro board (`gpu_board`) is compressed

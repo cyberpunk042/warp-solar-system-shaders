@@ -898,6 +898,20 @@ at t = π and come home at t = 2π (asserted) — in the bubble you cannot get l
 |---|---|
 | ![wisp_navigate still](docs/engine/wisp_navigate.png) | ![wisp_navigate](docs/engine/wisp_navigate.gif) |
 
+**Stage 1 in 3D** puts the wisp in the spherical bubble the brief named from the
+start: the Poincaré ball inside a 3D box, corner brackets hanging in depth, camera
+orbiting — the same exact laws (the radial equation never mentioned dimension;
+free flight is planar so the closed forms apply verbatim), plus the 3D dictionary:
+shell areas `4π sinh²ρ` (e² per unit, asserted), volume exactly `∫A dρ` (asserted),
+and the skin theorem `V/A → 1/2` (asserted) — hyperbolic space is all skin and no
+core. `wisp_box_3d` replays coast-burn-fall in depth; `wisp_swarm_3d` is the
+isochronous firework — 40 motes, every direction, every amplitude, all refocusing
+through r = 0 simultaneously every π (asserted): the explosion that un-explodes.
+
+| wisp_box_3d — the burn, in depth | wisp_swarm_3d — the un-explosion |
+|---|---|
+| ![wisp_box_3d](docs/engine/wisp_box_3d.gif) | ![wisp_swarm_3d](docs/engine/wisp_swarm_3d.gif) |
+
 ## Engine leap — global illumination
 
 Light that **bounces**. A Monte-Carlo **path tracer** (Warp on-device RNG, cosine-weighted

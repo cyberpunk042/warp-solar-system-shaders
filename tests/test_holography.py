@@ -79,6 +79,7 @@ from warp_shaders.engine.cosmology import (
 )
 from warp_shaders.engine.wisp import (
     apsides,
+    ball_volume,
     climb_energy,
     disk_radius,
     geodesic_period,
@@ -92,9 +93,11 @@ from warp_shaders.engine.wisp import (
     proper_distance,
     radial_geodesic,
     radial_geodesic_closed,
+    sphere_area,
     static_energy,
     transfer_cost,
     transfer_orbit,
+    volume_area_ratio,
 )
 from warp_shaders.engine.gw import (
     chirp_frequency,
@@ -1237,7 +1240,67 @@ def main():
     print(f"  wisp_navigate: OK  (burn {am_a:.4f} -> {am_b:.4f}; "
           f"fare {mg_c:.4f} -> {mg_d:.4f}; altitude {cy_c:.4f} -> {cy_d:.4f})")
 
-    print("ALL PASSED (38 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- the wisp in 3D: the ball, exactly ----
+    # dV/drho = A: the volume is exactly the integral of the area
+    for rho_b in (0.5, 1.5, 3.0):
+        hh = 1e-6
+        dv = (ball_volume(rho_b + hh) - ball_volume(rho_b - hh)) / (2.0 * hh)
+        assert abs(dv - sphere_area(rho_b)) / sphere_area(rho_b) < 1e-8, \
+            "V = integral of A must hold exactly"
+    # Euclidean limits at small rho: A -> 4 pi rho^2, V -> 4/3 pi rho^3
+    rr_s = 1e-3
+    assert abs(sphere_area(rr_s) / (4.0 * _m.pi * rr_s * rr_s) - 1.0) < 1e-5
+    assert abs(ball_volume(rr_s) / (4.0 / 3.0 * _m.pi * rr_s ** 3) - 1.0) < 1e-5
+    # exponential growth: A(rho+1)/A(rho) -> e^2 — the trap is monstrous
+    assert abs(sphere_area(6.0) / sphere_area(5.0) - _m.e ** 2) < 1e-3
+    # the skin theorem: V/A -> 1/2 — all skin, no core
+    assert abs(volume_area_ratio(10.0) - 0.5) < 1e-7 and \
+        abs(volume_area_ratio(15.0) - 0.5) < 1e-10, \
+        "all of hyperbolic volume lives within one unit of the surface"
+    assert volume_area_ratio(0.5) < volume_area_ratio(2.0) < 0.5, "monotone, bounded"
+    # the isochronous firework: EVERY amplitude passes r = 0 at t = pi together
+    for amp in (0.7, 2.0, 5.0):
+        assert abs(radial_geodesic_closed(_m.sinh(amp), _m.pi)) < 1e-9, \
+            "the explosion must un-explode: all radial geodesics refocus at pi"
+    print(f"  wisp in 3D: OK  (dV/drho = A exact; A ratio e^2 = "
+          f"{sphere_area(6.0) / sphere_area(5.0):.4f}; V/A(10) = "
+          f"{volume_area_ratio(10.0):.8f} -> 1/2 skin theorem; "
+          f"firework refocus at pi for 3 amplitudes)")
+
+    # ---- the 3D scenes: structural checks ----
+    a = _render("wisp_box_3d", 1.0)          # coast: rho small, reserve full
+    b = _render("wisp_box_3d", 11.5)         # deep burn: rho high, reserve drained
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    cy_a = float((zone_a[..., 2] - zone_a[..., 0]).clip(0).mean())
+    cy_b = float((zone_b[..., 2] - zone_b[..., 0]).clip(0).mean())
+    assert cy_b > cy_a, \
+        f"wisp_box_3d: the proper-distance ledger must climb under burn ({cy_a:.4f} -> {cy_b:.4f})"
+    c = _render("wisp_box_3d", 7.0)          # early burn: reserve nearly full
+    zone_c = c[:, 4 * wk // 5:]
+    mg_c3 = float((zone_c[..., 0] - zone_c[..., 1]).clip(0).mean())
+    mg_b3 = float((zone_b[..., 0] - zone_b[..., 1]).clip(0).mean())
+    assert mg_b3 < mg_c3, \
+        f"wisp_box_3d: the reserve must drain on the cosh cliff ({mg_c3:.4f} -> {mg_b3:.4f})"
+    print(f"  wisp_box_3d: OK  (rho ledger {cy_a:.4f} -> {cy_b:.4f} under burn; "
+          f"reserve {mg_c3:.4f} -> {mg_b3:.4f})")
+
+    d = _render("wisp_swarm_3d", 4.0)        # max spread: ledgers breathing high
+    e2 = _render("wisp_swarm_3d", 7.9)       # collapse: everything at the center
+    zone_d = d[:, 4 * wk // 5:]
+    zone_e = e2[:, 4 * wk // 5:]
+    cy_d3 = float((zone_d[..., 2] - zone_d[..., 0]).clip(0).mean())
+    cy_e3 = float((zone_e[..., 2] - zone_e[..., 0]).clip(0).mean())
+    assert cy_d3 > cy_e3, \
+        f"wisp_swarm_3d: the dispersion must breathe ({cy_d3:.4f} spread vs {cy_e3:.4f} collapse)"
+    mg_d3 = float((zone_d[..., 0] - zone_d[..., 1]).clip(0).mean())
+    mg_e3 = float((zone_e[..., 0] - zone_e[..., 1]).clip(0).mean())
+    assert mg_d3 > mg_e3, \
+        f"wisp_swarm_3d: the skin ratio must collapse with the swarm ({mg_d3:.4f} -> {mg_e3:.4f})"
+    print(f"  wisp_swarm_3d: OK  (dispersion {cy_d3:.4f} spread -> {cy_e3:.4f} collapse; "
+          f"skin ledger {mg_d3:.4f} -> {mg_e3:.4f})")
+
+    print("ALL PASSED (40 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
           "+ Kerr horizons/area-theorem/superradiance "
@@ -1250,7 +1313,9 @@ def main():
           "+ wisp isochrony-2pi/hover-bounded/cosh-fuel-wall/rim-at-infinity "
           "+ body L=r2/omega=1-universal/E=cosh2-rho/no-ISCO/equivalence-principle "
           "+ navigate E=coshcosh-L=sinhsinh/fare-telescopes/subway-pi-over-2"
-          "/lens-refocus-pi-2pi)")
+          "/lens-refocus-pi-2pi "
+          "+ 3D-ball dV=A-exact/area-e2-growth/skin-theorem-V-over-A-half"
+          "/firework-refocus)")
 
 
 if __name__ == "__main__":
