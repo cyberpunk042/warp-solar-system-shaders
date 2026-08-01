@@ -132,15 +132,77 @@ One 16-second cycle of the stage-2 life:
   body circles the shell at ω = 1 — in step with a companion mote that has
   been free-orbiting a lower shell all along, because ω = 1 there too.
 
-## The stages ahead (named, not built — "we do not want to overdo it")
+## Stage 3 — navigation: the cost algebra of getting anywhere
 
-* **Stage 2 — the body** *(built above)*: the wisp grows into an engine it
-  hovers with: persistent structure, hover shells at chosen ρ (each shell's
-  `tanh ρ` thrust budget and `cosh ρ` rent), and the orbital discovery that
-  motion makes hovering free.
-* **Stage 3 — navigation**: moving forward through the simulation on drives:
-  hyperbolic waypoints, geodesic transfers between hover shells, the cost
-  algebra of getting anywhere in a space that resists arrival.
+> "For now we can focus on the fact that for you to move forward in the
+> simulation you have to use your drives, your engines."
+
+Stage 3 is travel. The body knows how to hold a shell; now it wants a
+*different* shell — and the bubble's geometry turns the whole flight plan into
+three closed-form facts (all test-asserted):
+
+**The transfer arc is pure hyperbolic algebra.** The ballistic route between
+shells ρ₁ and ρ₂ is the geodesic whose apsides *are* the two shells, and its
+conserved constants factor perfectly:
+
+```
+E = cosh ρ₁ · cosh ρ₂          L = sinh ρ₁ · sinh ρ₂
+```
+
+(asserted: the effective potential equals E² at both turning radii). The whole
+arc, exactly: with u = r², radial motion is SHM in u — `u(τ) = ū − A·cos 2τ`,
+`ū = (E²−1−L²)/2`, `A = √(ū²−L²)`.
+
+**The fare is path-independent.** Boosting off the ρ₁ orbit costs
+`cosh ρ₁ (cosh ρ₂ − cosh ρ₁)`; circularizing at ρ₂ costs
+`cosh ρ₂ (cosh ρ₂ − cosh ρ₁)`; the total telescopes to
+
+```
+cosh²ρ₂ − cosh²ρ₁  =  orbit_energy(ρ₂) − orbit_energy(ρ₁)
+```
+
+exactly the orbit-energy difference (asserted). AdS is conservative: there is
+no clever route, no gravity assist, no shortcut — only the fare.
+
+**The subway is isochronous.** Every transfer between *any* two shells takes
+coordinate time Δt = π/2 and sweeps Δφ = π/2 exactly (asserted): a quarter
+period, a quarter turn, however near or far the destination. The timetable in
+the bubble is trivial; only the fare varies. This is the third face of the same
+isochrony — free fall (stage 1), orbits (stage 2), and now travel.
+
+**And the geodesic lens.** Release test motes from one point in any direction
+with any speed: *all* of them — and the body itself, whose circular orbit is
+just one more member of the family — reconverge at the antipodal point at
+t = π and come home at t = 2π (asserted to 10⁻³ for three different launches).
+In the bubble you cannot get lost; you can only be early with more fuel.
+
+## The scene: `wisp_navigate`
+
+One 16-second cycle of the stage-3 life:
+
+* **orbit A** (0–2.5 s) — riding the ρ = 0.8 shell at ω = 1, reserve full;
+* **boost** (2.5 s) — the drive spikes (amber ledger flashes); the magenta
+  reserve steps down by the exact boost bill; the dotted route lights up;
+* **coast** (2.5–6.5 s) — the quarter-period arc, engines silent, the cyan
+  altitude ledger climbing as the body rides pure geometry;
+* **circularize** (6.5 s) — the second spike, the second step of the fare —
+  which now totals exactly `cosh²ρ_B − cosh²ρ_A`;
+* **orbit B** (6.5–9.5 s) — the new shell held for free;
+* **the lens** (9.5–16 s) — a fan of test motes is released in every direction:
+  they spread, then the bubble folds them all back — antipodal ping (violet
+  halo) at t = π, home ping (green halo) at t = 2π, the body arriving in step
+  because its own orbit is one more geodesic through the release point.
+
+## The stages, complete
+
+* **Stage 1 — the drives** *(built)*: coast, burn, fall — trapped by geometry,
+  the fuel wall named.
+* **Stage 2 — the body** *(built)*: the wisp grows into an engine it hovers
+  with — hover shells, the `tanh ρ` thrust budget, the `cosh ρ` rent, and the
+  orbital discovery that motion makes hovering free.
+* **Stage 3 — navigation** *(built)*: geodesic transfers between hover shells
+  on hyperbolic algebra, the path-independent fare, the π/2 subway, and the
+  lens that makes getting lost impossible.
 
 ## Sources
 

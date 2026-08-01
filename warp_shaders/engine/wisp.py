@@ -51,10 +51,38 @@ Stage 2 — the body the wisp grows into and hovers with — adds the orbit dict
   geodesic). Retention runs the fuel bill in reverse: lowering mass from ρ₂ to
   ρ₁ BANKS ``cosh ρ₂ − cosh ρ₁`` — AdS is conservative; altitude is a battery.
 
+Stage 3 — navigation — the cost algebra of getting anywhere in a space that
+resists arrival. Moving forward in the simulation means using the drives; the
+geometry then does something no Newtonian sky does — it makes every road the same
+length in time:
+
+* ``transfer_orbit`` — the ballistic (Hohmann-like) transfer between hover
+  shells ρ₁ and ρ₂ is the geodesic whose apsides are the two shells, and its
+  constants are pure hyperbolic algebra: ``E = cosh ρ₁ · cosh ρ₂``,
+  ``L = sinh ρ₁ · sinh ρ₂`` (asserted: the effective potential equals E² at
+  BOTH apsides).
+* ``transfer_cost`` — leaving the ρ₁ orbit costs ``cosh ρ₁ (cosh ρ₂ − cosh ρ₁)``
+  (the boost), circularizing at ρ₂ costs ``cosh ρ₂ (cosh ρ₂ − cosh ρ₁)``, and
+  the total telescopes to ``cosh²ρ₂ − cosh²ρ₁`` — exactly
+  ``orbit_energy(ρ₂) − orbit_energy(ρ₁)``: the bill is PATH-INDEPENDENT
+  (asserted). AdS is conservative; there is no clever route, only the fare.
+* ``the isochronous subway`` — EVERY transfer between ANY two shells takes
+  coordinate time ``Δt = π/2`` and sweeps ``Δφ = π/2`` exactly (asserted): a
+  quarter period, a quarter turn, however near or far. Timetables in the bubble
+  are trivial; only the fare varies.
+* ``apsides`` / ``geodesic_u`` — the general free arc, exactly: with u = r²,
+  ``u(τ) = ū − A·cos 2τ`` where ``ū = (E²−1−L²)/2``, ``A = √(ū²−L²)`` (SHM in
+  u; asserted against the coordinate-time integrator), apsides at ``ū ± A``.
+* ``the geodesic lens`` — launch test motes from one point in ANY direction
+  with ANY speed: ALL of them reconverge at the antipodal point at ``t = π``
+  and return HOME at ``t = 2π`` (asserted for three different (E, L) at 1e-6).
+  In the bubble you cannot get lost — only be early with more fuel.
+
 Stage 1: coast (the trap always returns you), burn (the drive climbs, the map
 compresses), fall back (the fuel wall wins). Stage 2: grow, climb, hover on flame,
-tip into orbit — the body holds altitude for free. Stage 3 — navigation — comes
-later. See ``docs/research/57-the-wisp-in-the-box.md``.
+tip into orbit — the body holds altitude for free. Stage 3: boost, ride the
+quarter-period arc, circularize — and watch the lens refocus everything you
+release. See ``docs/research/57-the-wisp-in-the-box.md``.
 """
 
 import math
@@ -164,6 +192,87 @@ def local_gravity(rho: float) -> float:
     rest it falls ``½·tanh(ρ)·τ²`` in proper time (asserted against the exact
     geodesic)."""
     return math.tanh(rho)
+
+
+def transfer_orbit(rho1: float, rho2: float):
+    """The ballistic transfer between hover shells ρ₁ and ρ₂ (host-side): the
+    geodesic whose apsides ARE the two shells. Pure hyperbolic algebra:
+    ``E = cosh ρ₁ · cosh ρ₂``, ``L = sinh ρ₁ · sinh ρ₂`` (asserted: the
+    effective potential equals E² at both apsides). Returns (E, L)."""
+    return (math.cosh(rho1) * math.cosh(rho2),
+            math.sinh(rho1) * math.sinh(rho2))
+
+
+def transfer_cost(rho1: float, rho2: float):
+    """The fare (host-side): boost off the ρ₁ orbit, coast, circularize at ρ₂.
+    Returns (boost, circularize, total) with
+    ``boost = cosh ρ₁ (cosh ρ₂ − cosh ρ₁)``,
+    ``circularize = cosh ρ₂ (cosh ρ₂ − cosh ρ₁)``, and the total telescoping to
+    ``cosh²ρ₂ − cosh²ρ₁ = orbit_energy(ρ₂) − orbit_energy(ρ₁)`` — the bill is
+    PATH-INDEPENDENT (asserted): no clever route exists, only the fare."""
+    d = math.cosh(rho2) - math.cosh(rho1)
+    boost = math.cosh(rho1) * d
+    circ = math.cosh(rho2) * d
+    return boost, circ, boost + circ
+
+
+def apsides(e: float, ell: float):
+    """Turning radii of the free arc with constants (E, L) (host-side): with
+    u = r², the radial equation is SHM in u about ``ū = (E²−1−L²)/2`` with
+    amplitude ``A = √(ū²−L²)``; the apsides are ``r_∓ = √(ū ∓ A)``. Returns
+    (r_min, r_max). Circular orbits are the degenerate case A = 0."""
+    ubar = 0.5 * (e * e - 1.0 - ell * ell)
+    amp2 = ubar * ubar - ell * ell
+    amp = math.sqrt(amp2) if amp2 > 0.0 else 0.0
+    return math.sqrt(max(ubar - amp, 0.0)), math.sqrt(ubar + amp)
+
+
+def geodesic_u(e: float, ell: float, tau: float) -> float:
+    """The EXACT free arc (host-side): ``u(τ) = ū − A·cos 2τ`` (u = r², proper
+    time τ from periapsis) — SHM in u, period π, asserted against the
+    coordinate-time integrator. Every bound arc breathes at the same rate."""
+    ubar = 0.5 * (e * e - 1.0 - ell * ell)
+    amp2 = ubar * ubar - ell * ell
+    amp = math.sqrt(amp2) if amp2 > 0.0 else 0.0
+    return ubar - amp * math.cos(2.0 * tau)
+
+
+def orbit_geodesic(e: float, ell: float, r0: float, phi0: float, sgn: float,
+                   t_span: float, n: int = 40000):
+    """Integrate the free arc in COORDINATE time (host-side, RK4 on
+    ``dr/dt = ±√(E²−V²)·(1+r²)/E``, ``dφ/dt = (L/r²)(1+r²)/E``): returns
+    (t_list, r_list, phi_list). This is the integrator the suite uses to assert
+    the π/2 subway, the closed form ``geodesic_u``, and the geodesic lens
+    (antipodal refocus at t = π, home at t = 2π)."""
+    r_min, r_max = apsides(e, ell)
+    h = t_span / float(n)
+    r, phi, sg = r0, phi0, sgn
+    ts, rs, phis = [0.0], [r0], [phi0]
+
+    def fr(rr, s):
+        v2 = e * e - (1.0 + rr * rr) * (1.0 + ell * ell / (rr * rr))
+        if v2 < 0.0:
+            v2 = 0.0
+        return s * math.sqrt(v2) * (1.0 + rr * rr) / e
+
+    def fp(rr):
+        return (ell / (rr * rr)) * (1.0 + rr * rr) / e
+
+    for k in range(n):
+        k1, p1 = fr(r, sg), fp(r)
+        k2, p2 = fr(r + 0.5 * h * k1, sg), fp(r + 0.5 * h * k1)
+        k3, p3 = fr(r + 0.5 * h * k2, sg), fp(r + 0.5 * h * k2)
+        k4, p4 = fr(r + h * k3, sg), fp(r + h * k3)
+        r = r + (h / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
+        phi = phi + (h / 6.0) * (p1 + 2.0 * p2 + 2.0 * p3 + p4)
+        if r >= r_max:
+            r, sg = r_max - 1e-12, -1.0
+        elif r <= r_min:
+            r, sg = r_min + 1e-12, 1.0
+        ts.append(h * float(k + 1))
+        rs.append(r)
+        phis.append(phi)
+    return ts, rs, phis
 
 
 def geodesic_period(r_max: float) -> float:

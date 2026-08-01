@@ -877,7 +877,14 @@ effective potential stationary (asserted), `V″ = 8 > 0` everywhere so there is
 ISCO (asserted), the orbit energy is `E = cosh²ρ` (asserted), and every circular
 orbit turns at exactly ω = 1 regardless of radius (asserted at three radii): motion
 makes hovering free, and two bodies on different shells stay forever in phase.
-Stage 3 (navigation) is named in the doc.
+**Stage 3** is navigation: `wisp_navigate` boosts off the shell-A orbit, coasts
+the ballistic transfer arc whose constants are pure hyperbolic algebra
+(`E = cosh ρ_A cosh ρ_B`, `L = sinh ρ_A sinh ρ_B`, asserted at both apsides),
+and circularizes at shell B — the fare telescoping to `cosh²ρ_B − cosh²ρ_A`,
+path-independent (asserted). Every transfer between any two shells takes exactly
+Δt = π/2 and sweeps Δφ = π/2 (the isochronous subway, asserted), and the geodesic
+lens closes the arc: motes released in every direction all refocus at the antipode
+at t = π and come home at t = 2π (asserted) — in the bubble you cannot get lost.
 
 | wisp_box — the burn | wisp_box — the whole cycle |
 |---|---|
@@ -886,6 +893,10 @@ Stage 3 (navigation) is named in the doc.
 | wisp_body — hover on the shell | wisp_body — grow, climb, hover, orbit |
 |---|---|
 | ![wisp_body still](docs/engine/wisp_body.png) | ![wisp_body](docs/engine/wisp_body.gif) |
+
+| wisp_navigate — the antipodal refocus | wisp_navigate — boost, coast, lens |
+|---|---|
+| ![wisp_navigate still](docs/engine/wisp_navigate.png) | ![wisp_navigate](docs/engine/wisp_navigate.gif) |
 
 ## Engine leap — global illumination
 

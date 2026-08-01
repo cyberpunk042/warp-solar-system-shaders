@@ -369,6 +369,10 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `orbit_energy` | `E = 1 + r² = cosh²ρ` — the rent, paid once as kinetic energy you keep (asserted) |
 | `orbit_angular_velocity` | exactly 1 at EVERY radius (asserted at 0.5/1.5/3.0) — AdS is the perfect merry-go-round |
 | `local_gravity` | `g = tanh(ρ)`: released from rest, the proper fall is `½gτ²` — matches the exact geodesic to 0.1% (asserted) |
+| `transfer_orbit` | the ballistic transfer between shells: `E = cosh ρ₁ cosh ρ₂`, `L = sinh ρ₁ sinh ρ₂` — the apsides ARE the shells (asserted) |
+| `transfer_cost` | boost + circularize; total telescopes to `cosh²ρ₂ − cosh²ρ₁` — the fare is path-independent (asserted) |
+| `apsides` / `geodesic_u` | turning radii `√(ū ∓ A)`; the exact arc `u(τ) = ū − A cos 2τ` (SHM in u; asserted) |
+| `orbit_geodesic` | coordinate-time RK4 for the free arc — asserts the π/2 subway (every transfer: Δt = Δφ = π/2) and the geodesic lens (antipodal refocus at t = π, home at 2π) |
 
 ## Post — `engine.post`
 

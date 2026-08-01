@@ -78,18 +78,23 @@ from warp_shaders.engine.cosmology import (
     scale_factor,
 )
 from warp_shaders.engine.wisp import (
+    apsides,
     climb_energy,
     disk_radius,
     geodesic_period,
+    geodesic_u,
     hover_acceleration,
     local_gravity,
     orbit_angular_momentum,
     orbit_angular_velocity,
     orbit_energy,
+    orbit_geodesic,
     proper_distance,
     radial_geodesic,
     radial_geodesic_closed,
     static_energy,
+    transfer_cost,
+    transfer_orbit,
 )
 from warp_shaders.engine.gw import (
     chirp_frequency,
@@ -1162,7 +1167,77 @@ def main():
     print(f"  wisp_body: OK  (thrust {am_a:.4f} hover -> {am_b:.4f} orbit; "
           f"growth {gr_c:.4f} -> {gr_d:.4f})")
 
-    print("ALL PASSED (37 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- the wisp navigates: the cost algebra of getting anywhere ----
+    # the transfer geodesic between shells has pure hyperbolic constants
+    for rho1, rho2 in ((0.8, 1.6), (0.4, 2.2)):
+        e_t, l_t = transfer_orbit(rho1, rho2)
+        assert abs(e_t - _m.cosh(rho1) * _m.cosh(rho2)) < 1e-12
+        assert abs(l_t - _m.sinh(rho1) * _m.sinh(rho2)) < 1e-12
+        # the apsides ARE the two shells: V^2 = E^2 at both turning radii
+        for rr in (_m.sinh(rho1), _m.sinh(rho2)):
+            v2 = (1.0 + rr * rr) * (1.0 + l_t * l_t / (rr * rr))
+            assert abs(v2 - e_t * e_t) < 1e-9, "the shells must be the apsides"
+        rlo, rhi = apsides(e_t, l_t)
+        assert abs(rlo - _m.sinh(rho1)) < 1e-9 and abs(rhi - _m.sinh(rho2)) < 1e-9
+        # the fare is path-independent: total = orbit_energy(2) - orbit_energy(1)
+        _bst, _crc, tot = transfer_cost(rho1, rho2)
+        assert abs(tot - (orbit_energy(rho2) - orbit_energy(rho1))) < 1e-12, \
+            "no clever route exists: the bill telescopes to the energy difference"
+    # the isochronous subway: EVERY transfer takes dt = pi/2 and sweeps pi/2
+    e_t, l_t = transfer_orbit(0.8, 1.6)
+    rlo, rhi = apsides(e_t, l_t)
+    ts_n, rs_n, ps_n = orbit_geodesic(e_t, l_t, rlo + 1e-9, 0.0, 1.0, 2.0, 100000)
+    t_arr, p_arr = None, None
+    for tt, rr, pp in zip(ts_n, rs_n, ps_n):
+        if rr >= rhi - 1e-6:
+            t_arr, p_arr = tt, pp
+            break
+    assert t_arr is not None and abs(t_arr - _m.pi / 2.0) < 5e-3, \
+        f"the subway timetable: dt = pi/2, got {t_arr}"
+    assert abs(p_arr - _m.pi / 2.0) < 5e-3, f"a quarter turn exactly, got {p_arr}"
+    # the closed form u(tau) = ubar - A cos 2tau breathes between the apsides
+    us = [geodesic_u(e_t, l_t, 0.01 * k) for k in range(315)]
+    assert abs(min(us) - rlo * rlo) < 1e-4 and abs(max(us) - rhi * rhi) < 1e-4
+    assert abs(geodesic_u(e_t, l_t, 0.0) - rlo * rlo) < 1e-12, "periapsis at tau = 0"
+    # the geodesic lens: any launch refocuses at the antipode at t = pi, home at 2pi
+    import bisect as _b
+    for (e_g, l_g) in ((2.2, 0.7), (3.0, 1.6), (1.9, 0.3)):
+        ts_g2, rs_g2, ps_g2 = orbit_geodesic(e_g, l_g, 1.0, 0.0, 1.0,
+                                             2.0 * _m.pi, 150000)
+        i_pi = _b.bisect_left(ts_g2, _m.pi)
+        assert abs(rs_g2[i_pi] - 1.0) < 1e-3 and abs(ps_g2[i_pi] - _m.pi) < 1e-3, \
+            f"the lens: (E={e_g}, L={l_g}) must be at the antipode at t=pi"
+        assert abs(rs_g2[-1] - 1.0) < 1e-3 and abs(ps_g2[-1] - 2.0 * _m.pi) < 1e-3, \
+            f"the lens: (E={e_g}, L={l_g}) must be home at t=2pi"
+    print(f"  wisp navigates: OK  (E=cosh*cosh, L=sinh*sinh at both apsides; "
+          f"fare telescopes; subway dt={t_arr:.4f}~pi/2 dphi={p_arr:.4f}~pi/2; "
+          f"lens refocus at pi/2pi for 3 launches)")
+
+    # ---- the navigation scene: structural checks ----
+    a = _render("wisp_navigate", 2.55)       # boost: amber burn spike
+    b = _render("wisp_navigate", 5.0)        # coast: engines silent
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    am_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    am_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert am_a > am_b, \
+        f"wisp_navigate: the boost burns (amber {am_a:.4f}) but the arc coasts ({am_b:.4f})"
+    c = _render("wisp_navigate", 1.0)        # before the trip: reserve full, low shell
+    d = _render("wisp_navigate", 8.5)        # after both burns: reserve down, high shell
+    zone_c = c[:, 4 * wk // 5:]
+    zone_d = d[:, 4 * wk // 5:]
+    mg_c = float((zone_c[..., 0] - zone_c[..., 1]).clip(0).mean())
+    mg_d = float((zone_d[..., 0] - zone_d[..., 1]).clip(0).mean())
+    assert mg_d < mg_c, \
+        f"wisp_navigate: the fare must be paid ({mg_c:.4f} -> {mg_d:.4f})"
+    cy_c = float((zone_c[..., 2] - zone_c[..., 0]).clip(0).mean())
+    cy_d = float((zone_d[..., 2] - zone_d[..., 0]).clip(0).mean())
+    assert cy_d > cy_c, \
+        f"wisp_navigate: altitude must be gained ({cy_c:.4f} -> {cy_d:.4f})"
+    print(f"  wisp_navigate: OK  (burn {am_a:.4f} -> {am_b:.4f}; "
+          f"fare {mg_c:.4f} -> {mg_d:.4f}; altitude {cy_c:.4f} -> {cy_d:.4f})")
+
+    print("ALL PASSED (38 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
           "+ Kerr horizons/area-theorem/superradiance "
@@ -1173,7 +1248,9 @@ def main():
           "+ classic tests Mercury-42.98/Eddington-1.75/Shapiro-250us/GPS-38.5 "
           "+ LCDM t0-13.8/Friedmann-exact/z_acc-0.63/gap-0.58mag/horizons-46-16.7 "
           "+ wisp isochrony-2pi/hover-bounded/cosh-fuel-wall/rim-at-infinity "
-          "+ body L=r2/omega=1-universal/E=cosh2-rho/no-ISCO/equivalence-principle)")
+          "+ body L=r2/omega=1-universal/E=cosh2-rho/no-ISCO/equivalence-principle "
+          "+ navigate E=coshcosh-L=sinhsinh/fare-telescopes/subway-pi-over-2"
+          "/lens-refocus-pi-2pi)")
 
 
 if __name__ == "__main__":

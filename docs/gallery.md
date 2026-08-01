@@ -558,6 +558,22 @@ ISCO in the bubble).
 
 ![grow, climb, hover, orbit](engine/wisp_body.gif)
 
+`wisp_navigate` — **stage 3: navigation**
+([Research 57](research/57-the-wisp-in-the-box.md)). The cost algebra of getting
+anywhere: the body boosts off its shell-A orbit (reserve steps down by the exact
+`cosh ρ_A·Δcosh` bill), coasts the ballistic transfer arc whose constants are pure
+hyperbolic algebra (`E = cosh ρ_A cosh ρ_B`, `L = sinh ρ_A sinh ρ_B` — asserted at
+both apsides), circularizes at shell B (total fare telescopes to
+`cosh²ρ_B − cosh²ρ_A`, path-independent, asserted). Every transfer between any two
+shells takes Δt = π/2 and sweeps Δφ = π/2 exactly (the isochronous subway,
+asserted). Then the geodesic lens: a fan of test motes released in every direction
+all reconverge at the antipode at t = π (violet ping) and come home at t = 2π
+(green ping) — asserted for three launches; in the bubble you cannot get lost.
+
+![wisp_navigate — the antipodal refocus](engine/wisp_navigate.png)
+
+![boost, coast, circularize, lens](engine/wisp_navigate.gif)
+
 ## Warp compression — three compressions of the card's visual information
 
 Virtual compression of the **actual card**: the real RTX 6000 Pro board (`gpu_board`) is compressed
