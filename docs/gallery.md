@@ -558,6 +558,91 @@ ISCO in the bubble).
 
 ![grow, climb, hover, orbit](engine/wisp_body.gif)
 
+`wisp_navigate` — **stage 3: navigation**
+([Research 57](research/57-the-wisp-in-the-box.md)). The cost algebra of getting
+anywhere: the body boosts off its shell-A orbit (reserve steps down by the exact
+`cosh ρ_A·Δcosh` bill), coasts the ballistic transfer arc whose constants are pure
+hyperbolic algebra (`E = cosh ρ_A cosh ρ_B`, `L = sinh ρ_A sinh ρ_B` — asserted at
+both apsides), circularizes at shell B (total fare telescopes to
+`cosh²ρ_B − cosh²ρ_A`, path-independent, asserted). Every transfer between any two
+shells takes Δt = π/2 and sweeps Δφ = π/2 exactly (the isochronous subway,
+asserted). Then the geodesic lens: a fan of test motes released in every direction
+all reconverge at the antipode at t = π (violet ping) and come home at t = 2π
+(green ping) — asserted for three launches; in the bubble you cannot get lost.
+
+![wisp_navigate — the antipodal refocus](engine/wisp_navigate.png)
+
+![boost, coast, circularize, lens](engine/wisp_navigate.gif)
+
+`wisp_box_3d` — **stage 1 in 3D: the ball**
+([Research 57](research/57-the-wisp-in-the-box.md)). The magic circle becomes a
+magic SPHERE — the Poincaré ball floating inside the 3D simulation box, corner
+brackets hanging in depth, camera orbiting once per cycle. The same exact laws,
+because the radial equation never mentioned dimension: coast through the center of
+the ball on the closed-form geodesic (free flight is planar, so the 2D closed form
+applies verbatim in the tilted flight plane), burn to a stall just inside the
+glowing rim, fall back when the fuel wall wins. The nested translucent shells are
+the equal-ρ spheres whose areas grow as `4π sinh²ρ` (e² per unit — asserted).
+
+![wisp_box_3d — the burn, in depth](engine/wisp_box_3d.png)
+
+![one coast-burn-fall cycle, camera orbiting](engine/wisp_box_3d.gif)
+
+`wisp_swarm_3d` — **the isochronous firework**
+([Research 57](research/57-the-wisp-in-the-box.md)). 40 motes released from the
+center of the ball in every direction with every amplitude — and because the
+period is 2π at EVERY amplitude (isochrony asserted), the whole swarm passes back
+through r = 0 simultaneously every π: an explosion that un-explodes, twice per
+cycle. The ledgers carry the 3D dictionary: shell areas `4π sinh²ρ` (exponential,
+asserted), volume exactly `∫A dρ` (asserted), and the skin theorem `V/A → 1/2`
+(asserted) — the magenta bar rises toward its white asymptote line and never
+touches it: hyperbolic space is all skin and no core.
+
+![wisp_swarm_3d — the spread](engine/wisp_swarm_3d.png)
+
+![spread, collapse, spread — the un-explosion](engine/wisp_swarm_3d.gif)
+
+`wisp_body_3d` — **stage 2 in 3D**
+([Research 57](research/57-the-wisp-in-the-box.md)). The body grows inside the
+ball, climbs the cosh cliff, hovers against a full translucent shell-sphere
+(amber thrust pinned at `tanh ρ` under the white engine-max line), then tips into
+the `L = r²` orbit and cuts the flame — while the companion mote free-orbits a
+DIFFERENT plane on a lower shell and stays in step lap for lap anyway: ω = 1 at
+every radius in every plane (asserted). The whole ball turns in step.
+
+![wisp_body_3d — hover against the shell-sphere](engine/wisp_body_3d.png)
+
+![grow, climb, hover, orbit — in the ball](engine/wisp_body_3d.gif)
+
+`wisp_navigate_3d` — **stage 3 in 3D: the lens flower**
+([Research 57](research/57-the-wisp-in-the-box.md)). The trip replayed in the
+ball (exact transfer constants, path-independent fare, π/2 subway — all
+asserted), and then the geodesic lens in its true dimension: 12 motes launched
+in DIFFERENT PLANES through the release point blossom into a 3D flower — and the
+ball folds all of it back to the single antipodal point at t = π (violet halo)
+and home at t = 2π (green halo), the body arriving in step. The lens was never a
+trick of the plane; it is the geometry.
+
+![wisp_navigate_3d — the flower folds back](engine/wisp_navigate_3d.png)
+
+![boost, coast, circularize, the 3D lens](engine/wisp_navigate_3d.gif)
+
+`wisp_shadow` — **the boundary sees everything**
+([Research 57](research/57-the-wisp-in-the-box.md)). The AdS/CFT half of the
+brief: the wisp's EXACT boundary shadow — the bulk-to-boundary propagator
+`K = (cosh ρ − sinh ρ cos θ)^−Δ` — painted live on the rim through the stage-1
+cycle. Coasting, the shadow sloshes (uniform when the wisp crosses the center);
+burning, it sharpens exponentially: contrast `e^{2Δρ}` exact at machine precision
+(asserted), width closed-form shrinking as `2e^{−ρ}` (asserted — UV/IR: bulk depth
+IS boundary resolution). And the magenta ledger holds the LIVE integral of the
+shadow, pinned at 2π under its white conservation line at every ρ (asserted): the
+boundary never loses track of the wisp. Holography is not surveillance added to
+the bubble — it is the bubble.
+
+![wisp_shadow — the shadow sharpens under burn](engine/wisp_shadow.png)
+
+![coast slosh, burn spike, conserved total](engine/wisp_shadow.gif)
+
 ## Warp compression — three compressions of the card's visual information
 
 Virtual compression of the **actual card**: the real RTX 6000 Pro board (`gpu_board`) is compressed

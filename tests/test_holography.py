@@ -78,18 +78,30 @@ from warp_shaders.engine.cosmology import (
     scale_factor,
 )
 from warp_shaders.engine.wisp import (
+    apsides,
+    ball_volume,
     climb_energy,
     disk_radius,
     geodesic_period,
+    geodesic_u,
     hover_acceleration,
     local_gravity,
     orbit_angular_momentum,
     orbit_angular_velocity,
     orbit_energy,
+    orbit_geodesic,
     proper_distance,
+    metric_to_disk,
     radial_geodesic,
     radial_geodesic_closed,
+    shadow_contrast,
+    shadow_kernel,
+    shadow_width,
+    sphere_area,
     static_energy,
+    transfer_cost,
+    transfer_orbit,
+    volume_area_ratio,
 )
 from warp_shaders.engine.gw import (
     chirp_frequency,
@@ -1162,7 +1174,233 @@ def main():
     print(f"  wisp_body: OK  (thrust {am_a:.4f} hover -> {am_b:.4f} orbit; "
           f"growth {gr_c:.4f} -> {gr_d:.4f})")
 
-    print("ALL PASSED (37 scenes + LOD sweep + thermodynamics + phase transition "
+    # ---- the wisp navigates: the cost algebra of getting anywhere ----
+    # the transfer geodesic between shells has pure hyperbolic constants
+    for rho1, rho2 in ((0.8, 1.6), (0.4, 2.2)):
+        e_t, l_t = transfer_orbit(rho1, rho2)
+        assert abs(e_t - _m.cosh(rho1) * _m.cosh(rho2)) < 1e-12
+        assert abs(l_t - _m.sinh(rho1) * _m.sinh(rho2)) < 1e-12
+        # the apsides ARE the two shells: V^2 = E^2 at both turning radii
+        for rr in (_m.sinh(rho1), _m.sinh(rho2)):
+            v2 = (1.0 + rr * rr) * (1.0 + l_t * l_t / (rr * rr))
+            assert abs(v2 - e_t * e_t) < 1e-9, "the shells must be the apsides"
+        rlo, rhi = apsides(e_t, l_t)
+        assert abs(rlo - _m.sinh(rho1)) < 1e-9 and abs(rhi - _m.sinh(rho2)) < 1e-9
+        # the fare is path-independent: total = orbit_energy(2) - orbit_energy(1)
+        _bst, _crc, tot = transfer_cost(rho1, rho2)
+        assert abs(tot - (orbit_energy(rho2) - orbit_energy(rho1))) < 1e-12, \
+            "no clever route exists: the bill telescopes to the energy difference"
+    # the coordinate conversion every scene plots through — exact identity
+    for rho_c in (0.4, 1.6, 3.0):
+        assert abs(metric_to_disk(_m.sinh(rho_c)) - disk_radius(rho_c)) < 1e-15, \
+            "metric_to_disk(sinh rho) must equal disk_radius(rho) exactly"
+    # the isochronous subway: EVERY transfer takes dt = pi/2 and sweeps pi/2 —
+    # checked at a NEAR pair and a FAR pair: same timetable, different fares
+    for rho_lo, rho_hi in ((0.8, 1.6), (0.4, 2.4)):
+        e_t, l_t = transfer_orbit(rho_lo, rho_hi)
+        rlo, rhi = apsides(e_t, l_t)
+        ts_n, rs_n, ps_n = orbit_geodesic(e_t, l_t, rlo + 1e-9, 0.0, 1.0, 2.0, 100000)
+        t_arr, p_arr = None, None
+        for tt, rr, pp in zip(ts_n, rs_n, ps_n):
+            if rr >= rhi - 1e-6:
+                t_arr, p_arr = tt, pp
+                break
+        assert t_arr is not None and abs(t_arr - _m.pi / 2.0) < 5e-3, \
+            f"the subway timetable: dt = pi/2 for {rho_lo}->{rho_hi}, got {t_arr}"
+        assert abs(p_arr - _m.pi / 2.0) < 5e-3, f"a quarter turn exactly, got {p_arr}"
+    # the closed form u(tau) = ubar - A cos 2tau breathes between the apsides
+    us = [geodesic_u(e_t, l_t, 0.01 * k) for k in range(315)]
+    assert abs(min(us) - rlo * rlo) < 1e-4 and abs(max(us) - rhi * rhi) < 1e-4
+    assert abs(geodesic_u(e_t, l_t, 0.0) - rlo * rlo) < 1e-12, "periapsis at tau = 0"
+    # the geodesic lens: any launch refocuses at the antipode at t = pi, home at 2pi
+    import bisect as _b
+    for (e_g, l_g) in ((2.2, 0.7), (3.0, 1.6), (1.9, 0.3)):
+        ts_g2, rs_g2, ps_g2 = orbit_geodesic(e_g, l_g, 1.0, 0.0, 1.0,
+                                             2.0 * _m.pi, 150000)
+        i_pi = _b.bisect_left(ts_g2, _m.pi)
+        assert abs(rs_g2[i_pi] - 1.0) < 1e-3 and abs(ps_g2[i_pi] - _m.pi) < 1e-3, \
+            f"the lens: (E={e_g}, L={l_g}) must be at the antipode at t=pi"
+        assert abs(rs_g2[-1] - 1.0) < 1e-3 and abs(ps_g2[-1] - 2.0 * _m.pi) < 1e-3, \
+            f"the lens: (E={e_g}, L={l_g}) must be home at t=2pi"
+    print(f"  wisp navigates: OK  (E=cosh*cosh, L=sinh*sinh at both apsides; "
+          f"fare telescopes; subway dt={t_arr:.4f}~pi/2 dphi={p_arr:.4f}~pi/2; "
+          f"lens refocus at pi/2pi for 3 launches)")
+
+    # ---- the navigation scene: structural checks ----
+    a = _render("wisp_navigate", 2.55)       # boost: amber burn spike
+    b = _render("wisp_navigate", 5.0)        # coast: engines silent
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    am_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    am_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert am_a > am_b, \
+        f"wisp_navigate: the boost burns (amber {am_a:.4f}) but the arc coasts ({am_b:.4f})"
+    c = _render("wisp_navigate", 1.0)        # before the trip: reserve full, low shell
+    d = _render("wisp_navigate", 8.5)        # after both burns: reserve down, high shell
+    zone_c = c[:, 4 * wk // 5:]
+    zone_d = d[:, 4 * wk // 5:]
+    mg_c = float((zone_c[..., 0] - zone_c[..., 1]).clip(0).mean())
+    mg_d = float((zone_d[..., 0] - zone_d[..., 1]).clip(0).mean())
+    assert mg_d < mg_c, \
+        f"wisp_navigate: the fare must be paid ({mg_c:.4f} -> {mg_d:.4f})"
+    cy_c = float((zone_c[..., 2] - zone_c[..., 0]).clip(0).mean())
+    cy_d = float((zone_d[..., 2] - zone_d[..., 0]).clip(0).mean())
+    assert cy_d > cy_c, \
+        f"wisp_navigate: altitude must be gained ({cy_c:.4f} -> {cy_d:.4f})"
+    print(f"  wisp_navigate: OK  (burn {am_a:.4f} -> {am_b:.4f}; "
+          f"fare {mg_c:.4f} -> {mg_d:.4f}; altitude {cy_c:.4f} -> {cy_d:.4f})")
+
+    # ---- the wisp in 3D: the ball, exactly ----
+    # dV/drho = A: the volume is exactly the integral of the area
+    for rho_b in (0.5, 1.5, 3.0):
+        hh = 1e-6
+        dv = (ball_volume(rho_b + hh) - ball_volume(rho_b - hh)) / (2.0 * hh)
+        assert abs(dv - sphere_area(rho_b)) / sphere_area(rho_b) < 1e-8, \
+            "V = integral of A must hold exactly"
+    # Euclidean limits at small rho: A -> 4 pi rho^2, V -> 4/3 pi rho^3
+    rr_s = 1e-3
+    assert abs(sphere_area(rr_s) / (4.0 * _m.pi * rr_s * rr_s) - 1.0) < 1e-5
+    assert abs(ball_volume(rr_s) / (4.0 / 3.0 * _m.pi * rr_s ** 3) - 1.0) < 1e-5
+    # exponential growth: A(rho+1)/A(rho) -> e^2 — the trap is monstrous
+    assert abs(sphere_area(6.0) / sphere_area(5.0) - _m.e ** 2) < 1e-3
+    # the skin theorem: V/A -> 1/2 — all skin, no core
+    assert abs(volume_area_ratio(10.0) - 0.5) < 1e-7 and \
+        abs(volume_area_ratio(15.0) - 0.5) < 1e-10, \
+        "all of hyperbolic volume lives within one unit of the surface"
+    assert volume_area_ratio(0.5) < volume_area_ratio(2.0) < 0.5, "monotone, bounded"
+    # the isochronous firework: EVERY amplitude passes r = 0 at t = pi together
+    for amp in (0.7, 2.0, 5.0):
+        assert abs(radial_geodesic_closed(_m.sinh(amp), _m.pi)) < 1e-9, \
+            "the explosion must un-explode: all radial geodesics refocus at pi"
+    print(f"  wisp in 3D: OK  (dV/drho = A exact; A ratio e^2 = "
+          f"{sphere_area(6.0) / sphere_area(5.0):.4f}; V/A(10) = "
+          f"{volume_area_ratio(10.0):.8f} -> 1/2 skin theorem; "
+          f"firework refocus at pi for 3 amplitudes)")
+
+    # ---- the 3D scenes: structural checks ----
+    a = _render("wisp_box_3d", 1.0)          # coast: rho small, reserve full
+    b = _render("wisp_box_3d", 11.5)         # deep burn: rho high, reserve drained
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    cy_a = float((zone_a[..., 2] - zone_a[..., 0]).clip(0).mean())
+    cy_b = float((zone_b[..., 2] - zone_b[..., 0]).clip(0).mean())
+    assert cy_b > cy_a, \
+        f"wisp_box_3d: the proper-distance ledger must climb under burn ({cy_a:.4f} -> {cy_b:.4f})"
+    c = _render("wisp_box_3d", 7.0)          # early burn: reserve nearly full
+    zone_c = c[:, 4 * wk // 5:]
+    mg_c3 = float((zone_c[..., 0] - zone_c[..., 1]).clip(0).mean())
+    mg_b3 = float((zone_b[..., 0] - zone_b[..., 1]).clip(0).mean())
+    assert mg_b3 < mg_c3, \
+        f"wisp_box_3d: the reserve must drain on the cosh cliff ({mg_c3:.4f} -> {mg_b3:.4f})"
+    print(f"  wisp_box_3d: OK  (rho ledger {cy_a:.4f} -> {cy_b:.4f} under burn; "
+          f"reserve {mg_c3:.4f} -> {mg_b3:.4f})")
+
+    d = _render("wisp_swarm_3d", 4.0)        # max spread: ledgers breathing high
+    e2 = _render("wisp_swarm_3d", 7.9)       # collapse: everything at the center
+    zone_d = d[:, 4 * wk // 5:]
+    zone_e = e2[:, 4 * wk // 5:]
+    cy_d3 = float((zone_d[..., 2] - zone_d[..., 0]).clip(0).mean())
+    cy_e3 = float((zone_e[..., 2] - zone_e[..., 0]).clip(0).mean())
+    assert cy_d3 > cy_e3, \
+        f"wisp_swarm_3d: the dispersion must breathe ({cy_d3:.4f} spread vs {cy_e3:.4f} collapse)"
+    mg_d3 = float((zone_d[..., 0] - zone_d[..., 1]).clip(0).mean())
+    mg_e3 = float((zone_e[..., 0] - zone_e[..., 1]).clip(0).mean())
+    assert mg_d3 > mg_e3, \
+        f"wisp_swarm_3d: the skin ratio must collapse with the swarm ({mg_d3:.4f} -> {mg_e3:.4f})"
+    print(f"  wisp_swarm_3d: OK  (dispersion {cy_d3:.4f} spread -> {cy_e3:.4f} collapse; "
+          f"skin ledger {mg_d3:.4f} -> {mg_e3:.4f})")
+
+    # ---- stages 2 + 3 in 3D: structural checks ----
+    a = _render("wisp_body_3d", 9.0)         # hover: amber thrust bar lit
+    b = _render("wisp_body_3d", 14.0)        # orbit: engines silent
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    am_a3 = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    am_b3 = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert am_a3 > am_b3, \
+        f"wisp_body_3d: hover burns (amber {am_a3:.4f}) but orbit coasts ({am_b3:.4f})"
+    c = _render("wisp_body_3d", 0.5)         # early growth
+    d = _render("wisp_body_3d", 3.5)         # late growth
+    zone_c = c[:, 4 * wk // 5:]
+    zone_d = d[:, 4 * wk // 5:]
+    gr_c3 = float((zone_c[..., 1] - zone_c[..., 0]).clip(0).mean())
+    gr_d3 = float((zone_d[..., 1] - zone_d[..., 0]).clip(0).mean())
+    assert gr_d3 > gr_c3, \
+        f"wisp_body_3d: the growth ledger must fill ({gr_c3:.4f} -> {gr_d3:.4f})"
+    print(f"  wisp_body_3d: OK  (thrust {am_a3:.4f} hover -> {am_b3:.4f} orbit; "
+          f"growth {gr_c3:.4f} -> {gr_d3:.4f})")
+
+    a = _render("wisp_navigate_3d", 2.55)    # boost: burn spike
+    b = _render("wisp_navigate_3d", 5.0)     # coast: engines silent
+    zone_a = a[:, 4 * wk // 5:]
+    zone_b = b[:, 4 * wk // 5:]
+    am_a4 = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    am_b4 = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert am_a4 > am_b4, \
+        f"wisp_navigate_3d: the boost burns (amber {am_a4:.4f}) but the arc coasts ({am_b4:.4f})"
+    c = _render("wisp_navigate_3d", 1.0)     # before: reserve full, low shell
+    d = _render("wisp_navigate_3d", 8.5)     # after both burns: fare paid, high shell
+    zone_c = c[:, 4 * wk // 5:]
+    zone_d = d[:, 4 * wk // 5:]
+    mg_c4 = float((zone_c[..., 0] - zone_c[..., 1]).clip(0).mean())
+    mg_d4 = float((zone_d[..., 0] - zone_d[..., 1]).clip(0).mean())
+    assert mg_d4 < mg_c4, \
+        f"wisp_navigate_3d: the fare must be paid ({mg_c4:.4f} -> {mg_d4:.4f})"
+    cy_c4 = float((zone_c[..., 2] - zone_c[..., 0]).clip(0).mean())
+    cy_d4 = float((zone_d[..., 2] - zone_d[..., 0]).clip(0).mean())
+    assert cy_d4 > cy_c4, \
+        f"wisp_navigate_3d: altitude must be gained ({cy_c4:.4f} -> {cy_d4:.4f})"
+    print(f"  wisp_navigate_3d: OK  (burn {am_a4:.4f} -> {am_b4:.4f}; "
+          f"fare {mg_c4:.4f} -> {mg_d4:.4f}; altitude {cy_c4:.4f} -> {cy_d4:.4f})")
+
+    # ---- the wisp's shadow: the boundary sees everything, exactly ----
+    # peak-to-antipode contrast is e^{2 Delta rho} EXACTLY
+    for rho_s, del_s in ((0.8, 1.0), (2.0, 1.0), (1.5, 2.0)):
+        ratio = shadow_kernel(rho_s, 0.0, del_s) / shadow_kernel(rho_s, _m.pi, del_s)
+        assert abs(ratio - shadow_contrast(rho_s, del_s)) < 1e-9 * ratio, \
+            "the shadow's contrast must be e^{2 Delta rho} exactly"
+    # the conserved imprint: for Delta = 1, the total shadow is 2 pi at EVERY rho
+    n_i = 4096
+    for rho_s in (0.5, 2.0, 5.0):
+        tot = sum(shadow_kernel(rho_s, 2.0 * _m.pi * (k + 0.5) / n_i)
+                  for k in range(n_i)) * 2.0 * _m.pi / n_i
+        assert abs(tot - 2.0 * _m.pi) < 1e-6, \
+            f"the boundary never loses track: total = {tot}, must be 2 pi at rho={rho_s}"
+    # the closed-form half-max width, checked against the kernel directly
+    for rho_s in (1.0, 2.5):
+        w_half = shadow_width(rho_s)
+        k_half = shadow_kernel(rho_s, w_half)
+        assert abs(k_half - 0.5 * shadow_kernel(rho_s, 0.0)) < 1e-9, \
+            "shadow_width must be the exact half-max angle"
+    # UV/IR: width * e^rho -> 2 sqrt(2^{1/Delta} - 1) = 2 for Delta = 1
+    assert abs(shadow_width(6.0) * _m.exp(6.0) - 2.0) < 1e-2, \
+        "bulk depth IS boundary resolution: theta_1/2 ~ 2 e^{-rho}"
+    assert shadow_width(3.0) < shadow_width(1.5) < shadow_width(0.5), "monotone sharpening"
+    print(f"  wisp's shadow: OK  (contrast e^(2 D rho) exact; total 2pi conserved at "
+          f"rho=0.5/2/5; width closed-form half-max; "
+          f"width*e^6 = {shadow_width(6.0) * _m.exp(6.0):.4f} -> 2 UV/IR)")
+
+    # ---- the shadow scene: structural checks (9/10 zone: bars only) ----
+    a = _render("wisp_shadow", 1.0)          # coast: shadow wide, contrast low
+    b = _render("wisp_shadow", 11.5)         # deep burn: narrow, contrast high
+    zone_a = a[:, 9 * wk // 10:]
+    zone_b = b[:, 9 * wk // 10:]
+    cy_a = float((zone_a[..., 2] - zone_a[..., 0]).clip(0).mean())
+    cy_b = float((zone_b[..., 2] - zone_b[..., 0]).clip(0).mean())
+    assert cy_a > cy_b, \
+        f"wisp_shadow: the width ledger must SHRINK under burn ({cy_a:.4f} -> {cy_b:.4f})"
+    am_a = float((zone_a[..., 0] - zone_a[..., 2]).clip(0).mean())
+    am_b = float((zone_b[..., 0] - zone_b[..., 2]).clip(0).mean())
+    assert am_b > am_a, \
+        f"wisp_shadow: the contrast ledger must grow ({am_a:.4f} -> {am_b:.4f})"
+    mg_a = float((zone_a[..., 0] - zone_a[..., 1]).clip(0).mean())
+    mg_b = float((zone_b[..., 0] - zone_b[..., 1]).clip(0).mean())
+    assert abs(mg_a - mg_b) < 0.35 * max(mg_a, mg_b), \
+        f"wisp_shadow: the total-imprint ledger must stay FLAT ({mg_a:.4f} vs {mg_b:.4f})"
+    print(f"  wisp_shadow: OK  (width {cy_a:.4f} -> {cy_b:.4f} shrinks; contrast "
+          f"{am_a:.4f} -> {am_b:.4f} grows; total {mg_a:.4f} ~ {mg_b:.4f} conserved)")
+
+    print("ALL PASSED (43 scenes + LOD sweep + thermodynamics + phase transition "
           "+ RT dictionary + string screening + Page curve + complexity growth "
           "+ BTZ quotient/plateau/ringdown + [[5,1,3]]/MFMC/MERA/HaPPY "
           "+ Kerr horizons/area-theorem/superradiance "
@@ -1173,7 +1411,12 @@ def main():
           "+ classic tests Mercury-42.98/Eddington-1.75/Shapiro-250us/GPS-38.5 "
           "+ LCDM t0-13.8/Friedmann-exact/z_acc-0.63/gap-0.58mag/horizons-46-16.7 "
           "+ wisp isochrony-2pi/hover-bounded/cosh-fuel-wall/rim-at-infinity "
-          "+ body L=r2/omega=1-universal/E=cosh2-rho/no-ISCO/equivalence-principle)")
+          "+ body L=r2/omega=1-universal/E=cosh2-rho/no-ISCO/equivalence-principle "
+          "+ navigate E=coshcosh-L=sinhsinh/fare-telescopes/subway-pi-over-2"
+          "/lens-refocus-pi-2pi "
+          "+ 3D-ball dV=A-exact/area-e2-growth/skin-theorem-V-over-A-half"
+          "/firework-refocus "
+          "+ shadow contrast-e2Drho-exact/total-2pi-conserved/width-UVIR-e-rho)")
 
 
 if __name__ == "__main__":

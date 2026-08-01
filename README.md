@@ -877,7 +877,14 @@ effective potential stationary (asserted), `V″ = 8 > 0` everywhere so there is
 ISCO (asserted), the orbit energy is `E = cosh²ρ` (asserted), and every circular
 orbit turns at exactly ω = 1 regardless of radius (asserted at three radii): motion
 makes hovering free, and two bodies on different shells stay forever in phase.
-Stage 3 (navigation) is named in the doc.
+**Stage 3** is navigation: `wisp_navigate` boosts off the shell-A orbit, coasts
+the ballistic transfer arc whose constants are pure hyperbolic algebra
+(`E = cosh ρ_A cosh ρ_B`, `L = sinh ρ_A sinh ρ_B`, asserted at both apsides),
+and circularizes at shell B — the fare telescoping to `cosh²ρ_B − cosh²ρ_A`,
+path-independent (asserted). Every transfer between any two shells takes exactly
+Δt = π/2 and sweeps Δφ = π/2 (the isochronous subway, asserted), and the geodesic
+lens closes the arc: motes released in every direction all refocus at the antipode
+at t = π and come home at t = 2π (asserted) — in the bubble you cannot get lost.
 
 | wisp_box — the burn | wisp_box — the whole cycle |
 |---|---|
@@ -886,6 +893,50 @@ Stage 3 (navigation) is named in the doc.
 | wisp_body — hover on the shell | wisp_body — grow, climb, hover, orbit |
 |---|---|
 | ![wisp_body still](docs/engine/wisp_body.png) | ![wisp_body](docs/engine/wisp_body.gif) |
+
+| wisp_navigate — the antipodal refocus | wisp_navigate — boost, coast, lens |
+|---|---|
+| ![wisp_navigate still](docs/engine/wisp_navigate.png) | ![wisp_navigate](docs/engine/wisp_navigate.gif) |
+
+**Stage 1 in 3D** puts the wisp in the spherical bubble the brief named from the
+start: the Poincaré ball inside a 3D box, corner brackets hanging in depth, camera
+orbiting — the same exact laws (the radial equation never mentioned dimension;
+free flight is planar so the closed forms apply verbatim), plus the 3D dictionary:
+shell areas `4π sinh²ρ` (e² per unit, asserted), volume exactly `∫A dρ` (asserted),
+and the skin theorem `V/A → 1/2` (asserted) — hyperbolic space is all skin and no
+core. `wisp_box_3d` replays coast-burn-fall in depth; `wisp_swarm_3d` is the
+isochronous firework — 40 motes, every direction, every amplitude, all refocusing
+through r = 0 simultaneously every π (asserted): the explosion that un-explodes.
+
+| wisp_box_3d — the burn, in depth | wisp_swarm_3d — the un-explosion |
+|---|---|
+| ![wisp_box_3d](docs/engine/wisp_box_3d.gif) | ![wisp_swarm_3d](docs/engine/wisp_swarm_3d.gif) |
+
+**Stages 2 and 3 in 3D** complete the arc in the ball: `wisp_body_3d` grows,
+climbs, and hovers against a full shell-sphere before cutting the flame on the
+`L = r²` orbit — the companion mote free-orbiting a *different plane* and staying
+in step anyway (ω = 1 at every radius in every plane, asserted); `wisp_navigate_3d`
+runs the trip and then opens the geodesic lens in its true dimension — 12 motes in
+different planes through the release point blossom into a 3D flower that the ball
+folds back to the one antipodal point at t = π and home at t = 2π (asserted).
+
+| wisp_body_3d — in the ball | wisp_navigate_3d — the lens flower |
+|---|---|
+| ![wisp_body_3d](docs/engine/wisp_body_3d.gif) | ![wisp_navigate_3d](docs/engine/wisp_navigate_3d.gif) |
+
+**The boundary sees everything** — the AdS/CFT half of the brief ("because of
+AdS/CFT"): `wisp_shadow` paints the wisp's exact boundary imprint — the
+bulk-to-boundary propagator `K = (cosh ρ − sinh ρ cos θ)^−Δ` — live on the rim.
+Contrast `e^{2Δρ}` exact (asserted at machine precision); width shrinking as
+`2e^{−ρ}` (asserted — the UV/IR correspondence made quantitative); and the live
+integral of the shadow pinned at 2π at every altitude (asserted): climbing
+concentrates the imprint but cannot change its total. The boundary never loses
+track of the wisp — holography is not surveillance added to the bubble; it is
+the bubble.
+
+| wisp_shadow — the spike under burn | wisp_shadow — slosh, sharpen, conserve |
+|---|---|
+| ![wisp_shadow still](docs/engine/wisp_shadow.png) | ![wisp_shadow](docs/engine/wisp_shadow.gif) |
 
 ## Engine leap — global illumination
 
