@@ -381,6 +381,16 @@ See [Research 46](../research/46-ads-cft-holography.md).
 | `shadow_width` | closed-form half-max width `acos[(cosh ρ − 2^{1/Δ}e^{−ρ})/sinh ρ]` (asserted); `θ_½·e^ρ → 2√(2^{1/Δ}−1)` — UV/IR quantified |
 | the conserved imprint | for Δ = 1, `∫K dθ = 2π` at EVERY ρ (asserted) — the boundary never loses track of the wisp |
 
+### `engine.ising` — the 2D Ising model, exactly (host-side, all test-asserted)
+
+| Function | What it is |
+|---|---|
+| `critical_temperature` | Onsager's `T_c = 2/ln(1+√2)` — the self-dual point: `sinh(2/T_c) = 1` EXACTLY (asserted at machine precision) |
+| `magnetization_exact` | Yang's `M = (1 − sinh(2/T)^−4)^(1/8)` below T_c, exactly 0 above — exact β = 1/8 (log-slope asserted = 0.12500) |
+| `internal_energy_exact` / `ellipk_agm` | Onsager's energy per spin (elliptic K by AGM): `U → −2` at T → 0, `U(T_c) = −√2` EXACTLY, `U ≈ −2/T` hot (all asserted) |
+| `dual_temperature` | Kramers-Wannier: `sinh(2/T)·sinh(2/T*) = 1` (product asserted = 1; involution asserted; T_c the unique fixed point) |
+| `metropolis_sweep` / `simulate_magnetization` | deterministic seeded checkerboard Metropolis — the suite asserts the SIMULATION lands on Yang's closed form (measured, not asserted, twice over) |
+
 ## Post — `engine.post`
 
 Host-side (NumPy) pipeline over the HDR `(H, W, 3)` array you pull back with
